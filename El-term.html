@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   
+    <style>
+        /* Основные стили */
+        * {
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #f5f7fa 0%, #e4e7eb 100%);
+            background-attachment: fixed;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        /* Шапка сайта */
+        header {
+            background: linear-gradient(to bottom, #003366 0%, #002244 100%);
+            color: #ffffff;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 34, 68, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Основное содержимое */
+        .content {
+            padding: 0 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #003366;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        /* Таблица */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 34, 68, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            border: 1px solid #e0e6ed;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        
+        th {
+            background: linear-gradient(to bottom, #0066cc 0%, #003366 100%);
+            color: white;
+            font-weight: 600;
+            border-color: #0055aa;
+        }
+        
+        tr {
+            background-color: #ffffff; /* Все строки белые */
+        }
+        
+        tr:hover {
+            background-color: rgba(0, 102, 204, 0.1); /* Эффект при наведении */
+        }
+        
+        /* Кнопка "Назад" */
+        .back-button {
+            display: inline-block;
+            padding: 12px 20px;
+            background: linear-gradient(to bottom, #0066cc 0%, #003366 100%);
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            box-shadow: 0 4px 8px rgba(0, 51, 102, 0.3);
+            margin-top: 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .back-button:hover {
+            background: linear-gradient(to bottom, #0088ff 0%, #0055aa 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 85, 170, 0.4);
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            th, td {
+                padding: 8px 10px;
+                font-size: 14px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+
+    <div class="content">
+        <h1>Термометры электронные цифровые</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Реестр</th>
+                    <th>Название</th>
+                    <th>Срок действия</th>
+                    <th>Интервал между гос. поверкой</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>РБ 03 25 5557 14</td>
+                    <td>Vedo-Итал.(family/Clear) <strong>отменен</strong></td>
+                    <td>30.10.2014 - 30.10.2019</td>
+                    <td>24 месяца</td>
+                    
+                </tr>
+                <tr>
+                    <td>РБ 03 25 7707 20</td>
+                    <td>Veco-Итал./Кит.(family/clear)</td>
+                    <td>28.08.2020 - 28.08.2025</td>
+                    <td>24 месяца</td>
+                </tr>
+                <tr>
+                    <td>РБ 03 25 2176 19</td>
+                    <td>Интеграл-рб(Тэ-04) <strong>отменен</strong></td>
+                    <td>25.03.2004 - 22.07.2029</td>
+                    <td>24 месяца(до 01.07.2025)</td>
+                    
+                </tr>
+                 <tr>
+                    <td>12168-25</td>
+                    <td>Интеграл-рб(Тэ-04)</td>
+                    <td>01.07.2025 - 22.07.2029</td>
+                    <td>12 месяца(после 01.07.2025)</td>
+                </tr>
+                <tr>
+                    <td>РБ 03 25 10500 23</td>
+                    <td>Joytech-китай(DMT-4726/4233/101/4336/3062/4763/4760)</td>
+                    <td>14.12.2023 - 14.12.2028</td>
+                    <td>12 месяца</td>
+                </tr>
+                <tr>
+                    <td>РБ 03 10 7120 19</td>
+                    <td>Beurer-фрг(ft-09/1)</td>
+                    <td>30.07.2019 - 27.06.2029</td>
+                    <td>24 месяца</td>
+                </tr>
+                <tr>
+                    <td>РБ 03 25 6067 16</td>
+                    <td>A&D-япон(DT-623/624/501) <strong>отменен</strong></td>
+                    <td>30.08.2016 - 30.08.2021</td>
+                    <td>24 месяца</td>
+            
+                </tr>
+                <tr>
+                    <td>РБ 03 25 9498 23</td>
+                    <td>A&D-япон(DT-501/623/624)</td>
+                    <td>27.01.2023 - 27.01.2028</td>
+                    <td>12 месяца</td>
+                </tr>
+                <tr>
+                    <td>РБ 03 25 2150 04</td>
+                    <td>Leb international LLC-сша(DT-01с/02с/03с/11с) <strong>отменен</strong></td>
+                    <td>26.02.2004 - 26.02.2009</td>
+                    <td>24 месяца</td>
+                    
+                </tr>
+                <tr>
+                    <td>РБ 03 25 6635 18</td>
+                    <td>китай(imed Gt-1/03/04/05)</td>
+                    <td>31.07.2018 - 31.07.2023</td>
+                    <td>24 месяца(до 21.05.2025)</td>
+                </tr>
+                <tr>
+                    <td>11990-25</td>
+                    <td>китай(imed Gt-1/03/04/05)</td>
+                    <td>21.05.2025 - 21.05.2030</td>
+                    <td>12 месяца(после 21.05.2025)</td>
+                </tr>
+                <tr>
+                    <td>РБ 03 25 1267 20</td>
+                    <td>Microlife-швец.(МТ 1622/16F1/17K1/1611/550)(от17.03.2020 МТ 1622/1951/1961/19Е1/1751/1671/3001/1611/16С2/16F1/16F1/550/17K1)</td>
+                    <td>27.02.2001 - 30.09.2025</td>
+                    <td>24 месяца</td>
+                </tr>
+                <tr>
+                    <td>РБ 03 25 4235 16</td>
+                    <td>Omron-Япон.(МС-241W-E/МС-271W-E/МС-670-E/МС-246RU/МС-343F-RU/МС-341-RU)</td>
+                    <td>29.12.2009 - 22.12.2021</td>
+                    <td>24 месяца</td>
+                </tr>
+                <tr>
+                    <td>РБ 03 25 3821 17</td>
+                    <td>little doctor-Кит.(LD-300/301/302/303)</td>
+                    <td>28.03.2013 - 27.07.2022</td>
+                    <td>24 месяца</td>
+                </tr>
+                <tr>
+                    <td>РБ 03 25 3821 08</td>
+                    <td>little doctor-к»Кит.(LD-300/301/302/303) <strong>отменен</strong></td>
+                    <td>29.07.2008 - 29.07.2013</td>
+                    <td>24 месяца</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <a href="javascript:history.back()" class="back-button">Назад</a>
+    </div>
+</body>
+</html>

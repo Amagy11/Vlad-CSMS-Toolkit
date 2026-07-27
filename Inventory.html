@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система инвентаризации имущества</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+            --border-color: #bdc3c7;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--dark-color);
+            color: white;
+            padding: 15px 0;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: var(--light-color);
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        
+        .tab.active {
+            background-color: white;
+            font-weight: bold;
+        }
+        
+        .main-content {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .inventory-section {
+            flex: 1;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .inventory-section h2 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--dark-color);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-warning {
+            background-color: var(--warning-color);
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .filter-input {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background-color: var(--light-color);
+            cursor: pointer;
+            position: relative;
+        }
+        
+        th:hover {
+            background-color: #dfe6e9;
+        }
+        
+        th::after {
+            content: '↕';
+            position: absolute;
+            right: 10px;
+            opacity: 0.5;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .status-active {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .status-writeoff {
+            background-color: var(--warning-color);
+            color: white;
+        }
+        
+        .status-writtenoff {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .action-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .close {
+            font-size: 1.5em;
+            cursor: pointer;
+            color: var(--dark-color);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .written-off-section {
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--danger-color);
+        }
+        
+        .written-off-section h2 {
+            color: var(--danger-color);
+        }
+        
+        .cabinet-view {
+            margin-top: 20px;
+        }
+        
+        .cabinet-group {
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .cabinet-header {
+            background-color: var(--dark-color);
+            color: white;
+            padding: 10px 15px;
+            font-weight: bold;
+        }
+        
+        .location-table {
+            width: 100%;
+            margin-bottom: 0;
+        }
+        
+        .location-table th {
+            background-color: var(--light-color);
+        }
+        
+        /* Стили для группового добавления */
+        .bulk-modal-content {
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .bulk-add-table {
+            width: 100%;
+            border: 2px dashed var(--border-color);
+            margin: 15px 0;
+        }
+        
+        .bulk-add-table th {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+        }
+        
+        .bulk-add-table td {
+            border: 1px solid var(--border-color);
+            min-height: 40px;
+            cursor: cell;
+        }
+        
+        .bulk-add-table td:focus {
+            outline: 2px solid var(--primary-color);
+            background-color: #f0f8ff;
+        }
+        
+        .paste-hint {
+            background-color: #e8f4fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 0.9em;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .example-format {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 0.8em;
+        }
+        
+        .sync-status {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: var(--secondary-color);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        .sync-status.syncing {
+            background: var(--warning-color);
+        }
+        
+        .sync-status.error {
+            background: var(--danger-color);
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            font-size: 18px;
+            color: var(--dark-color);
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Основное содержимое -->
+    <div id="main-content">
+        <div class="sync-status" id="sync-status">Загрузка...</div>
+        
+        <header>
+            <div class="container">
+                <h1>Система инвентаризации имущества</h1>
+            </div>
+        </header>
+        
+        <div class="container">
+            <div class="tabs">
+                <div class="tab active" data-tab="inventory">Инвентаризация</div>
+                <div class="tab" data-tab="written-off">Списанное имущество</div>
+                <div class="tab" data-tab="cabinet-view">Просмотр по кабинетам</div>
+            </div>
+            
+            <div id="inventory-tab" class="tab-content">
+                <div class="main-content">
+                    <div class="inventory-section">
+                        <h2>Основные средства</h2>
+                        <div class="controls">
+                            <div>
+                                <button class="btn btn-primary" id="add-main-btn">Добавить основное средство</button>
+                                <button class="btn btn-success" id="bulk-add-main-btn">Групповое добавление</button>
+                            </div>
+                            <div class="filters">
+                                <input type="text" class="filter-input" id="main-filter-name" placeholder="Фильтр по наименованию">
+                                <input type="text" class="filter-input" id="main-filter-invnum" placeholder="Фильтр по инв. номеру">
+                                <input type="text" class="filter-input" id="main-filter-cabinet" placeholder="Фильтр по кабинету">
+                            </div>
+                        </div>
+                        <table id="main-table">
+                            <thead>
+                                <tr>
+                                    <th data-sort="id">№</th>
+                                    <th data-sort="name">Наименование</th>
+                                    <th data-sort="inventoryNumber">Инв. номер</th>
+                                    <th data-sort="quantity">Количество</th>
+                                    <th data-sort="cabinet">Кабинет</th>
+                                    <th data-sort="location">Расположение</th>
+                                    <th data-sort="hasSticker">Наклейка</th>
+                                    <th data-sort="status">Статус</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="main-table-body">
+                                <tr>
+                                    <td colspan="9" class="loading">Загрузка данных...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="inventory-section">
+                        <h2>Малоценные средства</h2>
+                        <div class="controls">
+                            <div>
+                                <button class="btn btn-primary" id="add-lowvalue-btn">Добавить малоценку</button>
+                                <button class="btn btn-success" id="bulk-add-lowvalue-btn">Групповое добавление</button>
+                            </div>
+                            <div class="filters">
+                                <input type="text" class="filter-input" id="lowvalue-filter-name" placeholder="Фильтр по наименованию">
+                                <input type="text" class="filter-input" id="lowvalue-filter-invnum" placeholder="Фильтр по инв. номеру">
+                                <input type="text" class="filter-input" id="lowvalue-filter-cabinet" placeholder="Фильтр по кабинету">
+                            </div>
+                        </div>
+                        <table id="lowvalue-table">
+                            <thead>
+                                <tr>
+                                    <th data-sort="id">№</th>
+                                    <th data-sort="name">Наименование</th>
+                                    <th data-sort="inventoryNumber">Инв. номер</th>
+                                    <th data-sort="quantity">Количество</th>
+                                    <th data-sort="cabinet">Кабинет</th>
+                                    <th data-sort="location">Расположение</th>
+                                    <th data-sort="hasSticker">Наклейка</th>
+                                    <th data-sort="status">Статус</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lowvalue-table-body">
+                                <tr>
+                                    <td colspan="9" class="loading">Загрузка данных...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="written-off-tab" class="tab-content" style="display: none;">
+                <div class="main-content">
+                    <div class="inventory-section written-off-section">
+                        <h2>Списанные основные средства</h2>
+                        <table id="written-off-main-table">
+                            <thead>
+                                <tr>
+                                    <th>№</th>
+                                    <th>Наименование</th>
+                                    <th>Инв. номер</th>
+                                    <th>Количество</th>
+                                    <th>Кабинет</th>
+                                    <th>Расположение</th>
+                                    <th>Наклейка</th>
+                                    <th>Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody id="written-off-main-body">
+                                <tr>
+                                    <td colspan="8" class="loading">Загрузка данных...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="inventory-section written-off-section">
+                        <h2>Списанные малоценные средства</h2>
+                        <table id="written-off-lowvalue-table">
+                            <thead>
+                                <tr>
+                                    <th>№</th>
+                                    <th>Наименование</th>
+                                    <th>Инв. номер</th>
+                                    <th>Количество</th>
+                                    <th>Кабинет</th>
+                                    <th>Расположение</th>
+                                    <th>Наклейка</th>
+                                    <th>Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody id="written-off-lowvalue-body">
+                                <tr>
+                                    <td colspan="8" class="loading">Загрузка данных...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="cabinet-view-tab" class="tab-content" style="display: none;">
+                <div class="cabinet-view" id="cabinet-view-container">
+                    <div class="loading">Загрузка данных...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Модальное окно для добавления/редактирования -->
+        <div id="item-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-title">Добавить материальную ценность</h2>
+                    <span class="close">&times;</span>
+                </div>
+                <form id="item-form">
+                    <input type="hidden" id="item-id">
+                    <input type="hidden" id="item-type">
+                    
+                    <div class="form-group">
+                        <label for="item-name">Наименование:</label>
+                        <input type="text" id="item-name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="item-inventory-number">Инвентарный номер:</label>
+                        <input type="text" id="item-inventory-number" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="item-quantity">Количество:</label>
+                        <input type="number" id="item-quantity" min="1" value="1" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="item-cabinet">Кабинет:</label>
+                        <input type="text" id="item-cabinet" placeholder="Оставьте пустым, если нет кабинета">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="item-location">Расположение:</label>
+                        <input type="text" id="item-location" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="item-has-sticker">Наклейка со штрих-кодом:</label>
+                        <select id="item-has-sticker" required>
+                            <option value="true">Есть</option>
+                            <option value="false">Нет</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="item-status">Статус:</label>
+                        <select id="item-status" required>
+                            <option value="active">Активен</option>
+                            <option value="writeoff">На списание</option>
+                            <option value="writtenoff">Списан</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-danger" id="cancel-btn">Отмена</button>
+                        <button type="submit" class="btn btn-success">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Модальное окно для группового добавления -->
+        <div id="bulk-add-modal" class="modal">
+            <div class="modal-content bulk-modal-content">
+                <div class="modal-header">
+                    <h2 id="bulk-modal-title">Групповое добавление</h2>
+                    <span class="close" id="bulk-close">&times;</span>
+                </div>
+                <div class="paste-hint">
+                    <strong>Инструкция:</strong> Скопируйте данные из Excel и вставьте (Ctrl+V) в первую ячейку таблицы ниже.
+                    Система автоматически распределит данные по столбцам.
+                </div>
+                <div class="example-format">
+                    <strong>Формат данных:</strong> Наименование | Инв. номер | Количество | Кабинет | Расположение | Наклейка (Да/Нет) | Статус (Активен/На списание/Списан)
+                </div>
+                <table class="bulk-add-table" id="bulk-add-table">
+                    <thead>
+                        <tr>
+                            <th>Наименование</th>
+                            <th>Инв. номер</th>
+                            <th>Количество</th>
+                            <th>Кабинет</th>
+                            <th>Расположение</th>
+                            <th>Наклейка</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bulk-add-table-body">
+                        <tr>
+                            <td contenteditable="true" tabindex="0"></td>
+                            <td contenteditable="true"></td>
+                            <td contenteditable="true"></td>
+                            <td contenteditable="true"></td>
+                            <td contenteditable="true"></td>
+                            <td contenteditable="true"></td>
+                            <td contenteditable="true"></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-danger" id="bulk-cancel-btn">Отмена</button>
+                    <button type="button" class="btn btn-success" id="bulk-save-btn">Сохранить все</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"></script>
+    
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
+            authDomain: "vlad-csms-af6df.firebaseapp.com",
+            databaseURL: "https://vlad-csms-af6df-default-rtdb.firebaseio.com",
+            projectId: "vlad-csms-af6df",
+            storageBucket: "vlad-csms-af6df.firebasestorage.app",
+            messagingSenderId: "417297799117",
+            appId: "1:417297799117:web:07ce2915cbfe0cb1499684",
+            measurementId: "G-0EMQB4HYSQ"
+        };
+
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Данные приложения
+        let inventoryData = {
+            main: [],
+            lowvalue: []
+        };
+        
+        // Текущий тип для группового добавления
+        let currentBulkType = '';
+
+        // Функции для работы с Firebase
+        async function saveDataToFirebase() {
+            try {
+                updateSyncStatus('Синхронизация...', 'syncing');
+                await database.ref('inventoryData').set(inventoryData);
+                updateSyncStatus('Синхронизировано', 'success');
+                console.log('Данные сохранены в Firebase');
+            } catch (error) {
+                console.error('Ошибка сохранения в Firebase:', error);
+                updateSyncStatus('Ошибка синхронизации', 'error');
+            }
+        }
+        
+        async function loadDataFromFirebase() {
+            try {
+                updateSyncStatus('Загрузка...', 'syncing');
+                const snapshot = await database.ref('inventoryData').once('value');
+                if (snapshot.exists()) {
+                    inventoryData = snapshot.val();
+                    updateSyncStatus('Данные загружены', 'success');
+                    console.log('Данные загружены из Firebase');
+                } else {
+                    // Если данных нет в Firebase, используем локальные
+                    loadDataFromLocalStorage();
+                    await saveDataToFirebase(); // Сохраняем локальные данные в Firebase
+                    updateSyncStatus('Новые данные созданы', 'success');
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки из Firebase:', error);
+                // При ошибке загружаем из localStorage
+                loadDataFromLocalStorage();
+                updateSyncStatus('Оффлайн режим', 'error');
+            }
+        }
+        
+        function setupFirebaseRealtimeUpdates() {
+            try {
+                const inventoryRef = database.ref('inventoryData');
+                inventoryRef.on('value', (snapshot) => {
+                    if (snapshot.exists()) {
+                        const newData = snapshot.val();
+                        // Проверяем, отличаются ли данные
+                        if (JSON.stringify(inventoryData) !== JSON.stringify(newData)) {
+                            inventoryData = newData;
+                            renderTables();
+                            updateSyncStatus('Обновлено в реальном времени', 'success');
+                            console.log('Данные обновлены в реальном времени');
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Ошибка настройки real-time updates:', error);
+            }
+        }
+        
+        function updateSyncStatus(message, type = 'success') {
+            const statusElement = document.getElementById('sync-status');
+            statusElement.textContent = `Firebase: ${message}`;
+            statusElement.className = 'sync-status';
+            if (type !== 'success') {
+                statusElement.classList.add(type);
+            }
+        }
+        
+        // Локальное хранилище как fallback
+        function loadDataFromLocalStorage() {
+            const savedData = localStorage.getItem('inventoryData');
+            if (savedData) {
+                inventoryData = JSON.parse(savedData);
+            } else {
+                // Инициализация тестовыми данными
+                inventoryData = {
+                    main: [
+                        { id: 1, name: "Компьютер", inventoryNumber: "INV001", quantity: 5, cabinet: "902", location: "Стол 1", hasSticker: true, status: "active" },
+                        { id: 2, name: "Принтер", inventoryNumber: "INV002", quantity: 2, cabinet: "902", location: "Угол", hasSticker: true, status: "active" },
+                        { id: 3, name: "Сканер", inventoryNumber: "INV003", quantity: 1, cabinet: "", location: "Склад", hasSticker: false, status: "writeoff" }
+                    ],
+                    lowvalue: [
+                        { id: 1, name: "Канцелярские товары", inventoryNumber: "MV001", quantity: 10, cabinet: "902", location: "Шкаф", hasSticker: false, status: "active" },
+                        { id: 2, name: "Мышь компьютерная", inventoryNumber: "MV002", quantity: 5, cabinet: "901", location: "Стол", hasSticker: true, status: "active" },
+                        { id: 3, name: "Клавиатура", inventoryNumber: "MV003", quantity: 3, cabinet: "", location: "Склад", hasSticker: true, status: "writtenoff" }
+                    ]
+                };
+            }
+        }
+        
+        function saveDataToLocalStorage() {
+            localStorage.setItem('inventoryData', JSON.stringify(inventoryData));
+        }
+        
+        // Объединенная функция сохранения
+        async function saveData() {
+            saveDataToLocalStorage(); // Всегда сохраняем локально
+            await saveDataToFirebase(); // Сохраняем в Firebase
+        }
+        
+        // Инициализация приложения
+        async function initializeApp() {
+            await loadDataFromFirebase();
+            setupFirebaseRealtimeUpdates();
+            renderTables();
+            setupSorting();
+            setupEventListeners();
+            updateSyncStatus('Готово', 'success');
+        }
+        
+        // Генерация нового ID
+        function generateId(type) {
+            const maxId = inventoryData[type].reduce((max, item) => Math.max(max, item.id), 0);
+            return maxId + 1;
+        }
+        
+        // Отображение таблиц
+        function renderTables() {
+            renderMainTable();
+            renderLowvalueTable();
+            renderWrittenOffTables();
+            renderCabinetView();
+        }
+        
+        // Отображение таблицы основных средств
+        function renderMainTable() {
+            const tableBody = document.getElementById('main-table-body');
+            tableBody.innerHTML = '';
+            
+            const filteredData = filterData(inventoryData.main, 'main');
+            
+            if (filteredData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="9" class="loading">Нет данных</td></tr>';
+                return;
+            }
+            
+            filteredData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.id}</td>
+                    <td>${item.name}</td>
+                    <td>${item.inventoryNumber}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.cabinet || '-'}</td>
+                    <td>${item.location}</td>
+                    <td>${item.hasSticker ? 'Да' : 'Нет'}</td>
+                    <td><span class="status-badge status-${item.status}">${getStatusText(item.status)}</span></td>
+                    <td class="actions">
+                        <button class="action-btn btn-primary" onclick="editItem('main', ${item.id})">Изменить</button>
+                        <button class="action-btn btn-warning" onclick="toggleWriteOff('main', ${item.id})">${item.status === 'writtenoff' ? 'Вернуть' : 'Списать'}</button>
+                        <button class="action-btn btn-danger" onclick="deleteItem('main', ${item.id})">Удалить</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // Отображение таблицы малоценки
+        function renderLowvalueTable() {
+            const tableBody = document.getElementById('lowvalue-table-body');
+            tableBody.innerHTML = '';
+            
+            const filteredData = filterData(inventoryData.lowvalue, 'lowvalue');
+            
+            if (filteredData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="9" class="loading">Нет данных</td></tr>';
+                return;
+            }
+            
+            filteredData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.id}</td>
+                    <td>${item.name}</td>
+                    <td>${item.inventoryNumber}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.cabinet || '-'}</td>
+                    <td>${item.location}</td>
+                    <td>${item.hasSticker ? 'Да' : 'Нет'}</td>
+                    <td><span class="status-badge status-${item.status}">${getStatusText(item.status)}</span></td>
+                    <td class="actions">
+                        <button class="action-btn btn-primary" onclick="editItem('lowvalue', ${item.id})">Изменить</button>
+                        <button class="action-btn btn-warning" onclick="toggleWriteOff('lowvalue', ${item.id})">${item.status === 'writtenoff' ? 'Вернуть' : 'Списать'}</button>
+                        <button class="action-btn btn-danger" onclick="deleteItem('lowvalue', ${item.id})">Удалить</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // Отображение таблиц списанного имущества
+        function renderWrittenOffTables() {
+            const mainBody = document.getElementById('written-off-main-body');
+            const lowvalueBody = document.getElementById('written-off-lowvalue-body');
+            
+            mainBody.innerHTML = '';
+            lowvalueBody.innerHTML = '';
+            
+            const writtenOffMain = inventoryData.main.filter(item => item.status === 'writtenoff');
+            const writtenOffLowvalue = inventoryData.lowvalue.filter(item => item.status === 'writtenoff');
+            
+            if (writtenOffMain.length === 0) {
+                mainBody.innerHTML = '<tr><td colspan="8" class="loading">Нет списанных основных средств</td></tr>';
+            } else {
+                writtenOffMain.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.id}</td>
+                        <td>${item.name}</td>
+                        <td>${item.inventoryNumber}</td>
+                        <td>${item.quantity}</td>
+                        <td>${item.cabinet || '-'}</td>
+                        <td>${item.location}</td>
+                        <td>${item.hasSticker ? 'Да' : 'Нет'}</td>
+                        <td><span class="status-badge status-${item.status}">${getStatusText(item.status)}</span></td>
+                    `;
+                    mainBody.appendChild(row);
+                });
+            }
+            
+            if (writtenOffLowvalue.length === 0) {
+                lowvalueBody.innerHTML = '<tr><td colspan="8" class="loading">Нет списанных малоценных средств</td></tr>';
+            } else {
+                writtenOffLowvalue.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.id}</td>
+                        <td>${item.name}</td>
+                        <td>${item.inventoryNumber}</td>
+                        <td>${item.quantity}</td>
+                        <td>${item.cabinet || '-'}</td>
+                        <td>${item.location}</td>
+                        <td>${item.hasSticker ? 'Да' : 'Нет'}</td>
+                        <td><span class="status-badge status-${item.status}">${getStatusText(item.status)}</span></td>
+                    `;
+                    lowvalueBody.appendChild(row);
+                });
+            }
+        }
+        
+        // Отображение представления по кабинетам
+        function renderCabinetView() {
+            const container = document.getElementById('cabinet-view-container');
+            container.innerHTML = '';
+            
+            const cabinets = {};
+            
+            inventoryData.main.forEach(item => {
+                const cabinet = item.cabinet || 'Без кабинета';
+                if (!cabinets[cabinet]) {
+                    cabinets[cabinet] = { main: [], lowvalue: [] };
+                }
+                cabinets[cabinet].main.push(item);
+            });
+            
+            inventoryData.lowvalue.forEach(item => {
+                const cabinet = item.cabinet || 'Без кабинета';
+                if (!cabinets[cabinet]) {
+                    cabinets[cabinet] = { main: [], lowvalue: [] };
+                }
+                cabinets[cabinet].lowvalue.push(item);
+            });
+            
+            const sortedCabinets = Object.keys(cabinets).sort((a, b) => {
+                if (a === 'Без кабинета') return 1;
+                if (b === 'Без кабинета') return -1;
+                return a.localeCompare(b, undefined, { numeric: true });
+            });
+            
+            if (sortedCabinets.length === 0) {
+                container.innerHTML = '<div class="loading">Нет данных для отображения</div>';
+                return;
+            }
+            
+            sortedCabinets.forEach(cabinet => {
+                const cabinetGroup = document.createElement('div');
+                cabinetGroup.className = 'cabinet-group';
+                
+                const header = document.createElement('div');
+                header.className = 'cabinet-header';
+                header.textContent = `Кабинет ${cabinet}`;
+                cabinetGroup.appendChild(header);
+                
+                if (cabinets[cabinet].main.length > 0) {
+                    const mainTitle = document.createElement('h3');
+                    mainTitle.style.padding = '10px 15px 5px';
+                    mainTitle.textContent = 'Основные средства';
+                    cabinetGroup.appendChild(mainTitle);
+                    
+                    const mainTable = document.createElement('table');
+                    mainTable.className = 'location-table';
+                    mainTable.innerHTML = `
+                        <thead>
+                            <tr>
+                                <th>№</th>
+                                <th>Наименование</th>
+                                <th>Инв. номер</th>
+                                <th>Количество</th>
+                                <th>Расположение</th>
+                                <th>Наклейка</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${cabinets[cabinet].main.map(item => `
+                                <tr>
+                                    <td>${item.id}</td>
+                                    <td>${item.name}</td>
+                                    <td>${item.inventoryNumber}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>${item.location}</td>
+                                    <td>${item.hasSticker ? 'Да' : 'Нет'}</td>
+                                    <td><span class="status-badge status-${item.status}">${getStatusText(item.status)}</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    `;
+                    cabinetGroup.appendChild(mainTable);
+                }
+                
+                if (cabinets[cabinet].lowvalue.length > 0) {
+                    const lowvalueTitle = document.createElement('h3');
+                    lowvalueTitle.style.padding = '10px 15px 5px';
+                    lowvalueTitle.textContent = 'Малоценные средства';
+                    cabinetGroup.appendChild(lowvalueTitle);
+                    
+                    const lowvalueTable = document.createElement('table');
+                    lowvalueTable.className = 'location-table';
+                    lowvalueTable.innerHTML = `
+                        <thead>
+                            <tr>
+                                <th>№</th>
+                                <th>Наименование</th>
+                                <th>Инв. номер</th>
+                                <th>Количество</th>
+                                <th>Расположение</th>
+                                <th>Наклейка</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${cabinets[cabinet].lowvalue.map(item => `
+                                <tr>
+                                    <td>${item.id}</td>
+                                    <td>${item.name}</td>
+                                    <td>${item.inventoryNumber}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>${item.location}</td>
+                                    <td>${item.hasSticker ? 'Да' : 'Нет'}</td>
+                                    <td><span class="status-badge status-${item.status}">${getStatusText(item.status)}</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    `;
+                    cabinetGroup.appendChild(lowvalueTable);
+                }
+                
+                container.appendChild(cabinetGroup);
+            });
+        }
+        
+        // Фильтрация данных
+        function filterData(data, type) {
+            const nameFilter = document.getElementById(`${type}-filter-name`).value.toLowerCase();
+            const invnumFilter = document.getElementById(`${type}-filter-invnum`).value.toLowerCase();
+            const cabinetFilter = document.getElementById(`${type}-filter-cabinet`).value.toLowerCase();
+            
+            return data.filter(item => {
+                return (
+                    item.name.toLowerCase().includes(nameFilter) &&
+                    item.inventoryNumber.toLowerCase().includes(invnumFilter) &&
+                    (item.cabinet || '').toLowerCase().includes(cabinetFilter)
+                );
+            });
+        }
+        
+        // Получение текста статуса
+        function getStatusText(status) {
+            switch(status) {
+                case 'active': return 'Активен';
+                case 'writeoff': return 'На списание';
+                case 'writtenoff': return 'Списан';
+                default: return status;
+            }
+        }
+        
+        // Открытие модального окна для добавления
+        function openAddModal(type) {
+            document.getElementById('modal-title').textContent = type === 'main' 
+                ? 'Добавить основное средство' 
+                : 'Добавить малоценное средство';
+            
+            document.getElementById('item-id').value = '';
+            document.getElementById('item-type').value = type;
+            document.getElementById('item-name').value = '';
+            document.getElementById('item-inventory-number').value = '';
+            document.getElementById('item-quantity').value = '1';
+            document.getElementById('item-cabinet').value = '';
+            document.getElementById('item-location').value = '';
+            document.getElementById('item-has-sticker').value = 'true';
+            document.getElementById('item-status').value = 'active';
+            
+            document.getElementById('item-modal').style.display = 'flex';
+        }
+        
+        // Открытие модального окна для редактирования
+        function editItem(type, id) {
+            const item = inventoryData[type].find(item => item.id === id);
+            if (!item) return;
+            
+            document.getElementById('modal-title').textContent = type === 'main' 
+                ? 'Редактировать основное средство' 
+                : 'Редактировать малоценное средство';
+            
+            document.getElementById('item-id').value = item.id;
+            document.getElementById('item-type').value = type;
+            document.getElementById('item-name').value = item.name;
+            document.getElementById('item-inventory-number').value = item.inventoryNumber;
+            document.getElementById('item-quantity').value = item.quantity;
+            document.getElementById('item-cabinet').value = item.cabinet || '';
+            document.getElementById('item-location').value = item.location;
+            document.getElementById('item-has-sticker').value = item.hasSticker.toString();
+            document.getElementById('item-status').value = item.status;
+            
+            document.getElementById('item-modal').style.display = 'flex';
+        }
+        
+        // Сохранение элемента
+        async function saveItem(event) {
+            event.preventDefault();
+            
+            const id = document.getElementById('item-id').value;
+            const type = document.getElementById('item-type').value;
+            const name = document.getElementById('item-name').value;
+            const inventoryNumber = document.getElementById('item-inventory-number').value;
+            const quantity = parseInt(document.getElementById('item-quantity').value);
+            const cabinet = document.getElementById('item-cabinet').value;
+            const location = document.getElementById('item-location').value;
+            const hasSticker = document.getElementById('item-has-sticker').value === 'true';
+            const status = document.getElementById('item-status').value;
+            
+            if (id) {
+                const index = inventoryData[type].findIndex(item => item.id === parseInt(id));
+                if (index !== -1) {
+                    inventoryData[type][index] = {
+                        ...inventoryData[type][index],
+                        name,
+                        inventoryNumber,
+                        quantity,
+                        cabinet: cabinet || '',
+                        location,
+                        hasSticker,
+                        status
+                    };
+                }
+            } else {
+                const newId = generateId(type);
+                inventoryData[type].push({
+                    id: newId,
+                    name,
+                    inventoryNumber,
+                    quantity,
+                    cabinet: cabinet || '',
+                    location,
+                    hasSticker,
+                    status
+                });
+            }
+            
+            await saveData();
+            renderTables();
+            closeModal();
+        }
+        
+        // Удаление элемента
+        async function deleteItem(type, id) {
+            if (confirm('Вы уверены, что хотите удалить этот элемент?')) {
+                inventoryData[type] = inventoryData[type].filter(item => item.id !== id);
+                await saveData();
+                renderTables();
+            }
+        }
+        
+        // Изменение статуса списания
+        async function toggleWriteOff(type, id) {
+            const item = inventoryData[type].find(item => item.id === id);
+            if (!item) return;
+            
+            if (item.status === 'writtenoff') {
+                item.status = 'active';
+            } else {
+                item.status = 'writtenoff';
+            }
+            
+            await saveData();
+            renderTables();
+        }
+        
+        // Закрытие модального окна
+        function closeModal() {
+            document.getElementById('item-modal').style.display = 'none';
+        }
+        
+        // Функции для группового добавления
+        function openBulkAddModal(type) {
+            currentBulkType = type;
+            document.getElementById('bulk-modal-title').textContent = type === 'main' 
+                ? 'Групповое добавление основных средств' 
+                : 'Групповое добавление малоценных средств';
+            
+            const tableBody = document.getElementById('bulk-add-table-body');
+            tableBody.innerHTML = `
+                <tr>
+                    <td contenteditable="true" tabindex="0"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                </tr>
+            `;
+            
+            document.getElementById('bulk-add-modal').style.display = 'flex';
+            
+            setTimeout(() => {
+                tableBody.querySelector('td').focus();
+            }, 100);
+        }
+        
+        function handleBulkPaste(event) {
+            event.preventDefault();
+            
+            const clipboardData = event.clipboardData || window.clipboardData;
+            const pastedData = clipboardData.getData('text');
+            
+            const rows = pastedData.split('\n').filter(row => row.trim() !== '');
+            const tableBody = document.getElementById('bulk-add-table-body');
+            
+            tableBody.innerHTML = '';
+            
+            rows.forEach((row, rowIndex) => {
+                const cells = row.split('\t');
+                const tableRow = document.createElement('tr');
+                
+                for (let i = 0; i < 7; i++) {
+                    const cell = document.createElement('td');
+                    cell.contentEditable = true;
+                    cell.textContent = cells[i] || '';
+                    tableRow.appendChild(cell);
+                }
+                
+                tableBody.appendChild(tableRow);
+            });
+        }
+        
+        async function saveBulkItems() {
+            const tableBody = document.getElementById('bulk-add-table-body');
+            const rows = tableBody.querySelectorAll('tr');
+            let hasData = false;
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const name = cells[0].textContent.trim();
+                const inventoryNumber = cells[1].textContent.trim();
+                const quantity = parseInt(cells[2].textContent.trim()) || 1;
+                const cabinet = cells[3].textContent.trim();
+                const location = cells[4].textContent.trim();
+                const hasStickerText = cells[5].textContent.trim().toLowerCase();
+                const statusText = cells[6].textContent.trim().toLowerCase();
+                
+                if (name && inventoryNumber && location) {
+                    hasData = true;
+                    
+                    const hasSticker = hasStickerText === 'да' || hasStickerText === 'есть' || hasStickerText === 'true' || hasStickerText === '1';
+                    
+                    let status = 'active';
+                    if (statusText.includes('списан')) {
+                        status = 'writtenoff';
+                    } else if (statusText.includes('списание')) {
+                        status = 'writeoff';
+                    }
+                    
+                    const newId = generateId(currentBulkType);
+                    inventoryData[currentBulkType].push({
+                        id: newId,
+                        name,
+                        inventoryNumber,
+                        quantity,
+                        cabinet: cabinet || '',
+                        location,
+                        hasSticker,
+                        status
+                    });
+                }
+            });
+            
+            if (hasData) {
+                await saveData();
+                renderTables();
+                closeBulkModal();
+                alert('Данные успешно добавлены!');
+            } else {
+                alert('Нет данных для сохранения. Проверьте, что вы вставили данные в таблицу.');
+            }
+        }
+        
+        function closeBulkModal() {
+            document.getElementById('bulk-add-modal').style.display = 'none';
+        }
+        
+        // Сортировка таблиц
+        function setupSorting() {
+            document.querySelectorAll('th[data-sort]').forEach(th => {
+                th.addEventListener('click', () => {
+                    const tableId = th.closest('table').id;
+                    const sortBy = th.getAttribute('data-sort');
+                    const type = tableId.includes('main') ? 'main' : 'lowvalue';
+                    
+                    let sortOrder = 'asc';
+                    if (th.classList.contains('sorted-asc')) {
+                        sortOrder = 'desc';
+                    } else if (th.classList.contains('sorted-desc')) {
+                        sortOrder = 'asc';
+                    }
+                    
+                    document.querySelectorAll(`#${tableId} th`).forEach(header => {
+                        header.classList.remove('sorted-asc', 'sorted-desc');
+                    });
+                    
+                    th.classList.add(`sorted-${sortOrder}`);
+                    
+                    inventoryData[type].sort((a, b) => {
+                        let aValue = a[sortBy];
+                        let bValue = b[sortBy];
+                        
+                        if (typeof aValue === 'string') {
+                            aValue = aValue.toLowerCase();
+                            bValue = bValue.toLowerCase();
+                        }
+                        
+                        if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+                        if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+                        return 0;
+                    });
+                    
+                    saveData();
+                    renderTables();
+                });
+            });
+        }
+        
+        // Настройка обработчиков событий
+        function setupEventListeners() {
+            // Обработчики для вкладок
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.style.display = 'none';
+                    });
+                    
+                    const tabId = tab.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).style.display = 'block';
+                });
+            });
+            
+            // Обработчики для кнопок добавления
+            document.getElementById('add-main-btn').addEventListener('click', () => openAddModal('main'));
+            document.getElementById('add-lowvalue-btn').addEventListener('click', () => openAddModal('lowvalue'));
+            
+            // Обработчики для кнопок группового добавления
+            document.getElementById('bulk-add-main-btn').addEventListener('click', () => openBulkAddModal('main'));
+            document.getElementById('bulk-add-lowvalue-btn').addEventListener('click', () => openBulkAddModal('lowvalue'));
+            
+            // Обработчики для модального окна
+            document.getElementById('item-form').addEventListener('submit', saveItem);
+            document.querySelector('.close').addEventListener('click', closeModal);
+            document.getElementById('cancel-btn').addEventListener('click', closeModal);
+            
+            // Обработчики для модального окна группового добавления
+            document.getElementById('bulk-add-table').addEventListener('paste', handleBulkPaste);
+            document.getElementById('bulk-save-btn').addEventListener('click', saveBulkItems);
+            document.getElementById('bulk-cancel-btn').addEventListener('click', closeBulkModal);
+            document.getElementById('bulk-close').addEventListener('click', closeBulkModal);
+            
+            // Обработчики для фильтров
+            document.querySelectorAll('.filter-input').forEach(input => {
+                input.addEventListener('input', renderTables);
+            });
+            
+            // Закрытие модальных окон при клике вне их
+            window.addEventListener('click', (event) => {
+                if (event.target === document.getElementById('item-modal')) {
+                    closeModal();
+                }
+                if (event.target === document.getElementById('bulk-add-modal')) {
+                    closeBulkModal();
+                }
+            });
+        }
+        
+        // Инициализация приложения после загрузки DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+    </script>
+</body>
+</html>

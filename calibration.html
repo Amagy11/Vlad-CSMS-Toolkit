@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калибровка</title>
+    <style>
+        /* Основные стили */
+        * {
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #f5f7fa 0%, #e4e7eb 100%);
+            background-attachment: fixed;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        /* Шапка сайта */
+        header {
+            background: linear-gradient(to bottom, #003366 0%, #002244 100%);
+            color: #ffffff;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 34, 68, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Основное содержимое */
+        .content {
+            padding: 0 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #003366;
+            margin: 25px 0;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.4;
+        }
+        
+        /* Таблицы */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 34, 68, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+        
+        th, td {
+            border: 1px solid #e0e6ed;
+            padding: 14px 15px;
+            text-align: left;
+        }
+        
+        th {
+            background: linear-gradient(to bottom, #0066cc 0%, #003366 100%);
+            color: white;
+            font-weight: 600;
+            border-color: #0055aa;
+        }
+        
+        tr {
+            background-color: #ffffff;
+        }
+        
+        tr:hover {
+            background-color: rgba(0, 102, 204, 0.1);
+        }
+        
+        /* Отступ между таблицами */
+        .table-spacing {
+            height: 30px;
+        }
+        
+        /* Кнопка "Назад" */
+        .back-button {
+            display: inline-block;
+            width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(to bottom, #0066cc 0%, #003366 100%);
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            box-shadow: 0 4px 8px rgba(0, 51, 102, 0.3);
+            margin: 25px 0;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .back-button:hover {
+            background: linear-gradient(to bottom, #0088ff 0%, #0055aa 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 85, 170, 0.4);
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            th, td {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+            
+            h1 {
+                font-size: 22px;
+            }
+            
+            .logo {
+                font-size: 24px;
+            }
+            
+            .back-button {
+                padding: 12px 16px;
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+
+    <div class="content">
+        <h1>Методики калибровки и стандартные неопределенности</h1>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th colspan="2">Методики калибровки</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Биметаллический, манометрический</td>
+                    <td>МК.ГМ 1600-2013</td>
+                </tr>
+                <tr>
+                    <td>Термометр электрический</td>
+                    <td>МК.ГМ 1601-2013</td>
+                </tr>
+                <tr>
+                    <td>Термометр технический (жидкостный, ртуть)</td>
+                    <td>МК.ГМ 1601-2013</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="table-spacing"></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Температура (°C)</th>
+                    <th>Стандартные неопределенности (°C)</th>
+                    <th>Стандартные неопределенности ИТЭ (°C)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>−80 до 0 (°C)</td>
+                    <td>от минус 80 до 0 (°C)</td>
+                    <td>0,0097</td>
+                </tr>
+                <tr>
+                    <td>156,6 (°C)</td>
+                    <td>от 0,01 до 156,6 (°C)</td>
+                    <td>0,0008</td>
+                </tr>
+                <tr>
+                    <td>231,9 (°C)</td>
+                    <td>от 156,6 до 231,9 (°C)</td>
+                    <td>0,0039</td>
+                </tr>
+                <tr>
+                    <td>419,5 (°C)</td>
+                    <td>от 231,9 до 419,5 (°C)</td>
+                    <td>0,0073</td>
+                </tr>
+                <tr>
+                    <td>Свыше 419,5 (°C)</td>
+                    <td>от 419,5 и свыше (°C)</td>
+                    <td>0,0010</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <a href="index.html" class="back-button">Назад</a>
+    </div>
+</body>
+</html>

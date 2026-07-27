@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Реестр СИ температуры и теплофизики</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            background-color: #f5f7fb;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            padding-bottom: 30px;
+        }
+        
+        /* Шапка */
+        .header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .header h2 {
+            margin: 0;
+            font-weight: 300;
+        }
+        .header h2 i {
+            margin-right: 10px;
+            color: #ffd700;
+        }
+        
+        /* Статистика и дата */
+        .stats-badge {
+            background: #e7f1ff;
+            color: #2a5298;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .update-time {
+            font-size: 0.8rem;
+            opacity: 0.9;
+            margin-left: 15px;
+            padding-left: 15px;
+            border-left: 1px solid rgba(255,255,255,0.3);
+        }
+        .update-time i {
+            margin-right: 5px;
+            color: #ffd700;
+        }
+        
+        /* Карточка загрузки */
+        .upload-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+        
+        /* Поиск */
+        .search-container {
+            position: relative;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .search-wrapper {
+            position: relative;
+            flex: 1;
+        }
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            z-index: 10;
+        }
+        .search-input {
+            width: 100%;
+            padding: 15px 20px 15px 50px;
+            border: 2px solid #e9ecef;
+            border-radius: 50px;
+            font-size: 1rem;
+            transition: all 0.2s;
+            background: white;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #2a5298;
+            box-shadow: 0 0 0 3px rgba(42,82,152,0.1);
+        }
+        .search-clear {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #adb5bd;
+            cursor: pointer;
+            display: none;
+        }
+        .search-clear:hover {
+            color: #dc3545;
+        }
+        .search-button {
+            background: #2a5298;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 0 30px;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .search-button:hover {
+            background: #1e3c72;
+        }
+        
+        /* Быстрые фильтры */
+        .quick-filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .quick-filter {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 30px;
+            padding: 5px 15px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quick-filter:hover {
+            background: #e7f1ff;
+            border-color: #2a5298;
+        }
+        .quick-filter.active {
+            background: #2a5298;
+            color: white;
+            border-color: #2a5298;
+        }
+        
+        /* Результаты поиска */
+        .results-summary {
+            margin: 15px 0;
+            font-size: 0.95rem;
+            color: #495057;
+        }
+        .results-summary strong {
+            color: #2a5298;
+            font-size: 1.1rem;
+        }
+        
+        /* Панели */
+        .panel {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            height: calc(100vh - 350px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f1f1f1;
+            font-weight: 600;
+            color: #2a5298;
+        }
+        .panel-content {
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        /* Категории */
+        .category-item {
+            padding: 12px 15px;
+            border-radius: 12px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        .category-item:hover {
+            background: #f8f9ff;
+            border-color: #e7f1ff;
+        }
+        .category-item.active {
+            background: #e7f1ff;
+            border-color: #2a5298;
+        }
+        .category-icon {
+            width: 36px;
+            height: 36px;
+            background: #2a5298;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.1rem;
+        }
+        .category-name {
+            flex: 1;
+            font-weight: 500;
+        }
+        .category-count {
+            background: #e9ecef;
+            padding: 3px 10px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        /* Таблица сертификатов */
+        .table-wrapper {
+            overflow-x: auto;
+            overflow-y: auto;
+            height: 100%;
+            border: 1px solid #f1f1f1;
+            border-radius: 12px;
+        }
+        .certificate-table {
+            width: 100%;
+            font-size: 0.9rem;
+            border-collapse: collapse;
+            min-width: 2200px;
+        }
+        .certificate-table th {
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            padding: 12px 10px;
+            font-weight: 600;
+            color: #2a5298;
+            border-bottom: 2px solid #dee2e6;
+            white-space: nowrap;
+            z-index: 10;
+            text-align: left;
+        }
+        
+        /* Номер ГРСИ */
+        .certificate-table th:nth-child(1),
+        .certificate-table td:nth-child(1) {
+            min-width: 130px;
+        }
+        
+        /* Номер СУТ */
+        .certificate-table th:nth-child(2),
+        .certificate-table td:nth-child(2) {
+            min-width: 160px;
+        }
+        
+        /* ТИП СИ */
+        .certificate-table th:nth-child(3),
+        .certificate-table td:nth-child(3) {
+            min-width: 400px;
+            max-width: 500px;
+            white-space: normal;
+            word-break: break-word;
+            font-weight: 500;
+        }
+        
+        /* Модификация */
+        .certificate-table th:nth-child(4),
+        .certificate-table td:nth-child(4) {
+            min-width: 220px;
+        }
+        
+        /* Изготовитель */
+        .certificate-table th:nth-child(5),
+        .certificate-table td:nth-child(5) {
+            min-width: 250px;
+        }
+        
+        /* МПИ */
+        .certificate-table th:nth-child(6),
+        .certificate-table td:nth-child(6) {
+            min-width: 180px;
+            max-width: 250px;
+        }
+        .certificate-table td:nth-child(6) .mpi-badge {
+            font-size: 0.9rem;
+            padding: 6px 12px;
+            white-space: normal;
+            word-break: break-word;
+        }
+        
+        /* Дата внесения */
+        .certificate-table th:nth-child(7),
+        .certificate-table td:nth-child(7) {
+            min-width: 130px;
+        }
+        
+        /* Срок действия */
+        .certificate-table th:nth-child(8),
+        .certificate-table td:nth-child(8) {
+            min-width: 130px;
+        }
+        
+        /* Категория СИ */
+        .certificate-table th:nth-child(9),
+        .certificate-table td:nth-child(9) {
+            min-width: 220px;
+        }
+        
+        .certificate-table td {
+            padding: 10px 10px;
+            border-bottom: 1px solid #f1f1f1;
+            white-space: normal;
+            word-break: break-word;
+            vertical-align: top;
+        }
+        .certificate-table tr:hover td {
+            background: #f8f9ff;
+        }
+        
+        /* Группировка */
+        .group-header {
+            background: #e7f1ff;
+            font-weight: 600;
+        }
+        .group-header td {
+            padding: 8px 10px;
+            background: #e7f1ff;
+            border-bottom: 2px solid #2a5298;
+            color: #1e3c72;
+        }
+        .group-subheader {
+            background: #f0f7ff;
+        }
+        .group-subheader td {
+            padding: 5px 10px 5px 30px;
+            background: #f0f7ff;
+            border-bottom: 1px dashed #2a5298;
+            color: #2a5298;
+            font-weight: 500;
+        }
+        
+        /* Бейджи */
+        .mpi-badge {
+            background: #e7f1ff;
+            color: #2a5298;
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: normal;
+            word-break: break-word;
+            display: inline-block;
+            line-height: 1.3;
+        }
+        .status-badge {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .status-active {
+            background: #198754;
+        }
+        .status-expired {
+            background: #dc3545;
+        }
+        
+        /* Список загруженных файлов */
+        .file-list {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #dee2e6;
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        .file-item {
+            display: inline-block;
+            background: #e7f1ff;
+            padding: 4px 12px;
+            border-radius: 30px;
+            margin-right: 10px;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            color: #2a5298;
+        }
+        .file-item i {
+            margin-right: 5px;
+        }
+        .reset-btn {
+            background: none;
+            border: 1px solid #dc3545;
+            color: #dc3545;
+            padding: 5px 15px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .reset-btn:hover {
+            background: #dc3545;
+            color: white;
+        }
+        
+        /* Пустые состояния */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #adb5bd;
+        }
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        
+        /* Загрузка */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e9ecef;
+            border-top: 4px solid #2a5298;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .panel {
+                height: 50vh;
+                margin-bottom: 15px;
+            }
+            .search-container {
+                flex-direction: column;
+            }
+            .search-button {
+                padding: 12px;
+            }
+            .update-time {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Индикатор загрузки -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Шапка -->
+    <div class="header">
+        <div class="container">
+            <div class="d-flex align-items-center justify-content-between">
+                <h2><i class="bi bi-thermometer-half"></i>Реестр средств измерений</h2>
+                <div class="d-flex align-items-center">
+                    <div class="stats-badge" id="statsBadge">
+                        <i class="bi bi-database me-1"></i>Записей: <span id="totalRecords">0</span>
+                    </div>
+                    <div class="update-time" id="updateTime">
+                        <i class="bi bi-clock-history"></i>
+                        <span id="lastUpdateText">Загрузка...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основной контейнер -->
+    <div class="container">
+        <!-- Карточка загрузки -->
+        <div class="upload-card">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5><i class="bi bi-upload me-2 text-primary"></i>Загрузить данные</h5>
+                    <p class="text-muted mb-2 small">
+                        Поддерживаются файлы Excel (.xlsx, .xls). 
+                        Можно выбрать несколько файлов сразу (Ctrl+клик). Данные накапливаются.
+                        <br><span class="text-success"><i class="bi bi-save"></i> Автосохранение в браузере</span>
+                    </p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <button class="btn btn-primary" id="uploadBtn">
+                        <i class="bi bi-file-earmark-excel me-2"></i>Выбрать файлы
+                    </button>
+                    <input type="file" id="fileInput" accept=".xlsx, .xls" multiple style="display: none;">
+                    <button class="btn btn-outline-danger ms-2" id="resetBtn" title="Очистить все данные">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Список загруженных файлов -->
+            <div class="file-list" id="fileList"></div>
+        </div>
+
+        <!-- Поиск (по Enter или кнопке) -->
+        <div class="search-container">
+            <div class="search-wrapper">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" class="search-input" id="searchInput" placeholder="Поиск по любому тексту (тип СИ, модификация, номер, производитель...)" autocomplete="off">
+                <button class="search-clear" id="searchClear"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <button class="search-button" id="searchButton">
+                <i class="bi bi-search me-2"></i>Найти
+            </button>
+        </div>
+
+        <!-- Быстрые фильтры (предложения) -->
+        <div class="quick-filters" id="quickFilters"></div>
+
+        <!-- Результаты поиска -->
+        <div class="results-summary" id="resultsSummary"></div>
+
+        <!-- Двухпанельный интерфейс -->
+        <div class="row g-3">
+            <!-- Левая колонка: категории -->
+            <div class="col-md-3">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span><i class="bi bi-folder2-open me-2"></i>Категории</span>
+                        <span class="badge bg-secondary" id="categoriesCount">0</span>
+                    </div>
+                    <div class="panel-content" id="categoryList"></div>
+                    <div class="empty-state" id="emptyCategories" style="display: none;">
+                        <i class="bi bi-folder"></i>
+                        <p class="mb-0">Нет данных</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Правая колонка: сертификаты -->
+            <div class="col-md-9">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span><i class="bi bi-file-earmark-text me-2"></i><span id="selectedCategoryTitle">Сертификаты</span></span>
+                        <span class="badge bg-primary" id="certificateCount">0</span>
+                    </div>
+                    <div class="table-wrapper" id="tableWrapper">
+                        <div id="certificateList"></div>
+                    </div>
+                    <div class="empty-state" id="emptyCertificates" style="display: none;">
+                        <i class="bi bi-file-text"></i>
+                        <p class="mb-0">Выберите категорию</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Подвал -->
+        <div class="text-center text-muted mt-3 small">
+            <i class="bi bi-lightning-charge"></i> Поиск по Enter или кнопке • 
+            <i class="bi bi-files"></i> Множественная загрузка •
+            <i class="bi bi-sort-numeric-down"></i> Группировка: СУТ → ГРСИ → модификация → дата •
+            <i class="bi bi-save"></i> Локальное сохранение
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // --- Глобальные переменные ---
+            let allData = [];
+            let allHeaders = [];
+            let categoriesMap = new Map();
+            let filteredCategories = [];
+            let selectedCategory = null;
+            let searchTerm = '';
+            
+            // Список загруженных файлов
+            let loadedFiles = [];
+            
+            // Флаг для предотвращения двойной загрузки
+            let isLoading = false;
+            
+            // Ключ для localStorage
+            const STORAGE_KEY = 'si_registry_data';
+            
+            // --- DOM элементы ---
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const searchButton = document.getElementById('searchButton');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const totalRecords = document.getElementById('totalRecords');
+            const categoriesCount = document.getElementById('categoriesCount');
+            const searchInput = document.getElementById('searchInput');
+            const searchClear = document.getElementById('searchClear');
+            const resultsSummary = document.getElementById('resultsSummary');
+            const categoryList = document.getElementById('categoryList');
+            const certificateList = document.getElementById('certificateList');
+            const certificateCount = document.getElementById('certificateCount');
+            const emptyCategories = document.getElementById('emptyCategories');
+            const emptyCertificates = document.getElementById('emptyCertificates');
+            const selectedCategoryTitle = document.getElementById('selectedCategoryTitle');
+            const fileList = document.getElementById('fileList');
+            const quickFilters = document.getElementById('quickFilters');
+            const lastUpdateText = document.getElementById('lastUpdateText');
+            
+            // --- Иконки для категорий ---
+            const categoryIcons = {
+                'теплосчетчики': '🔥',
+                'термометры': '🌡️',
+                'преобразователи': '📊',
+                'регуляторы': '⚙️',
+                'измерители': '📏',
+                'регистраторы': '📝',
+                'калибраторы': '✅',
+                'пирометры': '🎯',
+                'устройства': '🔧',
+                'комплекты': '📦',
+                'счетчики': '🔢',
+                'указатели': '📋',
+                'блоки': '🧩'
+            };
+            
+            // --- Функции ---
+            
+            function setLoading(show) {
+                loadingOverlay.style.display = show ? 'flex' : 'none';
+            }
+            
+            function getCategoryIcon(category) {
+                const cat = category.toLowerCase();
+                for (let [key, icon] of Object.entries(categoryIcons)) {
+                    if (cat.includes(key)) return icon;
+                }
+                return '📌';
+            }
+            
+            function formatDate(dateStr) {
+                if (!dateStr || dateStr === '-') return '-';
+                if (dateStr.includes('-')) {
+                    const parts = dateStr.split('-');
+                    if (parts.length === 3) {
+                        return `${parts[2]}.${parts[1]}.${parts[0]}`;
+                    }
+                }
+                return dateStr;
+            }
+            
+            function isExpired(dateStr) {
+                if (!dateStr || dateStr === '-') return false;
+                try {
+                    return new Date(dateStr) < new Date();
+                } catch {
+                    return false;
+                }
+            }
+            
+            function parseDate(dateStr) {
+                if (!dateStr || dateStr === '-') return new Date(0);
+                try {
+                    return new Date(dateStr);
+                } catch {
+                    return new Date(0);
+                }
+            }
+            
+            // Форматирование даты обновления
+            function formatUpdateTime(timestamp) {
+                if (!timestamp) return 'Никогда';
+                const date = new Date(timestamp);
+                return date.toLocaleString('ru-RU', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            }
+            
+            // Сохранение в localStorage
+            function saveToStorage() {
+                try {
+                    const dataToSave = {
+                        data: allData,
+                        headers: allHeaders,
+                        files: loadedFiles,
+                        timestamp: Date.now()
+                    };
+                    
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+                    
+                    // Обновляем дату
+                    lastUpdateText.textContent = formatUpdateTime(Date.now());
+                    
+                    console.log('✅ Данные сохранены в localStorage');
+                } catch (error) {
+                    console.error('❌ Ошибка сохранения в localStorage:', error);
+                }
+            }
+            
+            // Загрузка из localStorage
+            function loadFromStorage() {
+                setLoading(true);
+                try {
+                    const savedData = localStorage.getItem(STORAGE_KEY);
+                    
+                    if (savedData) {
+                        const parsed = JSON.parse(savedData);
+                        
+                        allData = parsed.data || [];
+                        allHeaders = parsed.headers || [];
+                        loadedFiles = parsed.files || [];
+                        
+                        if (allData.length > 0) {
+                            rebuildCategories();
+                            
+                            totalRecords.textContent = allData.length;
+                            updateFileList();
+                            
+                            filteredCategories = Array.from(categoriesMap.keys()).sort();
+                            categoriesCount.textContent = filteredCategories.length;
+                            
+                            if (filteredCategories.length > 0) {
+                                selectedCategory = filteredCategories[0];
+                            }
+                            
+                            renderCategories();
+                            renderCertificates();
+                            updateResultsSummary();
+                            updateQuickFilters();
+                            
+                            lastUpdateText.textContent = formatUpdateTime(parsed.timestamp || Date.now());
+                            
+                            console.log('✅ Данные загружены из localStorage');
+                        } else {
+                            lastUpdateText.textContent = 'Нет данных';
+                            emptyCategories.style.display = 'block';
+                            emptyCertificates.style.display = 'block';
+                        }
+                    } else {
+                        console.log('Нет данных в localStorage');
+                        lastUpdateText.textContent = 'Нет данных';
+                        emptyCategories.style.display = 'block';
+                        emptyCertificates.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Ошибка загрузки из localStorage:', error);
+                    lastUpdateText.textContent = 'Ошибка загрузки';
+                } finally {
+                    setLoading(false);
+                }
+            }
+            
+            // Обновление списка файлов
+            function updateFileList() {
+                if (loadedFiles.length === 0) {
+                    fileList.innerHTML = '';
+                    return;
+                }
+                
+                let html = '<small class="text-muted me-2">Загружено:</small>';
+                loadedFiles.forEach((file) => {
+                    html += `<span class="file-item"><i class="bi bi-file-earmark"></i>${file.name}</span>`;
+                });
+                
+                fileList.innerHTML = html;
+            }
+            
+            // --- Парсинг Excel для нескольких файлов ---
+            async function parseMultipleFiles(files) {
+                if (isLoading) return;
+                isLoading = true;
+                setLoading(true);
+                
+                let totalNewRecords = 0;
+                
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    
+                    try {
+                        const data = await readFileAsync(file);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+                        
+                        if (jsonData.length < 2) {
+                            alert(`Файл "${file.name}" не содержит данных. Пропускаем.`);
+                            continue;
+                        }
+
+                        const newHeaders = jsonData[0].map(h => String(h).trim()).filter(h => h);
+                        
+                        // Если это первый файл, используем его заголовки
+                        if (allHeaders.length === 0) {
+                            allHeaders = newHeaders;
+                        }
+                        
+                        const rows = jsonData.slice(1).filter(row => row.length > 0 && row.some(cell => cell !== ''));
+                        
+                        const newData = rows.map(row => {
+                            let obj = {};
+                            allHeaders.forEach((header, index) => {
+                                let value = row[index] !== undefined ? row[index] : '';
+                                if (header === 'дата внесения типа СИ' || header === 'срок действия СУТ') {
+                                    if (typeof value === 'number') {
+                                        try {
+                                            const date = XLSX.SSF.parse_date_code(value);
+                                            if (date) {
+                                                value = `${date.y}-${String(date.m).padStart(2,'0')}-${String(date.d).padStart(2,'0')}`;
+                                            }
+                                        } catch (e) {}
+                                    }
+                                }
+                                obj[header] = String(value).trim() || '-';
+                            });
+                            return obj;
+                        });
+
+                        // Добавляем новые данные к существующим
+                        allData = [...allData, ...newData];
+                        totalNewRecords += newData.length;
+                        
+                        // Добавляем файл в список
+                        loadedFiles.push({
+                            name: file.name,
+                            size: file.size,
+                            count: newData.length,
+                            time: Date.now()
+                        });
+                        
+                    } catch (error) {
+                        console.error(`Ошибка при обработке файла "${file.name}":`, error);
+                        alert(`Ошибка при обработке файла "${file.name}".`);
+                    }
+                }
+                
+                if (totalNewRecords > 0) {
+                    // Перестраиваем карту категорий
+                    rebuildCategories();
+                    
+                    totalRecords.textContent = allData.length;
+                    updateFileList();
+                    
+                    // Обновляем отображение
+                    updateCategoriesDisplay();
+                    
+                    // Сохраняем в localStorage
+                    saveToStorage();
+                }
+                
+                setLoading(false);
+                isLoading = false;
+            }
+            
+            // Перестроение карты категорий
+            function rebuildCategories() {
+                categoriesMap.clear();
+                allData.forEach(item => {
+                    const category = item['категория СИ'] || 'Без категории';
+                    if (!categoriesMap.has(category)) {
+                        categoriesMap.set(category, []);
+                    }
+                    categoriesMap.get(category).push(item);
+                });
+            }
+            
+            // Обновление отображения категорий
+            function updateCategoriesDisplay() {
+                filteredCategories = Array.from(categoriesMap.keys()).sort();
+                categoriesCount.textContent = filteredCategories.length;
+                
+                if (filteredCategories.length > 0 && !selectedCategory) {
+                    selectedCategory = filteredCategories[0];
+                }
+                
+                renderCategories();
+                renderCertificates();
+                updateResultsSummary();
+                updateQuickFilters();
+            }
+            
+            // Вспомогательная функция для чтения файла
+            function readFileAsync(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = (e) => reject(e.target.error);
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+            
+            // Сброс всех данных
+            function resetAllData() {
+                if (confirm('Вы уверены, что хотите очистить все загруженные данные? Это действие нельзя отменить.')) {
+                    setLoading(true);
+                    
+                    allData = [];
+                    allHeaders = [];
+                    categoriesMap.clear();
+                    loadedFiles = [];
+                    selectedCategory = null;
+                    searchTerm = '';
+                    searchInput.value = '';
+                    
+                    totalRecords.textContent = '0';
+                    updateFileList();
+                    
+                    filteredCategories = [];
+                    categoriesCount.textContent = '0';
+                    
+                    renderCategories();
+                    renderCertificates();
+                    updateResultsSummary();
+                    
+                    emptyCategories.style.display = 'block';
+                    emptyCertificates.style.display = 'block';
+                    selectedCategoryTitle.textContent = 'Сертификаты';
+                    certificateCount.textContent = '0';
+                    resultsSummary.innerHTML = '';
+                    searchClear.style.display = 'none';
+                    quickFilters.innerHTML = '';
+                    
+                    // Очищаем localStorage
+                    localStorage.removeItem(STORAGE_KEY);
+                    lastUpdateText.textContent = 'Данные очищены';
+                    
+                    setLoading(false);
+                }
+            }
+            
+            // --- Поиск (только по вызову) ---
+            function performSearch() {
+                const term = searchInput.value.toLowerCase().trim();
+                searchTerm = term;
+                
+                // Показываем/скрываем кнопку очистки
+                searchClear.style.display = term ? 'block' : 'none';
+                
+                // Фильтруем категории
+                if (term === '') {
+                    filteredCategories = Array.from(categoriesMap.keys()).sort();
+                } else {
+                    const matchedCategories = new Set();
+                    allData.forEach(item => {
+                        const match = Object.values(item).some(val => 
+                            String(val).toLowerCase().includes(term)
+                        );
+                        if (match && item['категория СИ']) {
+                            matchedCategories.add(item['категория СИ']);
+                        }
+                    });
+                    filteredCategories = Array.from(matchedCategories).sort();
+                }
+                
+                categoriesCount.textContent = filteredCategories.length;
+                
+                // Проверяем выбранную категорию
+                if (!selectedCategory || !filteredCategories.includes(selectedCategory)) {
+                    selectedCategory = filteredCategories.length > 0 ? filteredCategories[0] : null;
+                }
+                
+                renderCategories();
+                renderCertificates();
+                updateResultsSummary();
+            }
+            
+            // --- Обновление быстрых фильтров ---
+            function updateQuickFilters() {
+                if (allData.length === 0) {
+                    quickFilters.innerHTML = '';
+                    return;
+                }
+                
+                const suggestions = new Set();
+                const sample = allData.slice(0, 100);
+                
+                sample.forEach(item => {
+                    if (item['тип СИ'] && item['тип СИ'] !== '-') {
+                        suggestions.add(item['тип СИ']);
+                    }
+                    if (item['изготовитель'] && item['изготовитель'] !== '-') {
+                        const manufacturer = item['изготовитель'].split(' ').slice(0, 2).join(' ');
+                        if (manufacturer.length > 3) {
+                            suggestions.add(manufacturer);
+                        }
+                    }
+                });
+                
+                const suggestionList = Array.from(suggestions).slice(0, 8);
+                
+                if (suggestionList.length === 0) {
+                    quickFilters.innerHTML = '';
+                    return;
+                }
+                
+                let html = '';
+                suggestionList.forEach(suggestion => {
+                    html += `<span class="quick-filter" onclick="window.app.applySuggestion('${suggestion.replace(/'/g, "\\'")}')">${suggestion}</span>`;
+                });
+                
+                quickFilters.innerHTML = html;
+            }
+            
+            // --- Обновление сводки результатов ---
+            function updateResultsSummary() {
+                if (!selectedCategory) {
+                    resultsSummary.innerHTML = '';
+                    return;
+                }
+                
+                const totalInCategory = categoriesMap.get(selectedCategory)?.length || 0;
+                const filtered = getFilteredCertificates();
+                
+                if (searchTerm) {
+                    resultsSummary.innerHTML = `
+                        <strong>${filtered.length}</strong> записей найдено в категории <strong>${selectedCategory}</strong> 
+                        (всего в категории: ${totalInCategory})
+                    `;
+                } else {
+                    resultsSummary.innerHTML = `
+                        <strong>${totalInCategory}</strong> записей в категории <strong>${selectedCategory}</strong>
+                    `;
+                }
+            }
+            
+            // --- Получение отфильтрованных сертификатов ---
+            function getFilteredCertificates() {
+                if (!selectedCategory || !categoriesMap.has(selectedCategory)) return [];
+                
+                let certs = categoriesMap.get(selectedCategory);
+                
+                if (searchTerm) {
+                    certs = certs.filter(item => 
+                        Object.values(item).some(val => 
+                            String(val).toLowerCase().includes(searchTerm)
+                        )
+                    );
+                }
+                
+                return certs;
+            }
+            
+            // --- Сортировка по группам ---
+            function groupSort(certs) {
+                return [...certs].sort((a, b) => {
+                    const sutA = a['номер СУТ'] || '';
+                    const sutB = b['номер СУТ'] || '';
+                    if (sutA !== sutB) return sutA.localeCompare(sutB);
+                    
+                    const grsiA = a['номер ГРСИ'] || '';
+                    const grsiB = b['номер ГРСИ'] || '';
+                    if (grsiA !== grsiB) return grsiA.localeCompare(grsiB);
+                    
+                    const modA = a['модификация/исполнение'] || '';
+                    const modB = b['модификация/исполнение'] || '';
+                    if (modA !== modB) return modA.localeCompare(modB);
+                    
+                    const dateA = parseDate(a['дата внесения типа СИ']);
+                    const dateB = parseDate(b['дата внесения типа СИ']);
+                    if (dateA > dateB) return -1;
+                    if (dateA < dateB) return 1;
+                    
+                    return 0;
+                });
+            }
+            
+            // --- Рендер категорий ---
+            function renderCategories() {
+                if (filteredCategories.length === 0) {
+                    categoryList.innerHTML = '';
+                    emptyCategories.style.display = 'block';
+                    return;
+                }
+                
+                emptyCategories.style.display = 'none';
+                let html = '';
+                
+                filteredCategories.forEach(category => {
+                    const count = categoriesMap.get(category)?.length || 0;
+                    const isActive = selectedCategory === category;
+                    const icon = getCategoryIcon(category);
+                    
+                    html += `
+                        <div class="category-item ${isActive ? 'active' : ''}" onclick="window.app.selectCategory('${category.replace(/'/g, "\\'")}')">
+                            <div class="category-icon">${icon}</div>
+                            <div class="category-name">${category}</div>
+                            <div class="category-count">${count}</div>
+                        </div>
+                    `;
+                });
+                
+                categoryList.innerHTML = html;
+            }
+            
+            // --- Рендер сертификатов ---
+            function renderCertificates() {
+                if (!selectedCategory || !categoriesMap.has(selectedCategory)) {
+                    certificateList.innerHTML = '';
+                    emptyCertificates.style.display = 'block';
+                    selectedCategoryTitle.textContent = 'Сертификаты';
+                    certificateCount.textContent = '0';
+                    return;
+                }
+                
+                emptyCertificates.style.display = 'none';
+                selectedCategoryTitle.textContent = selectedCategory;
+                
+                let certs = getFilteredCertificates();
+                certs = groupSort(certs);
+                
+                certificateCount.textContent = certs.length;
+                
+                if (certs.length === 0) {
+                    certificateList.innerHTML = '<div class="empty-state"><i class="bi bi-file-text"></i><p class="mb-0">Ничего не найдено</p></div>';
+                    return;
+                }
+                
+                let table = '<table class="certificate-table"><thead><tr>';
+                allHeaders.forEach(header => {
+                    table += `<th>${header}</th>`;
+                });
+                table += '</tr></thead><tbody>';
+                
+                let lastSut = '';
+                let lastGrsi = '';
+                
+                certs.forEach(item => {
+                    const currentSut = item['номер СУТ'] || '-';
+                    const currentGrsi = item['номер ГРСИ'] || '-';
+                    
+                    if (currentSut !== lastSut) {
+                        table += `
+                            <tr class="group-header">
+                                <td colspan="${allHeaders.length}">📁 СУТ: ${currentSut}</td>
+                            </tr>
+                        `;
+                        lastSut = currentSut;
+                        lastGrsi = '';
+                    }
+                    
+                    if (currentSut === lastSut && currentGrsi !== lastGrsi) {
+                        table += `
+                            <tr class="group-subheader">
+                                <td colspan="${allHeaders.length}">📄 ГРСИ: ${currentGrsi}</td>
+                            </tr>
+                        `;
+                        lastGrsi = currentGrsi;
+                    }
+                    
+                    table += '<tr>';
+                    allHeaders.forEach(header => {
+                        let value = item[header] || '-';
+                        
+                        if (header === 'МПИ') {
+                            table += `<td><span class="mpi-badge">${value}</span></td>`;
+                        } else if (header === 'срок действия СУТ') {
+                            const expired = isExpired(value);
+                            table += `<td><span class="status-badge ${expired ? 'status-expired' : 'status-active'}"></span>${formatDate(value)}</td>`;
+                        } else if (header === 'дата внесения типа СИ') {
+                            table += `<td>${formatDate(value)}</td>`;
+                        } else {
+                            table += `<td>${value}</td>`;
+                        }
+                    });
+                    table += '</tr>';
+                });
+                
+                table += '</tbody></table>';
+                certificateList.innerHTML = table;
+            }
+            
+            // --- Экспонируем функции ---
+            window.app = {
+                selectCategory: function(category) {
+                    selectedCategory = category;
+                    renderCategories();
+                    renderCertificates();
+                    updateResultsSummary();
+                },
+                applySuggestion: function(suggestion) {
+                    searchInput.value = suggestion;
+                    performSearch();
+                }
+            };
+            
+            // --- Обработчики ---
+            
+            uploadBtn.addEventListener('click', () => fileInput.click());
+            
+            resetBtn.addEventListener('click', resetAllData);
+            
+            fileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length > 0) {
+                    parseMultipleFiles(files);
+                }
+                fileInput.value = '';
+            });
+            
+            searchButton.addEventListener('click', performSearch);
+            
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+            
+            searchClear.addEventListener('click', () => {
+                searchInput.value = '';
+                performSearch();
+            });
+            
+            // Начальное состояние
+            emptyCategories.style.display = 'block';
+            emptyCertificates.style.display = 'block';
+            totalRecords.textContent = '0';
+            categoriesCount.textContent = '0';
+            certificateCount.textContent = '0';
+            
+            // Загружаем данные из localStorage при старте
+            loadFromStorage();
+            
+        })();
+    </script>
+</body>
+</html>

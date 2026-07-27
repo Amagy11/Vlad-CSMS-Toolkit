@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поверяемые градусные отметки по ГОСТ 8.279-78</title>
+    <style>
+        /* Основные стили */
+        * {
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #f5f7fa 0%, #e4e7eb 100%);
+            background-attachment: fixed;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        /* Шапка сайта */
+        header {
+            background: linear-gradient(to bottom, #003366 0%, #002244 100%);
+            color: #ffffff;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 34, 68, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Основное содержимое */
+        .content {
+            padding: 0 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #003366;
+            margin-bottom: 25px;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.4;
+        }
+        
+        /* Таблица */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 34, 68, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+        
+        th, td {
+            border: 1px solid #e0e6ed;
+            padding: 14px 15px;
+            text-align: center;
+        }
+        
+        th {
+            background: linear-gradient(to bottom, #0066cc 0%, #003366 100%);
+            color: white;
+            font-weight: 600;
+            border-color: #0055aa;
+        }
+        
+        tr {
+            background-color: #ffffff;
+        }
+        
+        tr:hover {
+            background-color: rgba(0, 102, 204, 0.1);
+        }
+        
+        /* Примечания */
+        .note {
+            margin: 20px 0;
+            font-style: italic;
+            color: #555;
+            text-align: center;
+            font-size: 15px;
+            padding: 0 10px;
+        }
+        
+        .additional-info {
+            margin: 25px 0;
+            padding: 15px;
+            background-color: rgba(0, 102, 204, 0.05);
+            border-left: 4px solid #0066cc;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: 500;
+            color: #003366;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            th, td {
+                padding: 10px 8px;
+                font-size: 14px;
+            }
+            
+            h1 {
+                font-size: 22px;
+            }
+            
+            .logo {
+                font-size: 24px;
+            }
+            
+            .note, .additional-info {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+
+    <div class="content">
+        <h1>Поверяемые градусные отметки в зависимости от цены деления шкалы по ГОСТ 8.279-78</h1>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Цена деления шкалы (°C)</th>
+                    <th>Числа, целыми кратными которым выбирают числа, соответствующие поверяемой градусной отметке шкалы</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>0,01</td>
+                    <td>1</td>
+                </tr>
+                <tr>
+                    <td>0,02</td>
+                    <td>2</td>
+                </tr>
+                <tr>
+                    <td>0,05</td>
+                    <td>5</td>
+                </tr>
+                <tr>
+                    <td>0,1</td>
+                    <td>10</td>
+                </tr>
+                <tr>
+                    <td>0,2</td>
+                    <td>20</td>
+                </tr>
+                <tr>
+                    <td>0,5</td>
+                    <td>50</td>
+                </tr>
+                <tr>
+                    <td>1,0; 2,0; 5,0; 10,0</td>
+                    <td>*50; 10</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="note">* Только для термометров типа ТН с ценой деления шкалы 1 градус Цельсия.</div>
+
+        <div class="additional-info">
+            Если шкала поверяемого термометра содержит менее трех отметок, выбранных по таблице, то производят поверку по трем точкам «в начале», «середине» и «конце» во всем диапазоне измерения термометра. Расчет действительной температуры осуществляется по ГОСТ 8.157-75.
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,24 @@
+// Автоматический поиск колонок
+const columnMapping = {
+    'наименование': ['наименование си', 'тип си', 'наименование', 'тип', 'название'],
+    'модификация': ['модификация', 'исполнение', 'модификаци', 'версия', 'модель'],
+    'госреестр': ['номер госреестра си', 'грси', 'номер грси', 'рег. номер'],
+    'сут': ['идентификационный номер', 'номер сут', 'сут', 'id']
+};
+
+function autoDetectColumns(headers) {
+    const result = {};
+    for (let [key, keywords] of Object.entries(columnMapping)) {
+        for (let h of headers) {
+            let lower = h.toLowerCase();
+            for (let kw of keywords) {
+                if (lower.includes(kw)) {
+                    result[key] = h;
+                    break;
+                }
+            }
+            if (result[key]) break;
+        }
+    }
+    return result;
+}

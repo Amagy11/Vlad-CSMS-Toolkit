@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Запись данных</title>
+    <style>
+        /* Основные стили */
+        * {
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #f5f7fa 0%, #e4e7eb 100%);
+            background-attachment: fixed;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        /* Шапка сайта */
+        header {
+            background: linear-gradient(to bottom, #003366 0%, #002244 100%);
+            color: #ffffff;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 34, 68, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Основной контейнер */
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 34, 68, 0.1);
+        }
+        
+        h2 {
+            color: #003366;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        /* Поля ввода */
+        input[type="number"], 
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            margin: 10px 0;
+            border: 1px solid #e0e6ed;
+            border-radius: 6px;
+            font-size: 16px;
+            background-color: #f8f9fb;
+        }
+        
+        input[type="number"]:focus, 
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #0066cc;
+            box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+        }
+        
+        /* Кнопки */
+        button {
+            padding: 12px 20px;
+            background: linear-gradient(to bottom, #0066cc 0%, #003366 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 0 4px 8px rgba(0, 51, 102, 0.3);
+            margin-top: 10px;
+            width: 100%;
+        }
+        
+        button:hover {
+            background: linear-gradient(to bottom, #0088ff 0%, #0055aa 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 85, 170, 0.4);
+        }
+        
+        /* Записи */
+        .record {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(0, 102, 204, 0.05);
+            border: 1px solid rgba(0, 102, 204, 0.1);
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0, 34, 68, 0.1);
+        }
+        
+        .record-header {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #003366;
+            font-size: 16px;
+        }
+        
+        .record-data {
+            margin: 8px 0;
+            color: #333;
+        }
+        
+        .edit-delete-buttons {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .edit-delete-buttons button {
+            margin: 0;
+            flex: 1;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+            
+            input[type="number"], 
+            input[type="text"],
+            button {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+            
+            .record-header {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">Запись данных</div>
+    </header>
+
+    <div class="container">
+        <h2>Запись параметров окружающей среды</h2>
+        
+        <input type="number" id="humidity" placeholder="Влажность (%)" required>
+        <input type="number" id="temperature" placeholder="Температура (°C)" required>
+        <input type="number" id="pressure" placeholder="Давление (мм рт. ст.)" required>
+        
+        <button id="saveButton">Сохранить</button>
+
+        <div id="records"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue, remove, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
+            authDomain: "vlad-csms-af6df.firebaseapp.com",
+            databaseURL: "https://vlad-csms-af6df-default-rtdb.firebaseio.com",
+            projectId: "vlad-csms-af6df",
+            storageBucket: "vlad-csms-af6df.firebasestorage.app",
+            messagingSenderId: "417297799117",
+            appId: "1:417297799117:web:07ce2915cbfe0cb1499684",
+            measurementId: "G-0EMQB4HYSQ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        document.getElementById('saveButton').addEventListener('click', saveRecord);
+
+        function saveRecord() {
+            const humidity = document.getElementById('humidity').value;
+            const temperature = document.getElementById('temperature').value;
+            const pressure = document.getElementById('pressure').value;
+
+            if (humidity && temperature && pressure) {
+                const timestamp = Date.now();
+                const date = new Date(timestamp);
+                const record = {
+                    humidity,
+                    temperature,
+                    pressure,
+                    timestamp,
+                    date: date.toLocaleDateString(),
+                    time: date.toLocaleTimeString(),
+                };
+
+                push(ref(database, 'records'), record);
+                clearInputs();
+            } else {
+                alert('Пожалуйста, заполните все поля.');
+            }
+        }
+
+        function loadRecords() {
+            const recordsDiv = document.getElementById('records');
+            recordsDiv.innerHTML = '';
+
+            const recordsRef = ref(database, 'records');
+            onValue(recordsRef, (snapshot) => {
+                recordsDiv.innerHTML = '';
+                if (snapshot.exists()) {
+                    snapshot.forEach((childSnapshot) => {
+                        const record = childSnapshot.val();
+                        const recordId = childSnapshot.key;
+
+                        const recordElement = document.createElement('div');
+                        recordElement.classList.add('record');
+
+                        const recordHeader = document.createElement('div');
+                        recordHeader.classList.add('record-header');
+                        recordHeader.textContent = `Запись от ${record.date} в ${record.time}`;
+
+                        const recordDataHumidity = document.createElement('div');
+                        recordDataHumidity.classList.add('record-data');
+                        recordDataHumidity.textContent = `Влажность: ${record.humidity}%`;
+
+                        const recordDataTemperature = document.createElement('div');
+                        recordDataTemperature.classList.add('record-data');
+                        recordDataTemperature.textContent = `Температура: ${record.temperature}°C`;
+
+                        const recordDataPressure = document.createElement('div');
+                        recordDataPressure.classList.add('record-data');
+                        recordDataPressure.textContent = `Давление: ${record.pressure} мм рт. ст.`;
+
+                        const buttonsDiv = document.createElement('div');
+                        buttonsDiv.classList.add('edit-delete-buttons');
+
+                        const editButton = document.createElement('button');
+                        editButton.textContent = 'Изменить';
+                        editButton.onclick = () => editRecord(recordId);
+
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Удалить';
+                        deleteButton.onclick = () => deleteRecord(recordId);
+
+                        buttonsDiv.appendChild(editButton);
+                        buttonsDiv.appendChild(deleteButton);
+
+                        recordElement.appendChild(recordHeader);
+                        recordElement.appendChild(recordDataHumidity);
+                        recordElement.appendChild(recordDataTemperature);
+                        recordElement.appendChild(recordDataPressure);
+                        recordElement.appendChild(buttonsDiv);
+                        recordsDiv.appendChild(recordElement);
+                    });
+                }
+            });
+        }
+
+        function clearInputs() {
+            document.getElementById('humidity').value = '';
+            document.getElementById('temperature').value = '';
+            document.getElementById('pressure').value = '';
+        }
+
+        function editRecord(id) {
+            const recordRef = ref(database, `records/${id}`);
+            get(recordRef)
+                .then(snapshot => {
+                    const record = snapshot.val();
+                    if (record) {
+                        document.getElementById('humidity').value = record.humidity;
+                        document.getElementById('temperature').value = record.temperature;
+                        document.getElementById('pressure').value = record.pressure;
+                    }
+                });
+        }
+
+        function deleteRecord(id) {
+            if (confirm('Вы уверены, что хотите удалить эту запись?')) {
+                remove(ref(database, `records/${id}`));
+            }
+        }
+
+        loadRecords();
+    </script>
+</body>
+</html>

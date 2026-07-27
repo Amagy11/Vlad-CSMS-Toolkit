@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление эталонами</title>
+    <style>
+        /* Основные стили */
+        * {
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #f5f7fa 0%, #e4e7eb 100%);
+            background-attachment: fixed;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        /* Шапка сайта */
+        header {
+            background: linear-gradient(to bottom, #003366 0%, #002244 100%);
+            color: #ffffff;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 34, 68, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Кнопки управления */
+        .controls {
+            padding: 0 20px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            background: linear-gradient(to bottom, #0066cc 0%, #003366 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            box-shadow: 0 4px 8px rgba(0, 51, 102, 0.3);
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background: linear-gradient(to bottom, #0088ff 0%, #0055aa 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 85, 170, 0.4);
+        }
+        
+        /* Таблица */
+        .table-container {
+            padding: 0 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 34, 68, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        th, td {
+            border: 1px solid #e0e6ed;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        
+        th {
+            background: linear-gradient(to bottom, #0066cc 0%, #003366 100%);
+            color: white;
+            font-weight: 600;
+            border-color: #0055aa;
+        }
+        
+        tr:nth-child(even) {
+             background-color: #ffffff;
+        }
+        
+        tr:hover {
+            background-color: rgba(0, 102, 204, 0.1);
+        }
+        
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .actions button {
+            padding: 6px 10px;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        /* Модальные окна */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 34, 68, 0.3);
+            padding: 25px;
+            z-index: 1000;
+            width: 400px;
+            max-width: 90%;
+            border: 1px solid rgba(0, 102, 204, 0.2);
+        }
+        
+        .modal h3 {
+            margin-top: 0;
+            color: #003366;
+            border-bottom: 1px solid #e0e6ed;
+            padding-bottom: 10px;
+        }
+        
+        .modal label {
+            display: block;
+            margin: 15px 0 5px;
+            color: #003366;
+            font-weight: 500;
+        }
+        
+        .modal input, .modal select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e0e6ed;
+            border-radius: 6px;
+            background-color: #f8f9fb;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        /* Состояния */
+        .expired {
+            background-color: #ffebee !important;
+            color: #d32f2f;
+        }
+        
+        .expired td {
+            border-color: #ffcdd2;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .actions {
+                flex-direction: column;
+            }
+            
+            .modal {
+                width: 90%;
+            }
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+</head>
+<body>
+    <header>
+        <div class="logo">Управление эталонами</div>
+    </header>
+
+    <div class="controls">
+        <button id="createRoom">Создать расположение</button>
+        <button id="manageRooms">Управление расположениями</button>
+        <button id="openAddStandard">Добавить эталон</button>
+    </div>
+
+    <div class="table-container">
+        <table id="items">
+            <thead>
+                <tr>
+                    <th>Наименование</th>
+                    <th>Номер</th>
+                    <th>Дата метрологической оценки</th>
+                    <th>Дата окончания метрологической оценки</th>
+                    <th>Вид метрологической оценки</th>
+                    <th>Расположение</th>
+                    <th>Количество дней до окончания действия</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="modal" id="addStandardModal">
+        <h3 id="modalTitle">Добавить эталон</h3>
+        <label for="roomSelect">Расположение:</label>
+        <select id="roomSelect" required></select>
+        <label for="standardName">Наименование:</label>
+        <input type="text" id="standardName" required>
+        <label for="standardNumber">Номер:</label>
+        <input type="text" id="standardNumber" required>
+        <label for="standardDate">Дата:</label>
+        <input type="date" id="standardDate" required>
+        <label for="interval">Межповерочный интервал (в годах):</label>
+        <input type="number" id="interval" required min="1">
+        <label for="type">Вид метрологической оценки:</label>
+        <select id="type">
+            <option value="поверка">Поверка</option>
+            <option value="калибровка">Калибровка</option>
+        </select>
+        <div class="modal-buttons">
+            <button id="saveStandard">Сохранить</button>
+            <button id="closeModal">Закрыть</button>
+        </div>
+    </div>
+
+    <div class="modal" id="manageRoomsModal">
+        <h3>Управление расположениями</h3>
+        <ul id="roomList" style="list-style: none; padding: 0;"></ul>
+        <div class="modal-buttons">
+            <button id="closeRoomsModal">Закрыть</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
+            authDomain: "vlad-csms-af6df.firebaseapp.com",
+            databaseURL: "https://vlad-csms-af6df-default-rtdb.firebaseio.com",
+            projectId: "vlad-csms-af6df",
+            storageBucket: "vlad-csms-af6df.firebasestorage.app",
+            messagingSenderId: "417297799117",
+            appId: "1:417297799117:web:07ce2915cbfe0cb1499684",
+            measurementId: "G-0EMQB4HYSQ"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let standards = [];
+        let rooms = [];
+        let editingStandardIndex = null;
+
+        function updateRoomSelect() {
+            const roomSelect = document.getElementById('roomSelect');
+            roomSelect.innerHTML = '';
+            rooms.forEach((room, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = room;
+                roomSelect.appendChild(option);
+            });
+        }
+
+        function fetchRooms() {
+            database.ref('rooms').on('value', snapshot => {
+                rooms = snapshot.val() || [];
+                updateRoomSelect();
+                renderRoomList();
+            });
+        }
+
+        function fetchStandards() {
+            database.ref('standards').on('value', snapshot => {
+                standards = snapshot.val() || [];
+                calculateDaysLeft();
+                renderStandards();
+            });
+        }
+
+        document.getElementById('createRoom').addEventListener('click', () => {
+            const roomName = prompt('Введите название расположения:');
+            if (roomName && roomName.trim() !== '') {
+                rooms.push(roomName);
+                database.ref('rooms').set(rooms);
+                alert(`Расположение "${roomName}" создано!`);
+            } else {
+                alert('Название расположения не может быть пустым!');
+            }
+        });
+
+        document.getElementById('manageRooms').addEventListener('click', () => {
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('manageRoomsModal').style.display = 'block';
+            renderRoomList();
+        });
+
+        function renderRoomList() {
+            const roomList = document.getElementById('roomList');
+            roomList.innerHTML = '';
+            rooms.forEach((room, index) => {
+                const li = document.createElement('li');
+                li.style.padding = '10px';
+                li.style.borderBottom = '1px solid #e0e6ed';
+                li.style.display = 'flex';
+                li.style.justifyContent = 'space-between';
+                li.style.alignItems = 'center';
+                
+                li.textContent = room;
+                li.innerHTML += `
+                    <div>
+                        <button onclick="editRoom(${index})" style="margin-right: 5px;">Изменить</button>
+                        <button onclick="deleteRoom(${index})">Удалить</button>
+                    </div>
+                `;
+                roomList.appendChild(li);
+            });
+        }
+
+        window.editRoom = function(index) {
+            const newName = prompt('Введите новое название расположения:', rooms[index]);
+            if (newName && newName.trim() !== '') {
+                rooms[index] = newName;
+                database.ref('rooms').set(rooms);
+                renderRoomList();
+                updateRoomSelect();
+            } else {
+                alert('Название расположения не может быть пустым!');
+            }
+        };
+
+        window.deleteRoom = function(index) {
+            const isUsed = standards.some(standard => standard.room === rooms[index]);
+            if (isUsed) {
+                alert('Нельзя удалить расположение, так как оно используется в эталонах!');
+                return;
+            }
+            if (confirm('Вы уверены, что хотите удалить расположение?')) {
+                rooms.splice(index, 1);
+                database.ref('rooms').set(rooms);
+                renderRoomList();
+                updateRoomSelect();
+            }
+        };
+
+        document.getElementById('openAddStandard').addEventListener('click', () => {
+            if (rooms.length === 0) {
+                alert('Сначала создайте расположение!');
+                return;
+            }
+            editingStandardIndex = null;
+            document.getElementById('modalTitle').textContent = 'Добавить эталон';
+            document.getElementById('standardName').value = '';
+            document.getElementById('standardNumber').value = '';
+            document.getElementById('standardDate').value = '';
+            document.getElementById('interval').value = '';
+            document.getElementById('type').value = 'поверка';
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('addStandardModal').style.display = 'block';
+        });
+
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('addStandardModal').style.display = 'none';
+        });
+
+        document.getElementById('closeRoomsModal').addEventListener('click', () => {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('manageRoomsModal').style.display = 'none';
+        });
+
+        document.getElementById('saveStandard').addEventListener('click', () => {
+            const roomIndex = document.getElementById('roomSelect').value;
+            const name = document.getElementById('standardName').value.trim();
+            const number = document.getElementById('standardNumber').value.trim();
+            const dateInput = new Date(document.getElementById('standardDate').value);
+            const interval = parseInt(document.getElementById('interval').value);
+            const type = document.getElementById('type').value;
+
+            if (!name || !number || isNaN(interval) || !dateInput || roomIndex === "") {
+                alert('Пожалуйста, заполните все поля!');
+                return;
+            }
+
+            const expirationDateInput = new Date(dateInput);
+            expirationDateInput.setFullYear(expirationDateInput.getFullYear() + interval);
+            expirationDateInput.setDate(expirationDateInput.getDate() - 1);
+            const daysLeft = Math.ceil((expirationDateInput - new Date()) / (1000 * 60 * 60 * 24));
+
+            const standard = {
+                name,
+                number,
+                date: dateInput.toISOString(),
+                type,
+                room: rooms[roomIndex],
+                expirationDate: expirationDateInput.toISOString(),
+                daysLeft
+            };
+
+            if (editingStandardIndex !== null) {
+                standards[editingStandardIndex] = standard;
+                alert('Эталон изменен!');
+            } else {
+                standards.push(standard);
+                alert('Эталон добавлен!');
+            }
+
+            database.ref('standards').set(standards);
+            calculateDaysLeft();
+            renderStandards();
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('addStandardModal').style.display = 'none';
+        });
+
+        function calculateDaysLeft() {
+            standards.forEach(standard => {
+                const expirationDate = new Date(standard.expirationDate);
+                standard.daysLeft = Math.ceil((expirationDate - new Date()) / (1000 * 60 * 60 * 24));
+            });
+        }
+
+        function renderStandards() {
+            const tbody = document.querySelector('#items tbody');
+            tbody.innerHTML = '';
+            standards.forEach((standard, index) => {
+                const row = document.createElement('tr');
+                if (standard.daysLeft < 0) {
+                    row.classList.add('expired');
+                }
+                row.innerHTML = `
+                    <td>${standard.name}</td>
+                    <td>${standard.number}</td>
+                    <td>${new Date(standard.date).toLocaleDateString()}</td>
+                    <td>${new Date(standard.expirationDate).toLocaleDateString()}</td>
+                    <td>${standard.type}</td>
+                    <td>${standard.room}</td>
+                    <td>${standard.daysLeft}</td>
+                    <td class="actions">
+                        <button onclick="editStandard(${index})">Изменить</button>
+                        <button onclick="deleteStandard(${index})">Удалить</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        window.editStandard = function(index) {
+            const standard = standards[index];
+            document.getElementById('modalTitle').textContent = 'Изменить эталон';
+            document.getElementById('standardName').value = standard.name;
+            document.getElementById('standardNumber').value = standard.number;
+            document.getElementById('standardDate').value = new Date(standard.date).toISOString().split('T')[0];
+            document.getElementById('interval').value = (new Date(standard.expirationDate).getFullYear() - new Date(standard.date).getFullYear());
+            document.getElementById('type').value = standard.type;
+            document.getElementById('roomSelect').value = rooms.indexOf(standard.room);
+            editingStandardIndex = index;
+
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('addStandardModal').style.display = 'block';
+        };
+
+        window.deleteStandard = function(index) {
+            if (confirm('Вы уверены, что хотите удалить эталон?')) {
+                standards.splice(index, 1);
+                database.ref('standards').set(standards);
+                renderStandards();
+            }
+        };
+
+        // Инициализация данных
+        fetchRooms();
+        fetchStandards();
+    </script>
+</body>
+</html>
