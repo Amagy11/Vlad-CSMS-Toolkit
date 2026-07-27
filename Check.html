@@ -1,24 +1,693 @@
-// Автоматический поиск колонок
-const columnMapping = {
-    'наименование': ['наименование си', 'тип си', 'наименование', 'тип', 'название'],
-    'модификация': ['модификация', 'исполнение', 'модификаци', 'версия', 'модель'],
-    'госреестр': ['номер госреестра си', 'грси', 'номер грси', 'рег. номер'],
-    'сут': ['идентификационный номер', 'номер сут', 'сут', 'id']
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Умное сравнение Excel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #f0f2f5; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        .main-title { font-weight: 700; color: #1a1a2e; }
+        .main-subtitle { color: #6c757d; font-size: 15px; }
+        
+        .upload-zone {
+            border: 2.5px dashed #adb5bd;
+            border-radius: 14px;
+            padding: 35px 20px;
+            text-align: center;
+            cursor: pointer;
+            background: #ffffff;
+            transition: all 0.3s ease;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        .upload-zone:hover { border-color: #0d6efd; background: #f8f9ff; transform: translateY(-2px); }
+        .upload-zone.dragover { border-color: #0d6efd; background: #e7edff; transform: scale(1.01); }
+        .upload-zone.has-file { border-color: #198754; background: #f0fff4; }
+        .upload-zone .icon { font-size: 48px; margin-bottom: 8px; }
+        .upload-zone .hint { font-size: 14px; color: #6c757d; margin-top: 4px; }
+        
+        .file-info {
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .file-info .badge-count { background: #0d6efd; color: #fff; border-radius: 20px; padding: 2px 12px; font-size: 12px; }
+        
+        .detected-cols {
+            font-size: 12.5px;
+            color: #495057;
+            margin-top: 10px;
+            padding: 10px 14px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #0d6efd;
+            display: none;
+        }
+        .detected-cols .col-item { display: inline-block; background: #e9ecef; padding: 2px 10px; border-radius: 12px; margin: 2px 4px 2px 0; }
+        .detected-cols .col-item strong { color: #0d6efd; }
+        .detected-cols .warning-text { color: #dc3545; font-weight: 600; }
+        
+        .summary-box {
+            background: #fff;
+            border-radius: 14px;
+            padding: 22px 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            height: 100%;
+        }
+        
+        .compare-btn {
+            height: 100%;
+            min-height: 80px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 14px;
+            transition: all 0.3s;
+        }
+        .compare-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .compare-btn:not(:disabled):hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(13,110,253,0.3); }
+        
+        .result-container {
+            margin-top: 28px;
+            display: none;
+        }
+        .result-container .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .result-table-wrap {
+            max-height: 550px;
+            overflow-y: auto;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+        }
+        .result-table-wrap table {
+            font-size: 13px;
+            margin-bottom: 0;
+        }
+        .result-table-wrap th {
+            position: sticky;
+            top: 0;
+            background: #1a1a2e;
+            color: #fff;
+            z-index: 10;
+            white-space: nowrap;
+            padding: 10px 12px;
+        }
+        .result-table-wrap td {
+            padding: 8px 12px;
+            vertical-align: middle;
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .result-table-wrap tr:hover td { background: #f8f9ff; }
+        
+        .reason-badge {
+            display: inline-block;
+            padding: 3px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .reason-ok { background: #d1e7dd; color: #0f5132; }
+        .reason-error { background: #f8d7da; color: #842029; }
+        .reason-warning { background: #fff3cd; color: #856404; }
+        
+        .stats-badge {
+            font-size: 13px;
+            padding: 5px 16px;
+            border-radius: 20px;
+        }
+        
+        /* Лоадер */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.55);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+        .loading-overlay.active { display: flex; }
+        .loading-box {
+            background: #fff;
+            padding: 40px 55px;
+            border-radius: 16px;
+            text-align: center;
+            min-width: 300px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #e9ecef;
+            border-top: 5px solid #0d6efd;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-box .loading-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+        .loading-box .loading-sub { color: #6c757d; font-size: 14px; }
+        
+        .btn-download { border-radius: 10px; padding: 8px 22px; font-weight: 600; }
+        
+        @media (max-width: 768px) {
+            .upload-zone { min-height: 150px; padding: 20px; }
+            .compare-btn { min-height: 60px; font-size: 16px; }
+            .summary-box { padding: 16px; }
+            .result-table-wrap td { max-width: 120px; font-size: 12px; }
+            body { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Лоадер -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-box">
+        <div class="spinner"></div>
+        <div class="loading-title">⏳ Идет сравнение...</div>
+        <div class="loading-sub" id="loadingText">Обработка данных</div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Заголовок -->
+    <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+        <div>
+            <h1 class="main-title">🧠 Умное сравнение Excel</h1>
+            <p class="main-subtitle">Автоматически находит колонки по смыслу и сравнивает файлы</p>
+        </div>
+        <div class="ms-auto">
+            <span class="badge bg-primary" style="font-size:13px;">⬅️ 1 эталон</span>
+            <span class="badge bg-success" style="font-size:13px;">➡️ несколько файлов</span>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- ЛЕВАЯ ПАНЕЛЬ -->
+        <div class="col-md-5">
+            <div class="summary-box">
+                <h5 style="font-weight:600;">📌 Эталонный файл <span class="badge bg-primary" style="font-size:11px;">1 файл</span></h5>
+                <div id="leftZone" class="upload-zone">
+                    <div class="icon">📄</div>
+                    <div style="font-weight:500;">Нажмите или перетащите файл</div>
+                    <div class="hint">.xlsx или .xls</div>
+                </div>
+                <div id="leftFileInfo" class="file-info" style="display:none;"></div>
+                <div id="leftColsInfo" class="detected-cols"></div>
+                <input type="file" id="leftInput" accept=".xlsx,.xls" style="display:none;" />
+            </div>
+        </div>
+
+        <!-- ПРАВАЯ ПАНЕЛЬ -->
+        <div class="col-md-5">
+            <div class="summary-box">
+                <h5 style="font-weight:600;">📂 Файлы для сравнения <span class="badge bg-success" style="font-size:11px;">несколько</span></h5>
+                <div id="rightZone" class="upload-zone">
+                    <div class="icon">📦</div>
+                    <div style="font-weight:500;">Нажмите или перетащите файлы</div>
+                    <div class="hint">.xlsx или .xls (можно несколько)</div>
+                </div>
+                <div id="rightFileInfo" class="file-info" style="display:none;"></div>
+                <div id="rightColsInfo" class="detected-cols"></div>
+                <input type="file" id="rightInput" accept=".xlsx,.xls" multiple style="display:none;" />
+            </div>
+        </div>
+
+        <!-- КНОПКА -->
+        <div class="col-md-2">
+            <button id="compareBtn" class="btn btn-primary compare-btn w-100" disabled>
+                🔍 Сравнить
+            </button>
+        </div>
+    </div>
+
+    <!-- РЕЗУЛЬТАТЫ -->
+    <div class="result-container" id="resultContainer">
+        <div class="summary-box">
+            <div class="result-header">
+                <h5 style="font-weight:600;margin:0;">📋 Результат сравнения</h5>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span id="statsText"></span>
+                    <button id="downloadBtn" class="btn btn-success btn-download btn-sm">⬇ Скачать .xlsx</button>
+                </div>
+            </div>
+            <div class="result-table-wrap">
+                <table class="table table-bordered table-striped table-hover" id="resultTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+//  НАСТРОЙКА КЛЮЧЕВЫХ СЛОВ ДЛЯ ПОИСКА КОЛОНОК
+//  Добавляйте свои варианты названий сюда:
+// ============================================================
+const COLUMN_KEYWORDS = {
+    'name': [
+        'наименование си', 'тип си', 'наименование', 'тип', 'название',
+        'наименование ср-ва', 'средство', 'прибор', 'устройство', 'модель'
+    ],
+    'modification': [
+        'модификация', 'исполнение', 'модификаци', 'версия', 'модель',
+        'модиф', 'исполн', 'вариант', 'типоразмер'
+    ],
+    'registry': [
+        'номер госреестра си', 'грси', 'номер грси', 'рег. номер',
+        'регистрационный номер', 'госреестр', 'номер реестра', 'рег номер'
+    ],
+    'sut': [
+        'идентификационный номер', 'номер сут', 'сут', 'id',
+        'идентификатор', 'заводской номер', 'серийный номер', 'инвентарный'
+    ]
 };
 
-function autoDetectColumns(headers) {
-    const result = {};
-    for (let [key, keywords] of Object.entries(columnMapping)) {
+const COLUMN_NAMES = {
+    'name': 'Наименование СИ',
+    'modification': 'Модификация',
+    'registry': 'Номер госреестра СИ',
+    'sut': 'Идентификационный номер'
+};
+
+// ============================================================
+//  УМНЫЙ ПОИСК КОЛОНОК
+// ============================================================
+function findColumns(headers) {
+    const detected = {};
+    const usedColumns = new Set();
+
+    for (let [key, keywords] of Object.entries(COLUMN_KEYWORDS)) {
+        let found = null;
+        let bestScore = 0;
+
         for (let h of headers) {
-            let lower = h.toLowerCase();
+            if (usedColumns.has(h)) continue;
+            const lower = h.toLowerCase().trim();
+            
             for (let kw of keywords) {
-                if (lower.includes(kw)) {
-                    result[key] = h;
-                    break;
+                if (lower.includes(kw) || kw.includes(lower)) {
+                    const score = Math.max(kw.length, lower.length);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        found = h;
+                    }
                 }
             }
-            if (result[key]) break;
+        }
+
+        if (found) {
+            detected[key] = found;
+            usedColumns.add(found);
         }
     }
-    return result;
+
+    return detected;
 }
+
+// ============================================================
+//  ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+// ============================================================
+let leftData = null;
+let rightData = null;
+let leftHeaders = [];
+let rightHeaders = [];
+let leftFileName = '';
+let rightFileNames = [];
+let leftColMap = {};
+let rightColMap = {};
+
+// ============================================================
+//  ЗАГРУЗКА ФАЙЛОВ
+// ============================================================
+function setupUpload(zoneId, inputId, isMultiple, onLoad) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+
+    zone.addEventListener('click', () => input.click());
+
+    zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.add('dragover');
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            if (!isMultiple && files.length > 1) {
+                alert('Загрузите только 1 файл в эталон!');
+                return;
+            }
+            input.files = files;
+            input.dispatchEvent(new Event('change'));
+        }
+    });
+
+    input.addEventListener('change', function() {
+        if (this.files.length === 0) return;
+        onLoad(this.files);
+        this.value = '';
+    });
+}
+
+function readFiles(files) {
+    return new Promise((resolve) => {
+        const allData = [];
+        let headers = [];
+        const fileNames = [];
+        let completed = 0;
+        
+        if (files.length === 0) {
+            resolve({ data: [], headers: [], fileNames: [] });
+            return;
+        }
+        
+        for (let file of files) {
+            fileNames.push(file.name);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                    
+                    if (json.length > 0) {
+                        if (headers.length === 0) {
+                            headers = Object.keys(json[0]);
+                        }
+                        allData.push(...json);
+                    }
+                } catch (err) {
+                    console.error('Ошибка чтения файла:', file.name, err);
+                }
+                
+                completed++;
+                if (completed === files.length) {
+                    resolve({ data: allData, headers, fileNames });
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    });
+}
+
+// ============================================================
+//  ОБРАБОТЧИКИ ЗАГРУЗКИ
+// ============================================================
+setupUpload('leftZone', 'leftInput', false, async (files) => {
+    const result = await readFiles(files);
+    leftData = result.data;
+    leftHeaders = result.headers;
+    leftFileName = files[0].name;
+    
+    leftColMap = findColumns(leftHeaders);
+    
+    const infoDiv = document.getElementById('leftFileInfo');
+    infoDiv.style.display = 'flex';
+    infoDiv.innerHTML = `
+        <span>✅ <strong>${leftFileName}</strong> (${leftData.length} строк)</span>
+        <span class="badge-count">${Object.keys(leftColMap).length}/4 колонок</span>
+    `;
+    
+    const colsDiv = document.getElementById('leftColsInfo');
+    colsDiv.style.display = 'block';
+    const found = Object.entries(leftColMap);
+    if (found.length > 0) {
+        colsDiv.innerHTML = '🔍 Найдено: ' + found.map(([key, col]) => 
+            `<span class="col-item"><strong>${COLUMN_NAMES[key]}</strong> → "${col}"</span>`
+        ).join(' ');
+    }
+    if (found.length < 4) {
+        colsDiv.innerHTML += ' <span class="warning-text">⚠️ Не все колонки найдены!</span>';
+    }
+    
+    document.getElementById('leftZone').classList.add('has-file');
+    checkReady();
+});
+
+setupUpload('rightZone', 'rightInput', true, async (files) => {
+    const result = await readFiles(files);
+    rightData = result.data;
+    rightHeaders = result.headers;
+    rightFileNames = result.fileNames;
+    
+    rightColMap = findColumns(rightHeaders);
+    
+    const infoDiv = document.getElementById('rightFileInfo');
+    infoDiv.style.display = 'flex';
+    infoDiv.innerHTML = `
+        <span>✅ Загружено: <strong>${rightFileNames.join(', ')}</strong></span>
+        <span class="badge-count">${rightData.length} строк</span>
+    `;
+    
+    const colsDiv = document.getElementById('rightColsInfo');
+    colsDiv.style.display = 'block';
+    const found = Object.entries(rightColMap);
+    if (found.length > 0) {
+        colsDiv.innerHTML = '🔍 Найдено: ' + found.map(([key, col]) => 
+            `<span class="col-item"><strong>${COLUMN_NAMES[key]}</strong> → "${col}"</span>`
+        ).join(' ');
+    }
+    if (found.length < 4) {
+        colsDiv.innerHTML += ' <span class="warning-text">⚠️ Не все колонки найдены!</span>';
+    }
+    
+    document.getElementById('rightZone').classList.add('has-file');
+    checkReady();
+});
+
+function checkReady() {
+    const btn = document.getElementById('compareBtn');
+    const leftOk = leftData && leftData.length > 0 && Object.keys(leftColMap).length >= 4;
+    const rightOk = rightData && rightData.length > 0 && Object.keys(rightColMap).length >= 4;
+    btn.disabled = !(leftOk && rightOk);
+    if (!btn.disabled) {
+        btn.title = 'Готово к сравнению!';
+    } else {
+        btn.title = 'Загрузите файлы с полным набором колонок (4 из 4)';
+    }
+}
+
+// ============================================================
+//  ОСНОВНАЯ ЛОГИКА СРАВНЕНИЯ
+// ============================================================
+document.getElementById('compareBtn').addEventListener('click', async function() {
+    if (!leftData || !rightData) return;
+    
+    const missingLeft = Object.keys(COLUMN_NAMES).filter(k => !leftColMap[k]);
+    const missingRight = Object.keys(COLUMN_NAMES).filter(k => !rightColMap[k]);
+    
+    if (missingLeft.length > 0 || missingRight.length > 0) {
+        let msg = '⚠️ Не найдены колонки в файлах:\n';
+        if (missingLeft.length) msg += `\n📌 В эталоне: ${missingLeft.map(k => COLUMN_NAMES[k]).join(', ')}`;
+        if (missingRight.length) msg += `\n📂 В правых файлах: ${missingRight.map(k => COLUMN_NAMES[k]).join(', ')}`;
+        msg += '\n\nПроверьте названия колонок или добавьте их в COLUMN_KEYWORDS в коде.';
+        alert(msg);
+        return;
+    }
+    
+    // Лоадер
+    document.getElementById('loadingOverlay').classList.add('active');
+    document.getElementById('loadingText').textContent = `Сравнение ${leftData.length} строк...`;
+    await new Promise(r => setTimeout(r, 80));
+    
+    const normalize = (val) => String(val).trim().toLowerCase();
+    
+    const lName = leftColMap['name'];
+    const lMod = leftColMap['modification'];
+    const lReg = leftColMap['registry'];
+    const lSut = leftColMap['sut'];
+    
+    const rName = rightColMap['name'];
+    const rMod = rightColMap['modification'];
+    const rReg = rightColMap['registry'];
+    const rSut = rightColMap['sut'];
+    
+    // Индекс правых данных
+    const rightIndex = new Map();
+    rightData.forEach((row, idx) => {
+        const key = [
+            normalize(row[rName] || ''),
+            normalize(row[rMod] || ''),
+            normalize(row[rReg] || ''),
+            normalize(row[rSut] || '')
+        ].join('|||');
+        if (!rightIndex.has(key)) rightIndex.set(key, []);
+        rightIndex.get(key).push(idx);
+    });
+    
+    // Сравнение
+    const results = [];
+    let okCount = 0, errorCount = 0, warningCount = 0;
+    
+    leftData.forEach((leftRow) => {
+        const leftKey = [
+            normalize(leftRow[lName] || ''),
+            normalize(leftRow[lMod] || ''),
+            normalize(leftRow[lReg] || ''),
+            normalize(leftRow[lSut] || '')
+        ].join('|||');
+        
+        const matchedIndices = rightIndex.get(leftKey) || [];
+        
+        if (matchedIndices.length > 0) {
+            okCount++;
+            results.push({
+                ...leftRow,
+                'Результат': '✅ Совпадает',
+                'Причина': ''
+            });
+        } else {
+            let bestMatch = null;
+            let maxMatchCount = 0;
+            let bestMismatches = [];
+            
+            rightData.forEach((rightRow) => {
+                let matchCount = 0;
+                const mismatches = [];
+                
+                const pairs = [
+                    { left: leftRow[lName], right: rightRow[rName], name: 'Наименование' },
+                    { left: leftRow[lMod], right: rightRow[rMod], name: 'Модификация' },
+                    { left: leftRow[lReg], right: rightRow[rReg], name: 'Госреестр' },
+                    { left: leftRow[lSut], right: rightRow[rSut], name: 'СУТ' }
+                ];
+                
+                for (let p of pairs) {
+                    if (normalize(p.left) === normalize(p.right)) {
+                        matchCount++;
+                    } else {
+                        mismatches.push(p.name);
+                    }
+                }
+                
+                if (matchCount > maxMatchCount) {
+                    maxMatchCount = matchCount;
+                    bestMismatches = mismatches;
+                }
+            });
+            
+            let reason = '';
+            if (maxMatchCount >= 3) {
+                reason = `Не совпадает: ${bestMismatches.join(', ')}`;
+                warningCount++;
+            } else if (maxMatchCount > 0) {
+                reason = `Совпадает только ${maxMatchCount} из 4 полей`;
+                errorCount++;
+            } else {
+                reason = 'Ни одно поле не совпало';
+                errorCount++;
+            }
+            
+            results.push({
+                ...leftRow,
+                'Результат': maxMatchCount >= 3 ? '⚠️ Частично' : '❌ Ошибка',
+                'Причина': reason
+            });
+        }
+    });
+    
+    document.getElementById('loadingOverlay').classList.remove('active');
+    showResults(results, okCount, errorCount, warningCount);
+});
+
+// ============================================================
+//  ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ
+// ============================================================
+function showResults(results, okCount, errorCount, warningCount) {
+    const container = document.getElementById('resultContainer');
+    container.style.display = 'block';
+    
+    document.getElementById('statsText').innerHTML = `
+        <span class="badge bg-success stats-badge">✅ ${okCount}</span>
+        <span class="badge bg-warning stats-badge" style="color:#000;">⚠️ ${warningCount}</span>
+        <span class="badge bg-danger stats-badge">❌ ${errorCount}</span>
+        <span class="badge bg-secondary stats-badge">📊 ${results.length}</span>
+    `;
+    
+    const thead = document.querySelector('#resultTable thead');
+    const tbody = document.querySelector('#resultTable tbody');
+    
+    const leftCols = Object.keys(results[0]).filter(k => k !== 'Результат' && k !== 'Причина');
+    const allHeaders = [...leftCols, 'Результат', 'Причина'];
+    thead.innerHTML = `<tr>${allHeaders.map(h => `<th>${h}</th>`).join('')}</tr>`;
+    
+    tbody.innerHTML = results.map(row => {
+        const cols = leftCols.map(k => `<td title="${row[k] || ''}">${row[k] || ''}</td>`);
+        const result = row['Результат'] || '';
+        const reason = row['Причина'] || '';
+        
+        let badgeClass = 'reason-ok';
+        if (result.includes('Ошибка')) badgeClass = 'reason-error';
+        else if (result.includes('Частично')) badgeClass = 'reason-warning';
+        
+        return `<tr>
+            ${cols.join('')}
+            <td><span class="reason-badge ${badgeClass}">${result}</span></td>
+            <td>${reason}</td>
+        </tr>`;
+    }).join('');
+    
+    window._reportData = { results, allHeaders: [...leftCols, 'Результат', 'Причина'] };
+}
+
+// ============================================================
+//  СКАЧИВАНИЕ ОТЧЕТА
+// ============================================================
+document.getElementById('downloadBtn').addEventListener('click', function() {
+    const { results, allHeaders } = window._reportData || {};
+    if (!results || !results.length) {
+        alert('Нет данных для скачивания');
+        return;
+    }
+    
+    const rows = [
+        allHeaders,
+        ...results.map(row => allHeaders.map(h => row[h] || ''))
+    ];
+    
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Результат');
+    XLSX.writeFile(wb, 'report_comparison.xlsx');
+});
+
+console.log('🧠 Умный сравнитель Excel загружен!');
+console.log('Ключевые слова для поиска колонок:', COLUMN_KEYWORDS);
+console.log('📌 Добавляйте свои варианты названий в COLUMN_KEYWORDS');
+</script>
+</body>
+</html>
