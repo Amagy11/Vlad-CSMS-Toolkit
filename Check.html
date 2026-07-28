@@ -51,18 +51,48 @@
         .result-container.show { display: block; }
         .result-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
         
-        .table-wrap { max-height: 500px; overflow-y: auto; border-radius: 8px; border: 1px solid #dee2e6; }
-        .table-wrap table { font-size: 12px; margin-bottom: 0; }
-        .table-wrap th { position: sticky; top: 0; background: #1a1a2e; color: #fff; z-index: 10; padding: 6px 8px; font-size: 11px; white-space: nowrap; text-align: center; }
-        .table-wrap td { padding: 4px 8px; vertical-align: middle; font-size: 11px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .table-wrap { 
+            max-height: 600px; 
+            overflow-y: auto; 
+            border-radius: 8px; 
+            border: 1px solid #dee2e6; 
+        }
+        .table-wrap table { 
+            font-size: 13px; 
+            margin-bottom: 0; 
+            width: 100%;
+            table-layout: fixed;
+        }
+        .table-wrap th { 
+            position: sticky; 
+            top: 0; 
+            background: #1a1a2e; 
+            color: #fff; 
+            z-index: 10; 
+            padding: 8px 10px; 
+            font-size: 12px; 
+            white-space: nowrap; 
+            text-align: center; 
+        }
+        .table-wrap td { 
+            padding: 6px 10px; 
+            vertical-align: middle; 
+            font-size: 12px; 
+            word-wrap: break-word;
+            white-space: normal;
+            max-width: 300px;
+        }
+        .table-wrap td:nth-child(2) { max-width: 250px; }
+        .table-wrap td:nth-child(3) { max-width: 300px; background: #f8f9fa; }
         .table-wrap tr:hover td { background: #f8f9ff; }
+        .table-wrap td:nth-child(3):hover { background: #e7edff; }
         
-        .badge-status { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+        .badge-status { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
         .badge-ok { background: #d1e7dd; color: #0f5132; }
         .badge-error { background: #f8d7da; color: #842029; }
         .badge-warning { background: #fff3cd; color: #856404; }
         
-        .stats-badge { font-size: 11px; padding: 3px 12px; border-radius: 20px; }
+        .stats-badge { font-size: 12px; padding: 4px 14px; border-radius: 20px; }
         
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
         .loading-overlay.active { display: flex; }
@@ -96,11 +126,15 @@
         .file-list { margin-top: 10px; }
         .file-list .file-item { display: inline-block; background: #e9ecef; padding: 3px 12px; border-radius: 20px; font-size: 12px; margin: 2px 5px 2px 0; }
         
+        .detail-row { font-size: 11px; color: #6c757d; padding: 2px 0; }
+        .detail-match { color: #198754; }
+        .detail-mismatch { color: #dc3545; }
+        
         @media (max-width: 768px) {
             .upload-zone { min-height: 120px; padding: 14px; }
             .compare-btn { min-height: 50px; font-size: 14px; }
             .summary-box { padding: 12px; }
-            .table-wrap td { font-size: 10px; padding: 3px 5px; max-width: 100px; }
+            .table-wrap td { font-size: 11px; padding: 4px 6px; max-width: 120px; }
             body { padding: 10px; }
         }
     </style>
@@ -199,11 +233,11 @@
                 <table class="table table-bordered table-striped" id="resultTable">
                     <thead>
                         <tr>
-                            <th style="min-width:30px;">№</th>
-                            <th>📌 Проверяемые данные</th>
-                            <th>📂 Найдено в эталоне</th>
-                            <th style="min-width:80px;">Статус</th>
-                            <th style="min-width:150px;">Причина</th>
+                            <th style="min-width:30px; width:5%;">№</th>
+                            <th style="width:25%;">📌 Проверяемые данные</th>
+                            <th style="width:40%;">📂 Найдено в эталоне</th>
+                            <th style="min-width:80px; width:10%;">Статус</th>
+                            <th style="min-width:150px; width:20%;">Причина</th>
                         </tr>
                     </thead>
                     <tbody id="resultBody"></tbody>
@@ -247,19 +281,23 @@
 const SEARCH_RULES = {
     'type': {
         keywords: ['тип си', 'тип си', 'наименование си', 'тип', 'наименование'],
-        displayName: 'тип СИ'
+        displayName: 'тип СИ',
+        exclude: ['дата', 'внесения']
     },
     'modification': {
         keywords: ['модификация', 'исполнение', 'модификаци', 'модель', 'версия'],
-        displayName: 'Модификация'
+        displayName: 'Модификация',
+        exclude: []
     },
     'registry': {
         keywords: ['номер грси', 'грси', 'номер госреестра', 'рег. номер', 'регистрационный номер'],
-        displayName: 'номер ГРСИ'
+        displayName: 'номер ГРСИ',
+        exclude: ['дата', 'внесения']
     },
     'sut': {
         keywords: ['номер сут', 'сут', 'идентификационный номер', 'идентификатор', 'заводской номер', 'серийный номер'],
-        displayName: 'номер СУТ'
+        displayName: 'номер СУТ',
+        exclude: ['срок', 'действие', 'годен', 'годности', 'действителен']
     }
 };
 
@@ -274,11 +312,18 @@ let leftFileName = '';
 let rightFileNames = [];
 
 // ============================================================
-//  ОЧИСТКА ДАННЫХ
+//  ⭐ ГЛАВНОЕ: ОЧИСТКА ДАННЫХ (ПРОЧЕРК = ПУСТОТА)
 // ============================================================
 function normalize(val) {
     if (val === null || val === undefined) return '';
-    return String(val).trim().toLowerCase().replace(/\s+/g, ' ').trim();
+    let result = String(val).trim();
+    
+    // Прочерк (любой вариант) = пустая строка
+    if (result === '-' || result === '–' || result === '—') {
+        return '';
+    }
+    
+    return result.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 function getFileFormat(filename) {
@@ -295,8 +340,6 @@ function findColumns(headers) {
     const detected = {};
     const usedColumns = new Set();
 
-    console.log('🔍 Поиск колонок в заголовках:', headers);
-
     for (let [key, rule] of Object.entries(SEARCH_RULES)) {
         let found = null;
         let bestScore = 0;
@@ -305,8 +348,12 @@ function findColumns(headers) {
             if (usedColumns.has(h)) continue;
             const lower = h.toLowerCase().trim();
             
-            if (lower.includes('дата') && lower.includes('внесения')) {
-                continue;
+            if (rule.exclude) {
+                let skip = false;
+                for (let ex of rule.exclude) {
+                    if (lower.includes(ex)) { skip = true; break; }
+                }
+                if (skip) continue;
             }
             
             for (let kw of rule.keywords) {
@@ -323,9 +370,6 @@ function findColumns(headers) {
         if (found) {
             detected[key] = found;
             usedColumns.add(found);
-            console.log(`  ✅ ${rule.displayName} → "${found}"`);
-        } else {
-            console.log(`  ❌ ${rule.displayName} — не найдена`);
         }
     }
     
@@ -635,7 +679,7 @@ document.getElementById('compareBtn').addEventListener('click', async function()
                 leftDisplay: leftDisplay,
                 rightDisplay: rightDisplay,
                 status: '✅ Найдено',
-                reason: ''
+                reason: 'Полное совпадение всех полей'
             });
             continue;
         }
@@ -653,155 +697,4 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             const rightRow = rightData[idx];
             const rightVals = [
                 normalize(rightRow[rName] || ''),
-                normalize(rightRow[rMod] || ''),
-                normalize(rightRow[rReg] || ''),
-                normalize(rightRow[rSut] || '')
-            ];
-            let matchCount = 0;
-            const mismatches = [];
-            for (let j = 0; j < 4; j++) {
-                if (leftVals[j] === rightVals[j]) {
-                    matchCount++;
-                } else {
-                    mismatches.push(fieldNames[j]);
-                }
-            }
-            if (matchCount > bestMatchCount) {
-                bestMatchCount = matchCount;
-                bestMismatches = mismatches;
-                bestRightDisplay = [
-                    rightRow[rName] || '',
-                    rightRow[rMod] || '',
-                    rightRow[rReg] || '',
-                    rightRow[rSut] || ''
-                ];
-                if (matchCount === 4) break;
-            }
-        }
-        
-        let status, reason;
-        if (bestMatchCount >= 3) {
-            status = '⚠️ Частично';
-            reason = `Не совпадает: ${bestMismatches.join(', ')}`;
-            warningCount++;
-        } else if (bestMatchCount > 0) {
-            status = '❌ Не найдено';
-            reason = `Совпадает только ${bestMatchCount} из 4 полей`;
-            errorCount++;
-        } else {
-            status = '❌ Не найдено';
-            reason = 'Ни одно поле не совпало с эталоном';
-            errorCount++;
-        }
-        
-        results.push({
-            rowNum: i + 1,
-            leftDisplay: leftDisplay,
-            rightDisplay: bestRightDisplay,
-            status: status,
-            reason: reason
-        });
-    }
-    
-    document.getElementById('loadingOverlay').classList.remove('active');
-    showResults(results, okCount, errorCount, warningCount);
-});
-
-// ============================================================
-//  ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ
-// ============================================================
-function showResults(results, okCount, errorCount, warningCount) {
-    const container = document.getElementById('resultContainer');
-    container.classList.add('show');
-    
-    document.getElementById('statsText').innerHTML = `
-        <span class="badge bg-success stats-badge">✅ ${okCount}</span>
-        <span class="badge bg-warning stats-badge" style="color:#000;">⚠️ ${warningCount}</span>
-        <span class="badge bg-danger stats-badge">❌ ${errorCount}</span>
-        <span class="badge bg-secondary stats-badge">📊 ${results.length}</span>
-    `;
-    
-    const tbody = document.getElementById('resultBody');
-    const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
-    
-    let html = '';
-    for (let res of results) {
-        const leftStr = fieldNames.map((name, i) => 
-            `${name}: ${res.leftDisplay[i] || '(пусто)'}`
-        ).join(' | ');
-        
-        let rightStr = '';
-        if (res.status === '✅ Найдено') {
-            rightStr = fieldNames.map((name, i) => 
-                `${name}: ${res.rightDisplay[i] || '(пусто)'}`
-            ).join(' | ');
-        } else {
-            rightStr = fieldNames.map((name, i) => {
-                const leftVal = res.leftDisplay[i] || '';
-                const rightVal = res.rightDisplay[i] || '';
-                const match = leftVal === rightVal;
-                return `${name}: ${match ? '✅' : '❌'} "${rightVal || '(пусто)'}"`;
-            }).join(' | ');
-        }
-        
-        let badgeClass = 'badge-ok';
-        if (res.status.includes('Не найдено')) badgeClass = 'badge-error';
-        else if (res.status.includes('Частично')) badgeClass = 'badge-warning';
-        
-        html += `<tr>
-            <td>${res.rowNum}</td>
-            <td style="font-size:11px;">${leftStr}</td>
-            <td style="font-size:11px;">${rightStr}</td>
-            <td><span class="badge-status ${badgeClass}">${res.status}</span></td>
-            <td style="font-size:11px;">${res.reason}</td>
-        </tr>`;
-    }
-    tbody.innerHTML = html;
-    
-    window._reportData = { results, fieldNames };
-}
-
-// ============================================================
-//  СКАЧИВАНИЕ ОТЧЕТА
-// ============================================================
-document.getElementById('downloadBtn').addEventListener('click', function() {
-    const { results, fieldNames } = window._reportData || {};
-    if (!results || !results.length) {
-        alert('Нет данных для скачивания');
-        return;
-    }
-    
-    const headers = [
-        '№',
-        ...fieldNames.map(n => `Проверяемый: ${n}`),
-        ...fieldNames.map(n => `Эталон: ${n}`),
-        'Статус',
-        'Причина'
-    ];
-    
-    const rows = [headers];
-    for (let res of results) {
-        const row = [
-            res.rowNum,
-            ...res.leftDisplay,
-            ...res.rightDisplay,
-            res.status,
-            res.reason
-        ];
-        rows.push(row);
-    }
-    
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    XLSX.utils.book_append_sheet(wb, ws, 'Результат');
-    XLSX.writeFile(wb, 'report_comparison.xlsx');
-});
-
-console.log('✅ Сайт готов! Загрузите проверяемый файл и эталон.');
-console.log('🔍 Ищем ТОЛЬКО: тип СИ, Модификация, номер ГРСИ, номер СУТ');
-console.log('⛔ Игнорируем: дата внесения типа СИ');
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+                normalize(rightRow[rMod] || '
