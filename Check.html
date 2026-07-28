@@ -672,7 +672,7 @@ document.getElementById('filterAllBtn').addEventListener('click', function() {
 });
 
 // ============================================================
-//  ⭐ ОСНОВНОЕ СРАВНЕНИЕ (ПОЛНЫЙ ПЕРЕБОР ВСЕХ СТРОК)
+//  ⭐ ОСНОВНОЕ СРАВНЕНИЕ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 // ============================================================
 document.getElementById('compareBtn').addEventListener('click', async function() {
     if (!leftData || !rightData) return;
@@ -727,7 +727,7 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         const stickerValue = lSticker ? (leftRow[lSticker] || '') : '';
         
         // ============================================================
-        //  ПОЛНЫЙ ПЕРЕБОР ВСЕХ СТРОК СПРАВОЧНИКА
+        //  ИСПРАВЛЕННАЯ ЛОГИКА: всегда проверяем ВСЕ строки справочника
         // ============================================================
         let foundFullMatch = false;
         let fullMatchRow = null;
@@ -735,6 +735,7 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         let bestMatch = null;
         let bestMatchCount = -1;
         
+        // ПЕРВЫЙ ПРОХОД: ищем только полное совпадение (4/4)
         for (let idx = 0; idx < rightData.length; idx++) {
             const rightRow = rightData[idx];
             const rightVals = [
@@ -753,37 +754,58 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             
             // Проверяем полное совпадение (4/4)
             const isFullMatch = leftVals[0] === rightVals[0] &&
-                                leftVals[1] === rightVals[1] &&
-                                leftVals[2] === rightVals[2] &&
-                                leftVals[3] === rightVals[3];
+                               leftVals[1] === rightVals[1] &&
+                               leftVals[2] === rightVals[2] &&
+                               leftVals[3] === rightVals[3];
             
             if (isFullMatch) {
                 foundFullMatch = true;
                 fullMatchRow = rightRow;
                 fullMatchDisplay = rightDisplay;
-                break; // Нашли 4/4 — выходим
+                break; // Нашли 4/4 — сразу выходим, это идеальный результат
             }
-            
-            // Считаем частичное совпадение (для отчёта, если 4/4 не найдено)
-            let matchCount = 0;
-            const mismatches = [];
-            
-            for (let j = 0; j < 4; j++) {
-                if (leftVals[j] === rightVals[j]) {
-                    matchCount++;
-                } else {
-                    mismatches.push(fieldNames[j]);
+        }
+        
+        // ЕСЛИ ПОЛНОЕ СОВПАДЕНИЕ НЕ НАЙДЕНО, ищем лучшее частичное
+        if (!foundFullMatch) {
+            for (let idx = 0; idx < rightData.length; idx++) {
+                const rightRow = rightData[idx];
+                const rightVals = [
+                    normalize(rightRow[rName] || ''),
+                    normalize(rightRow[rMod] || ''),
+                    normalize(rightRow[rReg] || ''),
+                    normalize(rightRow[rSut] || '')
+                ];
+                
+                const rightDisplay = [
+                    rightRow[rName] || '',
+                    rightRow[rMod] || '',
+                    rightRow[rReg] || '',
+                    rightRow[rSut] || ''
+                ];
+                
+                // Считаем количество совпадений
+                let matchCount = 0;
+                const mismatches = [];
+                
+                for (let j = 0; j < 4; j++) {
+                    if (leftVals[j] === rightVals[j]) {
+                        matchCount++;
+                    } else {
+                        mismatches.push(fieldNames[j]);
+                    }
                 }
-            }
-            
-            if (matchCount > bestMatchCount) {
-                bestMatchCount = matchCount;
-                bestMatch = {
-                    rightRow: rightRow,
-                    rightDisplay: rightDisplay,
-                    mismatches: mismatches,
-                    matchCount: matchCount
-                };
+                
+                // Сохраняем лучшее совпадение (по количеству совпавших полей)
+                if (matchCount > bestMatchCount) {
+                    bestMatchCount = matchCount;
+                    bestMatch = {
+                        rightRow: rightRow,
+                        rightDisplay: rightDisplay,
+                        mismatches: mismatches,
+                        matchCount: matchCount
+                    };
+                }
             }
         }
         
@@ -803,7 +825,7 @@ document.getElementById('compareBtn').addEventListener('click', async function()
                 reason: ''
             });
         } else {
-            // ❌ Нет полного совпадения — ошибка
+            // ❌ Нет полного совпадения — показываем лучшее частичное
             errorCount++;
             
             let reason = '';
