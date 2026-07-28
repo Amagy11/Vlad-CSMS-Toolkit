@@ -14,7 +14,7 @@
         .main-subtitle { color: #6c757d; font-size: 15px; }
         
         .upload-zone {
-            border: 2.5px dashed #adb5bd;
+            border: 3px dashed #adb5bd;
             border-radius: 14px;
             padding: 35px 20px;
             text-align: center;
@@ -30,9 +30,55 @@
         }
         .upload-zone:hover { border-color: #0d6efd; background: #f8f9ff; transform: translateY(-2px); }
         .upload-zone.dragover { border-color: #0d6efd; background: #e7edff; transform: scale(1.01); }
-        .upload-zone.has-file { border-color: #198754; background: #f0fff4; }
         .upload-zone .icon { font-size: 48px; margin-bottom: 8px; }
         .upload-zone .hint { font-size: 14px; color: #6c757d; margin-top: 4px; }
+        
+        /* СТИЛИ ДЛЯ СОСТОЯНИЯ ЗАГРУЖЕНО */
+        .upload-zone.loaded {
+            border-color: #198754;
+            background: #f0fff4;
+            border-style: solid;
+        }
+        .upload-zone.loaded .icon { display: none; }
+        .upload-zone.loaded .upload-text { display: none; }
+        .upload-zone.loaded .hint { display: none; }
+        .upload-zone.loaded .loaded-info { display: block; }
+        
+        .upload-zone .loaded-info {
+            display: none;
+            text-align: center;
+            width: 100%;
+        }
+        .upload-zone .loaded-info .file-icon { font-size: 40px; display: block; margin-bottom: 6px; }
+        .upload-zone .loaded-info .file-name { font-weight: 600; font-size: 15px; color: #1a1a2e; word-break: break-all; }
+        .upload-zone .loaded-info .file-stats { font-size: 13px; color: #6c757d; margin-top: 4px; }
+        .upload-zone .loaded-info .file-badge { 
+            display: inline-block; 
+            background: #198754; 
+            color: #fff; 
+            padding: 2px 14px; 
+            border-radius: 20px; 
+            font-size: 12px;
+            margin-top: 6px;
+        }
+        .upload-zone .loaded-info .file-badge.warning { background: #ffc107; color: #000; }
+        .upload-zone .loaded-info .file-badge.danger { background: #dc3545; }
+        
+        .upload-zone .status-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e9ecef;
+            color: #6c757d;
+        }
+        .upload-zone.loaded .status-badge {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
         
         .file-info {
             margin-top: 12px;
@@ -40,12 +86,13 @@
             background: #f8f9fa;
             border-radius: 8px;
             font-size: 14px;
-            display: flex;
+            display: none;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 6px;
         }
+        .file-info.show { display: flex; }
         .file-info .badge-count { background: #0d6efd; color: #fff; border-radius: 20px; padding: 2px 12px; font-size: 12px; }
         
         .detected-cols {
@@ -58,6 +105,7 @@
             border-left: 4px solid #0d6efd;
             display: none;
         }
+        .detected-cols.show { display: block; }
         .detected-cols .col-item { display: inline-block; background: #e9ecef; padding: 2px 10px; border-radius: 12px; margin: 2px 4px 2px 0; }
         .detected-cols .col-item strong { color: #0d6efd; }
         .detected-cols .warning-text { color: #dc3545; font-weight: 600; }
@@ -85,6 +133,7 @@
             margin-top: 28px;
             display: none;
         }
+        .result-container.show { display: block; }
         .result-container .result-header {
             display: flex;
             justify-content: space-between;
@@ -141,7 +190,6 @@
             border-radius: 20px;
         }
         
-        /* Лоадер */
         .loading-overlay {
             display: none;
             position: fixed;
@@ -177,6 +225,13 @@
         
         .btn-download { border-radius: 10px; padding: 8px 22px; font-weight: 600; }
         
+        /* Анимация появления */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeInUp 0.4s ease; }
+        
         @media (max-width: 768px) {
             .upload-zone { min-height: 150px; padding: 20px; }
             .compare-btn { min-height: 60px; font-size: 16px; }
@@ -198,7 +253,6 @@
 </div>
 
 <div class="container-fluid">
-    <!-- Заголовок -->
     <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
         <div>
             <h1 class="main-title">🧠 Умное сравнение Excel</h1>
@@ -216,11 +270,19 @@
             <div class="summary-box">
                 <h5 style="font-weight:600;">📌 Эталонный файл <span class="badge bg-primary" style="font-size:11px;">1 файл</span></h5>
                 <div id="leftZone" class="upload-zone">
+                    <span class="status-badge" id="leftStatus">Ожидание</span>
                     <div class="icon">📄</div>
-                    <div style="font-weight:500;">Нажмите или перетащите файл</div>
+                    <div class="upload-text" style="font-weight:500;">Нажмите или перетащите файл</div>
                     <div class="hint">.xlsx или .xls</div>
+                    
+                    <!-- Информация о загруженном файле -->
+                    <div class="loaded-info">
+                        <span class="file-icon">✅</span>
+                        <div class="file-name" id="leftLoadedName">файл.xlsx</div>
+                        <div class="file-stats" id="leftLoadedStats">100 строк</div>
+                        <span class="file-badge" id="leftLoadedBadge">Готово</span>
+                    </div>
                 </div>
-                <div id="leftFileInfo" class="file-info" style="display:none;"></div>
                 <div id="leftColsInfo" class="detected-cols"></div>
                 <input type="file" id="leftInput" accept=".xlsx,.xls" style="display:none;" />
             </div>
@@ -231,11 +293,19 @@
             <div class="summary-box">
                 <h5 style="font-weight:600;">📂 Файлы для сравнения <span class="badge bg-success" style="font-size:11px;">несколько</span></h5>
                 <div id="rightZone" class="upload-zone">
+                    <span class="status-badge" id="rightStatus">Ожидание</span>
                     <div class="icon">📦</div>
-                    <div style="font-weight:500;">Нажмите или перетащите файлы</div>
+                    <div class="upload-text" style="font-weight:500;">Нажмите или перетащите файлы</div>
                     <div class="hint">.xlsx или .xls (можно несколько)</div>
+                    
+                    <!-- Информация о загруженных файлах -->
+                    <div class="loaded-info">
+                        <span class="file-icon">✅</span>
+                        <div class="file-name" id="rightLoadedName">файлы</div>
+                        <div class="file-stats" id="rightLoadedStats">100 строк</div>
+                        <span class="file-badge" id="rightLoadedBadge">Готово</span>
+                    </div>
                 </div>
-                <div id="rightFileInfo" class="file-info" style="display:none;"></div>
                 <div id="rightColsInfo" class="detected-cols"></div>
                 <input type="file" id="rightInput" accept=".xlsx,.xls" multiple style="display:none;" />
             </div>
@@ -246,6 +316,9 @@
             <button id="compareBtn" class="btn btn-primary compare-btn w-100" disabled>
                 🔍 Сравнить
             </button>
+            <div class="text-center mt-2" style="font-size:12px; color:#6c757d;" id="readyHint">
+                Загрузите файлы с обеих сторон
+            </div>
         </div>
     </div>
 
@@ -272,7 +345,6 @@
 <script>
 // ============================================================
 //  НАСТРОЙКА КЛЮЧЕВЫХ СЛОВ ДЛЯ ПОИСКА КОЛОНОК
-//  Добавляйте свои варианты названий сюда:
 // ============================================================
 const COLUMN_KEYWORDS = {
     'name': [
@@ -342,67 +414,31 @@ let leftData = null;
 let rightData = null;
 let leftHeaders = [];
 let rightHeaders = [];
-let leftFileName = '';
-let rightFileNames = [];
 let leftColMap = {};
 let rightColMap = {};
 
 // ============================================================
-//  ЗАГРУЗКА ФАЙЛОВ
+//  ЧТЕНИЕ ФАЙЛОВ
 // ============================================================
-function setupUpload(zoneId, inputId, isMultiple, onLoad) {
-    const zone = document.getElementById(zoneId);
-    const input = document.getElementById(inputId);
-
-    zone.addEventListener('click', () => input.click());
-
-    zone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        zone.classList.add('dragover');
-    });
-    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-    zone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        zone.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length) {
-            if (!isMultiple && files.length > 1) {
-                alert('Загрузите только 1 файл в эталон!');
-                return;
-            }
-            input.files = files;
-            input.dispatchEvent(new Event('change'));
-        }
-    });
-
-    input.addEventListener('change', function() {
-        if (this.files.length === 0) return;
-        onLoad(this.files);
-        this.value = '';
-    });
-}
-
 function readFiles(files) {
     return new Promise((resolve) => {
         const allData = [];
         let headers = [];
-        const fileNames = [];
         let completed = 0;
         
-        if (files.length === 0) {
-            resolve({ data: [], headers: [], fileNames: [] });
+        if (!files || files.length === 0) {
+            resolve({ data: [], headers: [] });
             return;
         }
         
         for (let file of files) {
-            fileNames.push(file.name);
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
                     
                     if (json.length > 0) {
                         if (headers.length === 0) {
@@ -416,7 +452,14 @@ function readFiles(files) {
                 
                 completed++;
                 if (completed === files.length) {
-                    resolve({ data: allData, headers, fileNames });
+                    resolve({ data: allData, headers: headers });
+                }
+            };
+            reader.onerror = function() {
+                console.error('Ошибка загрузки файла:', file.name);
+                completed++;
+                if (completed === files.length) {
+                    resolve({ data: allData, headers: headers });
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -425,27 +468,122 @@ function readFiles(files) {
 }
 
 // ============================================================
-//  ОБРАБОТЧИКИ ЗАГРУЗКИ
+//  ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ОТОБРАЖЕНИЯ
 // ============================================================
-setupUpload('leftZone', 'leftInput', false, async (files) => {
+function updateLeftUI(files, data, colMap) {
+    const zone = document.getElementById('leftZone');
+    const status = document.getElementById('leftStatus');
+    const loadedName = document.getElementById('leftLoadedName');
+    const loadedStats = document.getElementById('leftLoadedStats');
+    const loadedBadge = document.getElementById('leftLoadedBadge');
+    
+    if (data && data.length > 0) {
+        zone.classList.add('loaded');
+        status.textContent = '✅ Загружено';
+        loadedName.textContent = files[0].name;
+        loadedStats.textContent = `${data.length} строк`;
+        
+        const colCount = Object.keys(colMap).length;
+        if (colCount >= 4) {
+            loadedBadge.textContent = '✅ Все колонки найдены';
+            loadedBadge.className = 'file-badge';
+        } else {
+            loadedBadge.textContent = `⚠️ Найдено ${colCount}/4 колонок`;
+            loadedBadge.className = 'file-badge warning';
+        }
+    }
+}
+
+function updateRightUI(files, data, colMap) {
+    const zone = document.getElementById('rightZone');
+    const status = document.getElementById('rightStatus');
+    const loadedName = document.getElementById('rightLoadedName');
+    const loadedStats = document.getElementById('rightLoadedStats');
+    const loadedBadge = document.getElementById('rightLoadedBadge');
+    
+    if (data && data.length > 0) {
+        zone.classList.add('loaded');
+        status.textContent = '✅ Загружено';
+        const names = Array.from(files).map(f => f.name);
+        if (names.length === 1) {
+            loadedName.textContent = names[0];
+        } else {
+            loadedName.textContent = `${names.length} файлов: ${names.join(', ')}`;
+        }
+        loadedStats.textContent = `${data.length} строк`;
+        
+        const colCount = Object.keys(colMap).length;
+        if (colCount >= 4) {
+            loadedBadge.textContent = '✅ Все колонки найдены';
+            loadedBadge.className = 'file-badge';
+        } else {
+            loadedBadge.textContent = `⚠️ Найдено ${colCount}/4 колонок`;
+            loadedBadge.className = 'file-badge warning';
+        }
+    }
+}
+
+// ============================================================
+//  НАСТРОЙКА ЗАГРУЗКИ
+// ============================================================
+function setupUpload(zoneId, inputId, isMultiple, onLoad) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+
+    zone.addEventListener('click', function(e) {
+        e.preventDefault();
+        input.click();
+    });
+
+    zone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('dragover');
+    });
+    
+    zone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+    });
+    
+    zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            if (!isMultiple && files.length > 1) {
+                alert('Загрузите только 1 файл в эталон!');
+                return;
+            }
+            input.files = files;
+            input.dispatchEvent(new Event('change'));
+        }
+    });
+
+    input.addEventListener('change', async function() {
+        if (this.files.length === 0) return;
+        await onLoad(this.files);
+        this.value = '';
+    });
+}
+
+// Загрузка эталона
+setupUpload('leftZone', 'leftInput', false, async function(files) {
     const result = await readFiles(files);
     leftData = result.data;
     leftHeaders = result.headers;
-    leftFileName = files[0].name;
+    
+    if (leftData.length === 0) {
+        alert('Не удалось прочитать файл или он пуст.');
+        return;
+    }
     
     leftColMap = findColumns(leftHeaders);
-    
-    const infoDiv = document.getElementById('leftFileInfo');
-    infoDiv.style.display = 'flex';
-    infoDiv.innerHTML = `
-        <span>✅ <strong>${leftFileName}</strong> (${leftData.length} строк)</span>
-        <span class="badge-count">${Object.keys(leftColMap).length}/4 колонок</span>
-    `;
+    updateLeftUI(files, leftData, leftColMap);
     
     const colsDiv = document.getElementById('leftColsInfo');
-    colsDiv.style.display = 'block';
     const found = Object.entries(leftColMap);
     if (found.length > 0) {
+        colsDiv.classList.add('show');
         colsDiv.innerHTML = '🔍 Найдено: ' + found.map(([key, col]) => 
             `<span class="col-item"><strong>${COLUMN_NAMES[key]}</strong> → "${col}"</span>`
         ).join(' ');
@@ -454,29 +592,27 @@ setupUpload('leftZone', 'leftInput', false, async (files) => {
         colsDiv.innerHTML += ' <span class="warning-text">⚠️ Не все колонки найдены!</span>';
     }
     
-    document.getElementById('leftZone').classList.add('has-file');
     checkReady();
 });
 
-setupUpload('rightZone', 'rightInput', true, async (files) => {
+// Загрузка правых файлов
+setupUpload('rightZone', 'rightInput', true, async function(files) {
     const result = await readFiles(files);
     rightData = result.data;
     rightHeaders = result.headers;
-    rightFileNames = result.fileNames;
+    
+    if (rightData.length === 0) {
+        alert('Не удалось прочитать файлы или они пусты.');
+        return;
+    }
     
     rightColMap = findColumns(rightHeaders);
-    
-    const infoDiv = document.getElementById('rightFileInfo');
-    infoDiv.style.display = 'flex';
-    infoDiv.innerHTML = `
-        <span>✅ Загружено: <strong>${rightFileNames.join(', ')}</strong></span>
-        <span class="badge-count">${rightData.length} строк</span>
-    `;
+    updateRightUI(files, rightData, rightColMap);
     
     const colsDiv = document.getElementById('rightColsInfo');
-    colsDiv.style.display = 'block';
     const found = Object.entries(rightColMap);
     if (found.length > 0) {
+        colsDiv.classList.add('show');
         colsDiv.innerHTML = '🔍 Найдено: ' + found.map(([key, col]) => 
             `<span class="col-item"><strong>${COLUMN_NAMES[key]}</strong> → "${col}"</span>`
         ).join(' ');
@@ -485,19 +621,24 @@ setupUpload('rightZone', 'rightInput', true, async (files) => {
         colsDiv.innerHTML += ' <span class="warning-text">⚠️ Не все колонки найдены!</span>';
     }
     
-    document.getElementById('rightZone').classList.add('has-file');
     checkReady();
 });
 
 function checkReady() {
     const btn = document.getElementById('compareBtn');
+    const hint = document.getElementById('readyHint');
+    
     const leftOk = leftData && leftData.length > 0 && Object.keys(leftColMap).length >= 4;
     const rightOk = rightData && rightData.length > 0 && Object.keys(rightColMap).length >= 4;
-    btn.disabled = !(leftOk && rightOk);
-    if (!btn.disabled) {
-        btn.title = 'Готово к сравнению!';
+    
+    if (leftOk && rightOk) {
+        btn.disabled = false;
+        hint.textContent = '✅ Готово к сравнению!';
+        hint.style.color = '#198754';
     } else {
-        btn.title = 'Загрузите файлы с полным набором колонок (4 из 4)';
+        btn.disabled = true;
+        hint.textContent = '⏳ Загрузите файлы с обеих сторон (нужны все 4 колонки)';
+        hint.style.color = '#6c757d';
     }
 }
 
@@ -519,7 +660,6 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         return;
     }
     
-    // Лоадер
     document.getElementById('loadingOverlay').classList.add('active');
     document.getElementById('loadingText').textContent = `Сравнение ${leftData.length} строк...`;
     await new Promise(r => setTimeout(r, 80));
@@ -536,7 +676,6 @@ document.getElementById('compareBtn').addEventListener('click', async function()
     const rReg = rightColMap['registry'];
     const rSut = rightColMap['sut'];
     
-    // Индекс правых данных
     const rightIndex = new Map();
     rightData.forEach((row, idx) => {
         const key = [
@@ -549,7 +688,6 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         rightIndex.get(key).push(idx);
     });
     
-    // Сравнение
     const results = [];
     let okCount = 0, errorCount = 0, warningCount = 0;
     
@@ -571,7 +709,6 @@ document.getElementById('compareBtn').addEventListener('click', async function()
                 'Причина': ''
             });
         } else {
-            let bestMatch = null;
             let maxMatchCount = 0;
             let bestMismatches = [];
             
@@ -629,7 +766,8 @@ document.getElementById('compareBtn').addEventListener('click', async function()
 // ============================================================
 function showResults(results, okCount, errorCount, warningCount) {
     const container = document.getElementById('resultContainer');
-    container.style.display = 'block';
+    container.classList.add('show');
+    container.classList.add('fade-in');
     
     document.getElementById('statsText').innerHTML = `
         <span class="badge bg-success stats-badge">✅ ${okCount}</span>
@@ -662,6 +800,9 @@ function showResults(results, okCount, errorCount, warningCount) {
     }).join('');
     
     window._reportData = { results, allHeaders: [...leftCols, 'Результат', 'Причина'] };
+    
+    // Скролл к результатам
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ============================================================
@@ -686,8 +827,6 @@ document.getElementById('downloadBtn').addEventListener('click', function() {
 });
 
 console.log('🧠 Умный сравнитель Excel загружен!');
-console.log('Ключевые слова для поиска колонок:', COLUMN_KEYWORDS);
-console.log('📌 Добавляйте свои варианты названий в COLUMN_KEYWORDS');
 </script>
 </body>
 </html>
