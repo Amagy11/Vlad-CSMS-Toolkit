@@ -706,7 +706,7 @@ document.getElementById('filterAllBtn').addEventListener('click', function() {
 });
 
 // ============================================================
-//  ⭐ ОСНОВНОЕ СРАВНЕНИЕ (КРАТКАЯ ПРИЧИНА БЕЗ ПЕРЕЧИСЛЕНИЙ)
+//  ⭐ ОСНОВНОЕ СРАВНЕНИЕ (ПОЛНЫЙ ПЕРЕБОР ВСЕХ СТРОК)
 // ============================================================
 document.getElementById('compareBtn').addEventListener('click', async function() {
     if (!leftData || !rightData) return;
@@ -760,11 +760,14 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         const docValue = lDoc ? (leftRow[lDoc] || '') : '';
         const stickerValue = lSticker ? (leftRow[lSticker] || '') : '';
         
-        // Ищем полное совпадение (4/4)
-        let found = false;
-        let matchedRightRow = null;
+        // ============================================================
+        //  ПОЛНЫЙ ПЕРЕБОР ВСЕХ СТРОК СПРАВОЧНИКА
+        // ============================================================
+        let bestMatch = null;
+        let bestMatchCount = -1;
         let allRightRows = [];
-        let mismatchedFields = [];
+        let foundFullMatch = false;
+        let fullMatchRow = null;
         
         for (let idx = 0; idx < rightData.length; idx++) {
             const rightRow = rightData[idx];
@@ -775,41 +778,65 @@ document.getElementById('compareBtn').addEventListener('click', async function()
                 normalize(rightRow[rSut] || '')
             ];
             
+            const rightDisplay = [
+                rightRow[rName] || '',
+                rightRow[rMod] || '',
+                rightRow[rReg] || '',
+                rightRow[rSut] || ''
+            ];
+            
             allRightRows.push({
                 row: rightRow,
                 vals: rightVals,
-                display: [
-                    rightRow[rName] || '',
-                    rightRow[rMod] || '',
-                    rightRow[rReg] || '',
-                    rightRow[rSut] || ''
-                ]
+                display: rightDisplay
             });
             
-            // Проверяем полное совпадение
-            const allMatch = leftVals[0] === rightVals[0] &&
-                            leftVals[1] === rightVals[1] &&
-                            leftVals[2] === rightVals[2] &&
-                            leftVals[3] === rightVals[3];
+            // Проверяем полное совпадение (4/4)
+            const isFullMatch = leftVals[0] === rightVals[0] &&
+                                leftVals[1] === rightVals[1] &&
+                                leftVals[2] === rightVals[2] &&
+                                leftVals[3] === rightVals[3];
             
-            if (allMatch) {
-                found = true;
-                matchedRightRow = rightRow;
-                break;
+            if (isFullMatch) {
+                foundFullMatch = true;
+                fullMatchRow = rightRow;
+                break; // Можно выйти, так как нашли идеальное совпадение
+            }
+            
+            // Считаем частичное совпадение
+            let matchCount = 0;
+            const mismatches = [];
+            
+            for (let j = 0; j < 4; j++) {
+                if (leftVals[j] === rightVals[j]) {
+                    matchCount++;
+                } else {
+                    mismatches.push(fieldNames[j]);
+                }
+            }
+            
+            if (matchCount > bestMatchCount) {
+                bestMatchCount = matchCount;
+                bestMatch = {
+                    rightRow: rightRow,
+                    rightDisplay: rightDisplay,
+                    mismatches: mismatches,
+                    matchCount: matchCount
+                };
             }
         }
         
-        if (found && matchedRightRow) {
-            // ✅ Найдено полное совпадение
+        if (foundFullMatch && fullMatchRow) {
+            // ✅ Найдено полное совпадение (4/4)
             okCount++;
             const rightDisplay = [
-                matchedRightRow[rName] || '',
-                matchedRightRow[rMod] || '',
-                matchedRightRow[rReg] || '',
-                matchedRightRow[rSut] || ''
+                fullMatchRow[rName] || '',
+                fullMatchRow[rMod] || '',
+                fullMatchRow[rReg] || '',
+                fullMatchRow[rSut] || ''
             ];
-            const rDocValue = rDoc ? (matchedRightRow[rDoc] || '') : '';
-            const rStickerValue = rSticker ? (matchedRightRow[rSticker] || '') : '';
+            const rDocValue = rDoc ? (fullMatchRow[rDoc] || '') : '';
+            const rStickerValue = rSticker ? (fullMatchRow[rSticker] || '') : '';
             
             results.push({
                 rowNum: i + 1,
@@ -820,53 +847,12 @@ document.getElementById('compareBtn').addEventListener('click', async function()
                 status: '✅ Совпадает',
                 reason: '',
                 isError: false,
-                allRightRows: allRightRows,
-                mismatchedFields: []
+                allRightRows: allRightRows
             });
         } else {
-            // ❌ Ошибка: нет полного совпадения
+            // ❌ Нет полного совпадения
             errorCount++;
             
-            // Определяем, какие поля не совпадают (ищем лучшее совпадение)
-            let bestMatch = null;
-            let bestMatchCount = -1;
-            
-            for (let idx = 0; idx < rightData.length; idx++) {
-                const rightRow = rightData[idx];
-                const rightVals = [
-                    normalize(rightRow[rName] || ''),
-                    normalize(rightRow[rMod] || ''),
-                    normalize(rightRow[rReg] || ''),
-                    normalize(rightRow[rSut] || '')
-                ];
-                
-                let matchCount = 0;
-                const mismatches = [];
-                
-                for (let j = 0; j < 4; j++) {
-                    if (leftVals[j] === rightVals[j]) {
-                        matchCount++;
-                    } else {
-                        mismatches.push(fieldNames[j]);
-                    }
-                }
-                
-                if (matchCount > bestMatchCount) {
-                    bestMatchCount = matchCount;
-                    bestMatch = {
-                        rightRow: rightRow,
-                        rightDisplay: [
-                            rightRow[rName] || '',
-                            rightRow[rMod] || '',
-                            rightRow[rReg] || '',
-                            rightRow[rSut] || ''
-                        ],
-                        mismatches: mismatches
-                    };
-                }
-            }
-            
-            // Короткая причина — только перечисление полей
             let reason = '';
             if (bestMatch && bestMatch.mismatches.length > 0) {
                 reason = 'Не совпадает: ' + bestMatch.mismatches.join(', ');
@@ -883,8 +869,7 @@ document.getElementById('compareBtn').addEventListener('click', async function()
                 status: '❌ Не найдено',
                 reason: reason,
                 isError: true,
-                allRightRows: allRightRows,
-                mismatchedFields: bestMatch ? bestMatch.mismatches : []
+                allRightRows: allRightRows
             });
         }
     }
@@ -952,7 +937,6 @@ function showResults(results, okCount, errorCount) {
     
     document.getElementById('totalCount').textContent = results.length;
     
-    // Обработчики для кнопок "Подробнее"
     document.querySelectorAll('.btn-detail').forEach(btn => {
         btn.addEventListener('click', function() {
             const index = parseInt(this.dataset.index);
@@ -989,7 +973,6 @@ function showDetail(index) {
     
     for (let i = 0; i < 4; i++) {
         const leftVal = res.leftDisplay[i] || '(пусто)';
-        // Ищем, есть ли такое значение в справочнике
         let foundInRight = false;
         let rightVariants = [];
         for (let row of res.allRightRows || []) {
@@ -997,7 +980,6 @@ function showDetail(index) {
             if (rVal) rightVariants.push(rVal);
             if (rVal === leftVal) foundInRight = true;
         }
-        // Уникальные варианты
         rightVariants = [...new Set(rightVariants)];
         
         const isMatch = foundInRight;
@@ -1074,8 +1056,8 @@ document.getElementById('downloadBtn').addEventListener('click', function() {
     XLSX.writeFile(wb, 'comparison_result.xlsx');
 });
 
-console.log('✅ Сайт готов! В причине кратко: "Не совпадает: Модификация, СУТ"');
-console.log('🔍 Кнопка "Подробнее" показывает все варианты в модалке');
+console.log('✅ Сайт готов! Теперь проверяет ВСЕ строки справочника.');
+console.log('🔍 Если есть 4/4 — находит, даже если это не первый вариант.');
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
