@@ -58,7 +58,7 @@
             border: 1px solid #dee2e6; 
         }
         .table-wrap table { 
-            font-size: 13px; 
+            font-size: 12px; 
             margin-bottom: 0; 
             width: 100%;
             table-layout: fixed;
@@ -70,24 +70,27 @@
             color: #fff; 
             z-index: 10; 
             padding: 8px 10px; 
-            font-size: 12px; 
+            font-size: 11px; 
             white-space: nowrap; 
             text-align: center; 
         }
         .table-wrap td { 
             padding: 6px 10px; 
             vertical-align: middle; 
-            font-size: 12px; 
+            font-size: 11px; 
             word-wrap: break-word;
             white-space: normal;
-            max-width: 300px;
         }
-        .table-wrap td:nth-child(2) { max-width: 250px; }
-        .table-wrap td:nth-child(3) { max-width: 300px; background: #f8f9fa; }
+        .table-wrap td:nth-child(2) { max-width: 130px; }
+        .table-wrap td:nth-child(3) { max-width: 180px; background: #f8f9fa; }
+        .table-wrap td:nth-child(4) { max-width: 100px; }
+        .table-wrap td:nth-child(5) { max-width: 100px; }
+        .table-wrap td:nth-child(6) { max-width: 90px; }
+        .table-wrap td:nth-child(7) { max-width: 170px; }
         .table-wrap tr:hover td { background: #f8f9ff; }
         .table-wrap td:nth-child(3):hover { background: #e7edff; }
         
-        .badge-status { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+        .badge-status { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
         .badge-ok { background: #d1e7dd; color: #0f5132; }
         .badge-error { background: #f8d7da; color: #842029; }
         .badge-warning { background: #fff3cd; color: #856404; }
@@ -130,11 +133,15 @@
         .detail-match { color: #198754; }
         .detail-mismatch { color: #dc3545; }
         
+        .reason-detail { font-size: 11px; color: #495057; }
+        .reason-detail .expected { color: #0d6efd; font-weight: 600; }
+        .reason-detail .actual { color: #dc3545; }
+        
         @media (max-width: 768px) {
             .upload-zone { min-height: 120px; padding: 14px; }
             .compare-btn { min-height: 50px; font-size: 14px; }
             .summary-box { padding: 12px; }
-            .table-wrap td { font-size: 11px; padding: 4px 6px; max-width: 120px; }
+            .table-wrap td { font-size: 10px; padding: 4px 6px; max-width: 80px; }
             body { padding: 10px; }
         }
     </style>
@@ -233,11 +240,13 @@
                 <table class="table table-bordered table-striped" id="resultTable">
                     <thead>
                         <tr>
-                            <th style="min-width:30px; width:5%;">№</th>
-                            <th style="width:25%;">📌 Проверяемые данные</th>
-                            <th style="width:40%;">📂 Найдено в эталоне</th>
-                            <th style="min-width:80px; width:10%;">Статус</th>
-                            <th style="min-width:150px; width:20%;">Причина</th>
+                            <th style="min-width:30px; width:3%;">№</th>
+                            <th style="width:12%;">📌 Проверяемые данные</th>
+                            <th style="width:20%;">📂 Найдено в эталоне</th>
+                            <th style="width:10%;">📄 Номер документа</th>
+                            <th style="width:10%;">🏷️ № наклейки</th>
+                            <th style="min-width:80px; width:8%;">Статус</th>
+                            <th style="min-width:150px; width:17%;">Причина</th>
                         </tr>
                     </thead>
                     <tbody id="resultBody"></tbody>
@@ -298,6 +307,19 @@ const SEARCH_RULES = {
         keywords: ['номер сут', 'сут', 'идентификационный номер', 'идентификатор', 'заводской номер', 'серийный номер'],
         displayName: 'номер СУТ',
         exclude: ['срок', 'действие', 'годен', 'годности', 'действителен']
+    },
+    // Дополнительные колонки для отображения (НЕ участвуют в сравнении)
+    'document': {
+        keywords: ['номер документа', 'документ', '№ документа', 'номер док'],
+        displayName: 'Номер документа',
+        exclude: [],
+        isExtra: true
+    },
+    'sticker': {
+        keywords: ['наклейка', '№ наклейки', 'номер наклейки', 'стикер'],
+        displayName: '№ наклейки',
+        exclude: [],
+        isExtra: true
     }
 };
 
@@ -312,7 +334,7 @@ let leftFileName = '';
 let rightFileNames = [];
 
 // ============================================================
-//  ⭐ ГЛАВНОЕ: ОЧИСТКА ДАННЫХ (ПРОЧЕРК = ПУСТОТА)
+//  ⭐ ОЧИСТКА ДАННЫХ (ПРОЧЕРК = ПУСТОТА)
 // ============================================================
 function normalize(val) {
     if (val === null || val === undefined) return '';
@@ -471,13 +493,29 @@ function updateRightUI(files, data, colMap) {
 
 function showColsInfo(divId, colMap) {
     const div = document.getElementById(divId);
-    const found = Object.entries(colMap);
+    const mainKeys = ['type', 'modification', 'registry', 'sut'];
+    const extraKeys = ['document', 'sticker'];
+    const foundMain = mainKeys.filter(k => colMap[k]);
+    const foundExtra = extraKeys.filter(k => colMap[k]);
+    const found = [...foundMain, ...foundExtra];
+    
     if (found.length > 0) {
         div.classList.add('show');
-        div.innerHTML = '🔍 Найдено: ' + found.map(([key, col]) => 
-            `<span class="col-item"><strong>${SEARCH_RULES[key].displayName}</strong> → "${col}"</span>`
+        let html = '🔍 Найдено: ';
+        html += foundMain.map(key => 
+            `<span class="col-item"><strong>${SEARCH_RULES[key].displayName}</strong> → "${colMap[key]}"</span>`
         ).join(' ');
-        if (found.length < 4) div.innerHTML += ' <span class="warning-text">⚠️ Не все колонки найдены!</span>';
+        if (foundExtra.length > 0) {
+            html += ' | Доп.: ' + foundExtra.map(key => 
+                `<span class="col-item" style="background:#d1e7dd;"><strong>${SEARCH_RULES[key].displayName}</strong> → "${colMap[key]}"</span>`
+            ).join(' ');
+        }
+        if (foundMain.length < 4) {
+            const missing = mainKeys.filter(k => !colMap[k]);
+            html += ' <span class="warning-text">⚠️ Не найдены основные колонки: ' + 
+                missing.map(k => SEARCH_RULES[k].displayName).join(', ') + '</span>';
+        }
+        div.innerHTML = html;
     }
 }
 
@@ -534,8 +572,9 @@ setupUpload('rightZone', 'rightInput', true, async function(files) {
 function checkReady() {
     const btn = document.getElementById('compareBtn');
     const hint = document.getElementById('readyHint');
-    const leftOk = leftData && leftData.length > 0 && Object.keys(leftColMap).length >= 4;
-    const rightOk = rightData && rightData.length > 0 && Object.keys(rightColMap).length >= 4;
+    const mainKeys = ['type', 'modification', 'registry', 'sut'];
+    const leftOk = leftData && leftData.length > 0 && mainKeys.every(k => leftColMap[k]);
+    const rightOk = rightData && rightData.length > 0 && mainKeys.every(k => rightColMap[k]);
     
     if (leftOk && rightOk) {
         btn.disabled = false;
@@ -543,7 +582,7 @@ function checkReady() {
         hint.className = 'ready-hint ready';
     } else {
         btn.disabled = true;
-        hint.textContent = '⏳ Загрузите файлы с обеих сторон (нужны все 4 колонки)';
+        hint.textContent = '⏳ Загрузите файлы с обеих сторон (нужны все 4 основные колонки)';
         hint.className = 'ready-hint';
     }
 }
@@ -557,7 +596,7 @@ function showPreview(data, colMap, title) {
         return;
     }
     
-    const order = ['type', 'modification', 'registry', 'sut'];
+    const order = ['type', 'modification', 'registry', 'sut', 'document', 'sticker'];
     const displayCols = order.filter(k => colMap[k]);
     const displayNames = displayCols.map(k => SEARCH_RULES[k].displayName);
     
@@ -601,10 +640,11 @@ document.getElementById('rightPreviewBtn').addEventListener('click', function() 
 document.getElementById('compareBtn').addEventListener('click', async function() {
     if (!leftData || !rightData) return;
     
-    const missingLeft = Object.keys(SEARCH_RULES).filter(k => !leftColMap[k]);
-    const missingRight = Object.keys(SEARCH_RULES).filter(k => !rightColMap[k]);
+    const mainKeys = ['type', 'modification', 'registry', 'sut'];
+    const missingLeft = mainKeys.filter(k => !leftColMap[k]);
+    const missingRight = mainKeys.filter(k => !rightColMap[k]);
     if (missingLeft.length || missingRight.length) {
-        alert('Не найдены все колонки! Проверьте названия.');
+        alert('Не найдены все основные колонки! Проверьте названия.');
         return;
     }
     
@@ -616,11 +656,15 @@ document.getElementById('compareBtn').addEventListener('click', async function()
     const lMod = leftColMap['modification'];
     const lReg = leftColMap['registry'];
     const lSut = leftColMap['sut'];
+    const lDoc = leftColMap['document'] || null;
+    const lSticker = leftColMap['sticker'] || null;
     
     const rName = rightColMap['type'];
     const rMod = rightColMap['modification'];
     const rReg = rightColMap['registry'];
     const rSut = rightColMap['sut'];
+    const rDoc = rightColMap['document'] || null;
+    const rSticker = rightColMap['sticker'] || null;
     
     // Индекс эталона
     const exactIndex = new Map();
@@ -662,6 +706,10 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             leftRow[lSut] || ''
         ];
         
+        // Дополнительные колонки
+        const docValue = lDoc ? (leftRow[lDoc] || '') : '';
+        const stickerValue = lSticker ? (leftRow[lSticker] || '') : '';
+        
         const exactKey = leftVals.join('|||');
         const exactMatch = exactIndex.get(exactKey);
         
@@ -673,11 +721,16 @@ document.getElementById('compareBtn').addEventListener('click', async function()
                 rightRow[rReg] || '',
                 rightRow[rSut] || ''
             ];
+            const rDocValue = rDoc ? (rightRow[rDoc] || '') : '';
+            const rStickerValue = rSticker ? (rightRow[rSticker] || '') : '';
+            
             okCount++;
             results.push({
                 rowNum: i + 1,
                 leftDisplay: leftDisplay,
                 rightDisplay: rightDisplay,
+                doc: docValue || rDocValue,
+                sticker: stickerValue || rStickerValue,
                 status: '✅ Найдено',
                 reason: 'Полное совпадение всех полей'
             });
@@ -692,6 +745,9 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         let bestMatchCount = 0;
         let bestMismatches = [];
         let bestRightDisplay = ['', '', '', ''];
+        let bestMismatchDetails = [];
+        let bestRDocValue = '';
+        let bestRStickerValue = '';
         
         for (let idx of candidates) {
             const rightRow = rightData[idx];
@@ -703,11 +759,18 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             ];
             let matchCount = 0;
             const mismatches = [];
+            const details = [];
             for (let j = 0; j < 4; j++) {
-                if (leftVals[j] === rightVals[j]) {
+                const isMatch = leftVals[j] === rightVals[j];
+                if (isMatch) {
                     matchCount++;
                 } else {
                     mismatches.push(fieldNames[j]);
+                    details.push({
+                        field: fieldNames[j],
+                        left: leftDisplay[j] || '(пусто)',
+                        right: rightRow[Object.values(rightColMap)[j]] || '(пусто)'
+                    });
                 }
             }
             if (matchCount > bestMatchCount) {
@@ -719,6 +782,9 @@ document.getElementById('compareBtn').addEventListener('click', async function()
                     rightRow[rReg] || '',
                     rightRow[rSut] || ''
                 ];
+                bestMismatchDetails = details;
+                bestRDocValue = rDoc ? (rightRow[rDoc] || '') : '';
+                bestRStickerValue = rSticker ? (rightRow[rSticker] || '') : '';
                 if (matchCount === 4) break;
             }
         }
@@ -726,11 +792,17 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         let status, reason;
         if (bestMatchCount >= 3) {
             status = '⚠️ Частично';
-            reason = `Не совпадает: ${bestMismatches.join(', ')}`;
+            let detailStr = bestMismatchDetails.map(d => 
+                `${d.field}: должно быть "${d.right}"`
+            ).join('; ');
+            reason = `Не совпадает: ${detailStr}`;
             warningCount++;
         } else if (bestMatchCount > 0) {
             status = '❌ Не найдено';
-            reason = `Совпадает только ${bestMatchCount} из 4 полей`;
+            let detailStr = bestMismatchDetails.map(d => 
+                `${d.field}: должно быть "${d.right}"`
+            ).join('; ');
+            reason = `Совпадает только ${bestMatchCount} из 4 полей. ${detailStr}`;
             errorCount++;
         } else {
             status = '❌ Не найдено';
@@ -742,6 +814,8 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             rowNum: i + 1,
             leftDisplay: leftDisplay,
             rightDisplay: bestRightDisplay,
+            doc: docValue || bestRDocValue,
+            sticker: stickerValue || bestRStickerValue,
             status: status,
             reason: reason
         });
@@ -796,6 +870,8 @@ function showResults(results, okCount, errorCount, warningCount) {
             <td>${res.rowNum}</td>
             <td style="font-size:11px;">${leftStr}</td>
             <td style="font-size:11px;">${rightStr}</td>
+            <td style="font-size:11px;">${res.doc || '-'}</td>
+            <td style="font-size:11px;">${res.sticker || '-'}</td>
             <td><span class="badge-status ${badgeClass}">${res.status}</span></td>
             <td style="font-size:11px;">${res.reason}</td>
         </tr>`;
@@ -819,6 +895,8 @@ document.getElementById('downloadBtn').addEventListener('click', function() {
         '№',
         ...fieldNames.map(n => `Проверяемый: ${n}`),
         ...fieldNames.map(n => `Эталон: ${n}`),
+        'Номер документа',
+        '№ наклейки',
         'Статус',
         'Причина'
     ];
@@ -829,6 +907,8 @@ document.getElementById('downloadBtn').addEventListener('click', function() {
             res.rowNum,
             ...res.leftDisplay,
             ...res.rightDisplay,
+            res.doc || '',
+            res.sticker || '',
             res.status,
             res.reason
         ];
@@ -842,6 +922,7 @@ document.getElementById('downloadBtn').addEventListener('click', function() {
 });
 
 console.log('✅ Сайт готов! Прочерк (-) приравнивается к пустой ячейке.');
+console.log('📄 Добавлены колонки: Номер документа и № наклейки');
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
