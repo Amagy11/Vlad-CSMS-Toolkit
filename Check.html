@@ -11,6 +11,7 @@
         body { background: #f0f2f5; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .main-title { font-weight: 700; color: #1a1a2e; font-size: 24px; }
         .main-subtitle { color: #6c757d; font-size: 15px; }
+        
         .upload-zone {
             border: 3px dashed #adb5bd;
             border-radius: 14px;
@@ -44,28 +45,44 @@
         .upload-zone .loaded-info .file-badge.warning { background: #ffc107; color: #000; }
         .upload-zone .status-badge { position: absolute; top: 8px; right: 10px; padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #e9ecef; color: #6c757d; }
         .upload-zone.loaded .status-badge { background: #d1e7dd; color: #0f5132; }
+        
         .detected-cols { font-size: 12px; color: #495057; margin-top: 8px; padding: 8px 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #0d6efd; display: none; }
         .detected-cols.show { display: block; }
         .detected-cols .col-item { display: inline-block; background: #e9ecef; padding: 1px 8px; border-radius: 10px; margin: 1px 3px 1px 0; font-size: 11px; }
         .detected-cols .col-item strong { color: #0d6efd; }
         .detected-cols .warning-text { color: #dc3545; font-weight: 600; }
+        
         .summary-box { background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 100%; }
         .compare-btn { height: 100%; min-height: 70px; font-size: 17px; font-weight: 600; border-radius: 12px; transition: all 0.3s; }
         .compare-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .compare-btn:not(:disabled):hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(13,110,253,0.3); }
+        
         .result-container { margin-top: 24px; display: none; }
         .result-container.show { display: block; }
-        .result-container .result-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
-        .result-table-wrap { max-height: 500px; overflow-y: auto; border-radius: 8px; border: 1px solid #dee2e6; }
+        .result-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+        
+        .result-table-wrap { max-height: 600px; overflow-y: auto; border-radius: 8px; border: 1px solid #dee2e6; }
         .result-table-wrap table { font-size: 12px; margin-bottom: 0; }
-        .result-table-wrap th { position: sticky; top: 0; background: #1a1a2e; color: #fff; z-index: 10; white-space: nowrap; padding: 8px 10px; font-size: 12px; }
-        .result-table-wrap td { padding: 6px 10px; vertical-align: middle; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+        .result-table-wrap th { 
+            position: sticky; top: 0; background: #1a1a2e; color: #fff; z-index: 10; 
+            white-space: nowrap; padding: 8px 10px; font-size: 12px; text-align: center;
+        }
+        .result-table-wrap td { padding: 6px 10px; vertical-align: middle; font-size: 12px; }
         .result-table-wrap tr:hover td { background: #f8f9ff; }
+        
+        .match-ok { background: #d1e7dd; color: #0f5132; font-weight: 600; }
+        .match-error { background: #f8d7da; color: #842029; font-weight: 600; }
+        .match-warning { background: #fff3cd; color: #856404; font-weight: 600; }
+        
         .reason-badge { display: inline-block; padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
         .reason-ok { background: #d1e7dd; color: #0f5132; }
         .reason-error { background: #f8d7da; color: #842029; }
         .reason-warning { background: #fff3cd; color: #856404; }
+        
         .stats-badge { font-size: 12px; padding: 4px 14px; border-radius: 20px; }
+        .compare-detail { font-size: 11px; color: #495057; }
+        .compare-detail .highlight { background: #fff3cd; padding: 1px 4px; border-radius: 3px; }
+        
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
         .loading-overlay.active { display: flex; }
         .loading-box { background: #fff; padding: 30px 45px; border-radius: 14px; text-align: center; min-width: 280px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
@@ -73,15 +90,19 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-box .loading-title { font-size: 17px; font-weight: 600; margin-bottom: 2px; }
         .loading-box .loading-sub { color: #6c757d; font-size: 13px; }
+        
         .btn-download { border-radius: 8px; padding: 6px 18px; font-weight: 600; font-size: 13px; }
         .ready-hint { text-align: center; font-size: 12px; color: #6c757d; margin-top: 6px; }
         .ready-hint.ready { color: #198754; font-weight: 600; }
-        .log-toggle { font-size: 12px; cursor: pointer; color: #0d6efd; text-decoration: underline; }
+        
+        .badge-match { background: #198754; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px; }
+        .badge-mismatch { background: #dc3545; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px; }
+        
         @media (max-width: 768px) {
             .upload-zone { min-height: 140px; padding: 16px; }
             .compare-btn { min-height: 50px; font-size: 15px; }
             .summary-box { padding: 14px; }
-            .result-table-wrap td { max-width: 100px; font-size: 11px; }
+            .result-table-wrap td { font-size: 11px; padding: 4px 6px; }
             body { padding: 10px; }
         }
     </style>
@@ -101,7 +122,7 @@
     <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
         <div>
             <h1 class="main-title">🧠 Умное сравнение Excel/CSV</h1>
-            <p class="main-subtitle">Поддерживает .xlsx, .xls и .csv файлы</p>
+            <p class="main-subtitle">С детальным отображением: что с чем сравнивалось</p>
         </div>
         <div class="ms-auto">
             <span class="badge bg-primary" style="font-size: 12px;">⬅️ 1 эталон</span>
@@ -155,12 +176,10 @@
                 🔍 Сравнить
             </button>
             <div class="ready-hint" id="readyHint">⏳ Загрузите файлы с обеих сторон</div>
-            <div style="text-align:center; margin-top:6px;">
-                <span class="log-toggle" id="logToggle">📋 Показать логи в консоли</span>
-            </div>
         </div>
     </div>
 
+    <!-- РЕЗУЛЬТАТЫ С ДЕТАЛЬНЫМ СРАВНЕНИЕМ -->
     <div class="result-container" id="resultContainer">
         <div class="summary-box">
             <div class="result-header">
@@ -171,9 +190,18 @@
                 </div>
             </div>
             <div class="result-table-wrap">
-                <table class="table table-bordered table-striped table-hover" id="resultTable">
-                    <thead></thead>
-                    <tbody></tbody>
+                <table class="table table-bordered table-striped" id="resultTable">
+                    <thead>
+                        <tr>
+                            <th style="min-width:60px;">№</th>
+                            <th>Поле</th>
+                            <th style="min-width:150px;">📌 Значение в эталоне</th>
+                            <th style="min-width:150px;">📂 Найдено в правых файлах</th>
+                            <th style="min-width:80px;">Статус</th>
+                            <th style="min-width:200px;">Причина</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultBody"></tbody>
                 </table>
             </div>
         </div>
@@ -182,28 +210,7 @@
 
 <script>
 // ============================================================
-//  ЛОГИРОВАНИЕ
-// ============================================================
-let enableLogs = true;
-
-document.getElementById('logToggle').addEventListener('click', function() {
-    enableLogs = !enableLogs;
-    this.textContent = enableLogs ? '📋 Скрыть логи' : '📋 Показать логи в консоли';
-    console.log(enableLogs ? '✅ Логи включены' : '❌ Логи отключены');
-});
-
-function log(message, data) {
-    if (enableLogs) {
-        if (data !== undefined) {
-            console.log(message, data);
-        } else {
-            console.log(message);
-        }
-    }
-}
-
-// ============================================================
-//  НАСТРОЙКА ПОИСКА КОЛОНОК
+//  КЛЮЧЕВЫЕ СЛОВА ДЛЯ ПОИСКА КОЛОНОК
 // ============================================================
 const COLUMN_KEYWORDS = {
     'name': [
@@ -240,18 +247,13 @@ let leftHeaders = [];
 let rightHeaders = [];
 let leftColMap = {};
 let rightColMap = {};
-let leftFileName = '';
-let rightFileNames = [];
 
 // ============================================================
 //  ОЧИСТКА ДАННЫХ
 // ============================================================
 function normalize(val) {
     if (val === null || val === undefined) return '';
-    
-    let result = String(val);
-    
-    result = result
+    let result = String(val)
         .trim()
         .toLowerCase()
         .replace(/\s+/g, ' ')
@@ -265,22 +267,15 @@ function normalize(val) {
         .replace(/\\t/g, ' ')
         .replace(/ +/g, ' ')
         .trim();
-    
     if (/^[\d\s\-]+$/.test(result)) {
-        result = result.replace(/\s/g, '');
-        result = result.replace(/-/g, '');
+        result = result.replace(/\s/g, '').replace(/-/g, '');
     }
-    
     if (result === '' && !isNaN(parseFloat(val))) {
         result = String(val).trim();
     }
-    
     return result;
 }
 
-// ============================================================
-//  ОПРЕДЕЛЕНИЕ ФОРМАТА
-// ============================================================
 function getFileFormat(filename) {
     const ext = filename.split('.').pop().toLowerCase();
     if (ext === 'csv') return 'csv';
@@ -296,29 +291,19 @@ function readFiles(files) {
         const allData = [];
         let headers = [];
         let completed = 0;
-        
         if (!files || files.length === 0) {
             resolve({ data: [], headers: [] });
             return;
         }
-        
-        log('📂 Чтение файлов:', Array.from(files).map(f => f.name));
-        
         for (let file of files) {
             const reader = new FileReader();
             const format = getFileFormat(file.name);
-            
             reader.onload = function(e) {
                 try {
                     let json = [];
-                    
                     if (format === 'csv') {
                         const text = e.target.result;
-                        const workbook = XLSX.read(text, { 
-                            type: 'string',
-                            raw: true,
-                            codepage: 65001
-                        });
+                        const workbook = XLSX.read(text, { type: 'string', raw: true, codepage: 65001 });
                         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                         json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
                     } else {
@@ -327,27 +312,18 @@ function readFiles(files) {
                         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                         json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
                     }
-                    
                     if (json.length > 0) {
-                        if (headers.length === 0) {
-                            headers = Object.keys(json[0]);
-                        }
+                        if (headers.length === 0) headers = Object.keys(json[0]);
                         allData.push(...json);
                     }
-                    
-                    log(`  ✅ ${file.name}: ${json.length} строк`);
-                    
                 } catch (err) {
-                    console.error('❌ Ошибка чтения файла:', file.name, err);
+                    console.error('Ошибка чтения:', file.name, err);
                 }
-                
                 completed++;
                 if (completed === files.length) {
-                    log(`📊 Всего прочитано: ${allData.length} строк`);
                     resolve({ data: allData, headers: headers });
                 }
             };
-            
             if (format === 'csv') {
                 reader.readAsText(file, 'UTF-8');
             } else {
@@ -363,42 +339,26 @@ function readFiles(files) {
 function findColumns(headers) {
     const detected = {};
     const usedColumns = new Set();
-
-    log('🔍 Поиск колонок в заголовках:', headers);
-
     for (let [key, keywords] of Object.entries(COLUMN_KEYWORDS)) {
         let found = null;
         let bestScore = 0;
-
         for (let h of headers) {
             if (usedColumns.has(h)) continue;
             const lower = h.toLowerCase().trim();
-            
             for (let kw of keywords) {
                 if (lower.includes(kw) || kw.includes(lower)) {
                     const score = Math.max(kw.length, lower.length);
-                    if (score > bestScore) {
-                        bestScore = score;
-                        found = h;
-                    }
+                    if (score > bestScore) { bestScore = score; found = h; }
                 }
             }
         }
-
-        if (found) {
-            detected[key] = found;
-            usedColumns.add(found);
-            log(`  ✅ ${COLUMN_NAMES[key]} → "${found}"`);
-        } else {
-            log(`  ❌ ${COLUMN_NAMES[key]} — не найдена`);
-        }
+        if (found) { detected[key] = found; usedColumns.add(found); }
     }
-
     return detected;
 }
 
 // ============================================================
-//  ОБНОВЛЕНИЕ UI
+//  UI ОБНОВЛЕНИЯ
 // ============================================================
 function updateLeftUI(files, data, colMap) {
     const zone = document.getElementById('leftZone');
@@ -406,22 +366,14 @@ function updateLeftUI(files, data, colMap) {
     const loadedName = document.getElementById('leftLoadedName');
     const loadedStats = document.getElementById('leftLoadedStats');
     const loadedBadge = document.getElementById('leftLoadedBadge');
-    
     if (data && data.length > 0) {
         zone.classList.add('loaded');
         status.textContent = '✅ Загружено';
-        const format = getFileFormat(files[0].name).toUpperCase();
-        loadedName.textContent = `${files[0].name} (${format})`;
+        loadedName.textContent = `${files[0].name} (${getFileFormat(files[0].name).toUpperCase()})`;
         loadedStats.textContent = `${data.length} строк`;
-        
         const colCount = Object.keys(colMap).length;
-        if (colCount >= 4) {
-            loadedBadge.textContent = '✅ Все колонки найдены';
-            loadedBadge.className = 'file-badge';
-        } else {
-            loadedBadge.textContent = `⚠️ Найдено ${colCount}/4 колонок`;
-            loadedBadge.className = 'file-badge warning';
-        }
+        loadedBadge.textContent = colCount >= 4 ? '✅ Все колонки найдены' : `⚠️ Найдено ${colCount}/4 колонок`;
+        loadedBadge.className = colCount >= 4 ? 'file-badge' : 'file-badge warning';
     }
 }
 
@@ -431,27 +383,15 @@ function updateRightUI(files, data, colMap) {
     const loadedName = document.getElementById('rightLoadedName');
     const loadedStats = document.getElementById('rightLoadedStats');
     const loadedBadge = document.getElementById('rightLoadedBadge');
-    
     if (data && data.length > 0) {
         zone.classList.add('loaded');
         status.textContent = '✅ Загружено';
         const names = Array.from(files).map(f => f.name);
-        if (names.length === 1) {
-            const format = getFileFormat(names[0]).toUpperCase();
-            loadedName.textContent = `${names[0]} (${format})`;
-        } else {
-            loadedName.textContent = `${names.length} файлов`;
-        }
+        loadedName.textContent = names.length === 1 ? `${names[0]} (${getFileFormat(names[0]).toUpperCase()})` : `${names.length} файлов`;
         loadedStats.textContent = `${data.length} строк`;
-        
         const colCount = Object.keys(colMap).length;
-        if (colCount >= 4) {
-            loadedBadge.textContent = '✅ Все колонки найдены';
-            loadedBadge.className = 'file-badge';
-        } else {
-            loadedBadge.textContent = `⚠️ Найдено ${colCount}/4 колонок`;
-            loadedBadge.className = 'file-badge warning';
-        }
+        loadedBadge.textContent = colCount >= 4 ? '✅ Все колонки найдены' : `⚠️ Найдено ${colCount}/4 колонок`;
+        loadedBadge.className = colCount >= 4 ? 'file-badge' : 'file-badge warning';
     }
 }
 
@@ -463,48 +403,29 @@ function showColsInfo(divId, colMap) {
         div.innerHTML = '🔍 Найдено: ' + found.map(([key, col]) => 
             `<span class="col-item"><strong>${COLUMN_NAMES[key]}</strong> → "${col}"</span>`
         ).join(' ');
-    }
-    if (found.length < 4) {
-        div.innerHTML += ' <span class="warning-text">⚠️ Не все колонки найдены!</span>';
+        if (found.length < 4) div.innerHTML += ' <span class="warning-text">⚠️ Не все колонки найдены!</span>';
     }
 }
 
 // ============================================================
-//  НАСТРОЙКА ЗАГРУЗКИ
+//  ЗАГРУЗКА ФАЙЛОВ
 // ============================================================
 function setupUpload(zoneId, inputId, isMultiple, onLoad) {
     const zone = document.getElementById(zoneId);
     const input = document.getElementById(inputId);
-
-    zone.addEventListener('click', function(e) {
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', (e) => {
         e.preventDefault();
-        input.click();
-    });
-
-    zone.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        this.classList.add('dragover');
-    });
-    
-    zone.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        this.classList.remove('dragover');
-    });
-    
-    zone.addEventListener('drop', function(e) {
-        e.preventDefault();
-        this.classList.remove('dragover');
+        zone.classList.remove('dragover');
         const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            if (!isMultiple && files.length > 1) {
-                alert('Загрузите только 1 файл в эталон!');
-                return;
-            }
+        if (files.length) {
+            if (!isMultiple && files.length > 1) { alert('Загрузите только 1 файл!'); return; }
             input.files = files;
             input.dispatchEvent(new Event('change'));
         }
     });
-
     input.addEventListener('change', async function() {
         if (this.files.length === 0) return;
         await onLoad(this.files);
@@ -512,58 +433,33 @@ function setupUpload(zoneId, inputId, isMultiple, onLoad) {
     });
 }
 
-// ============================================================
-//  ЗАГРУЗКА ЭТАЛОНА
-// ============================================================
 setupUpload('leftZone', 'leftInput', false, async function(files) {
-    log('📥 Загрузка эталона:', files[0].name);
     const result = await readFiles(files);
     leftData = result.data;
     leftHeaders = result.headers;
-    leftFileName = files[0].name;
-    
-    if (leftData.length === 0) {
-        alert('Не удалось прочитать файл или он пуст.');
-        return;
-    }
-    
+    if (leftData.length === 0) { alert('Файл пуст или не удалось прочитать.'); return; }
     leftColMap = findColumns(leftHeaders);
     updateLeftUI(files, leftData, leftColMap);
     showColsInfo('leftColsInfo', leftColMap);
     checkReady();
 });
 
-// ============================================================
-//  ЗАГРУЗКА ПРАВЫХ ФАЙЛОВ
-// ============================================================
 setupUpload('rightZone', 'rightInput', true, async function(files) {
-    log('📥 Загрузка правых файлов:', Array.from(files).map(f => f.name));
     const result = await readFiles(files);
     rightData = result.data;
     rightHeaders = result.headers;
-    rightFileNames = Array.from(files).map(f => f.name);
-    
-    if (rightData.length === 0) {
-        alert('Не удалось прочитать файлы или они пусты.');
-        return;
-    }
-    
+    if (rightData.length === 0) { alert('Файлы пусты или не удалось прочитать.'); return; }
     rightColMap = findColumns(rightHeaders);
     updateRightUI(files, rightData, rightColMap);
     showColsInfo('rightColsInfo', rightColMap);
     checkReady();
 });
 
-// ============================================================
-//  ПРОВЕРКА ГОТОВНОСТИ
-// ============================================================
 function checkReady() {
     const btn = document.getElementById('compareBtn');
     const hint = document.getElementById('readyHint');
-    
     const leftOk = leftData && leftData.length > 0 && Object.keys(leftColMap).length >= 4;
     const rightOk = rightData && rightData.length > 0 && Object.keys(rightColMap).length >= 4;
-    
     if (leftOk && rightOk) {
         btn.disabled = false;
         hint.textContent = '✅ Готово к сравнению!';
@@ -576,24 +472,15 @@ function checkReady() {
 }
 
 // ============================================================
-//  ОСНОВНАЯ ЛОГИКА СРАВНЕНИЯ
+//  ОСНОВНОЕ СРАВНЕНИЕ
 // ============================================================
 document.getElementById('compareBtn').addEventListener('click', async function() {
     if (!leftData || !rightData) return;
     
-    log('🚀 НАЧАЛО СРАВНЕНИЯ');
-    log(`  Левая сторона: ${leftData.length} строк`);
-    log(`  Правая сторона: ${rightData.length} строк`);
-    
     const missingLeft = Object.keys(COLUMN_NAMES).filter(k => !leftColMap[k]);
     const missingRight = Object.keys(COLUMN_NAMES).filter(k => !rightColMap[k]);
-    
-    if (missingLeft.length > 0 || missingRight.length > 0) {
-        let msg = '⚠️ Не найдены колонки в файлах:\n';
-        if (missingLeft.length) msg += `\n📌 В эталоне: ${missingLeft.map(k => COLUMN_NAMES[k]).join(', ')}`;
-        if (missingRight.length) msg += `\n📂 В правых файлах: ${missingRight.map(k => COLUMN_NAMES[k]).join(', ')}`;
-        msg += '\n\nПроверьте названия колонок в ваших файлах.';
-        alert(msg);
+    if (missingLeft.length || missingRight.length) {
+        alert('Не найдены все колонки! Проверьте названия.');
         return;
     }
     
@@ -611,12 +498,7 @@ document.getElementById('compareBtn').addEventListener('click', async function()
     const rReg = rightColMap['registry'];
     const rSut = rightColMap['sut'];
     
-    log('📋 Колонки для сравнения:');
-    log(`  Левая: Наименование="${lName}", Модификация="${lMod}", Госреестр="${lReg}", СУТ="${lSut}"`);
-    log(`  Правая: Наименование="${rName}", Модификация="${rMod}", Госреестр="${rReg}", СУТ="${rSut}"`);
-    
-    // Индекс для точных совпадений
-    log('🔨 Построение индекса для точных совпадений...');
+    // Индекс точных совпадений
     const exactIndex = new Map();
     rightData.forEach((row, idx) => {
         const key = [
@@ -628,132 +510,155 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         if (!exactIndex.has(key)) exactIndex.set(key, []);
         exactIndex.get(key).push(idx);
     });
-    log(`  ✅ Индекс построен: ${exactIndex.size} уникальных ключей`);
     
     // Индекс по наименованию
-    log('🔨 Построение индекса по наименованию...');
     const nameIndex = new Map();
     rightData.forEach((row, idx) => {
         const name = normalize(row[rName] || '');
         if (!nameIndex.has(name)) nameIndex.set(name, []);
         nameIndex.get(name).push(idx);
     });
-    log(`  ✅ Индекс построен: ${nameIndex.size} уникальных наименований`);
     
+    // ============================================================
+    //  ДЕТАЛЬНОЕ СРАВНЕНИЕ С ВИЗУАЛИЗАЦИЕЙ
+    // ============================================================
     const results = [];
     let okCount = 0, errorCount = 0, warningCount = 0;
-    const maxLogs = Math.min(5, leftData.length);
-    
-    log('🔄 Начинаю сравнение строк...');
+    const fieldNames = ['Наименование', 'Модификация', 'Госреестр', 'СУТ'];
     
     for (let i = 0; i < leftData.length; i++) {
         const leftRow = leftData[i];
-        const leftName = normalize(leftRow[lName] || '');
-        const leftMod = normalize(leftRow[lMod] || '');
-        const leftReg = normalize(leftRow[lReg] || '');
-        const leftSut = normalize(leftRow[lSut] || '');
+        const leftValues = [
+            normalize(leftRow[lName] || ''),
+            normalize(leftRow[lMod] || ''),
+            normalize(leftRow[lReg] || ''),
+            normalize(leftRow[lSut] || '')
+        ];
+        const leftRaw = [leftRow[lName] || '', leftRow[lMod] || '', leftRow[lReg] || '', leftRow[lSut] || ''];
         
-        if (i < maxLogs) {
-            log(`\n📌 Строка ${i+1}:`);
-            log(`  Наименование: "${leftRow[lName]}" → "${leftName}"`);
-            log(`  Модификация: "${leftRow[lMod]}" → "${leftMod}"`);
-            log(`  Госреестр: "${leftRow[lReg]}" → "${leftReg}"`);
-            log(`  СУТ: "${leftRow[lSut]}" → "${leftSut}"`);
-        }
-        
-        const exactKey = [leftName, leftMod, leftReg, leftSut].join('|||');
+        const exactKey = leftValues.join('|||');
         const exactMatch = exactIndex.get(exactKey);
         
         if (exactMatch && exactMatch.length > 0) {
+            // ТОЧНОЕ СОВПАДЕНИЕ — показываем первую найденную строку
+            const rightRow = rightData[exactMatch[0]];
             okCount++;
-            if (i < maxLogs) log(`  ✅ ТОЧНОЕ СОВПАДЕНИЕ найдено!`);
             results.push({
-                ...leftRow,
-                'Результат': '✅ Совпадает',
-                'Причина': ''
+                rowNum: i + 1,
+                leftRaw: leftRaw,
+                leftNorm: leftValues,
+                rightRaw: [
+                    rightRow[rName] || '',
+                    rightRow[rMod] || '',
+                    rightRow[rReg] || '',
+                    rightRow[rSut] || ''
+                ],
+                rightNorm: [
+                    normalize(rightRow[rName] || ''),
+                    normalize(rightRow[rMod] || ''),
+                    normalize(rightRow[rReg] || ''),
+                    normalize(rightRow[rSut] || '')
+                ],
+                matches: [true, true, true, true],
+                status: '✅ Совпадает',
+                reason: ''
             });
             continue;
         }
         
-        if (i < maxLogs) log(`  ❌ Точного совпадения нет, ищу частичное...`);
-        
-        let candidates = nameIndex.get(leftName) || [];
-        
+        // === ЧАСТИЧНЫЙ ПОИСК ===
+        let candidates = nameIndex.get(leftValues[0]) || [];
         if (candidates.length === 0 && rightData.length <= 1000) {
             candidates = rightData.map((_, idx) => idx);
-            if (i < maxLogs) log(`  ⚠️ По наименованию не найдено, проверяю все строки (${candidates.length})`);
         }
         
-        let maxMatchCount = 0;
-        let bestMismatches = ['Наименование'];
+        let bestMatch = null;
+        let bestMatchCount = 0;
+        let bestMismatches = [];
+        let bestRightRow = null;
         
         for (let idx of candidates) {
             const rightRow = rightData[idx];
+            const rightVals = [
+                normalize(rightRow[rName] || ''),
+                normalize(rightRow[rMod] || ''),
+                normalize(rightRow[rReg] || ''),
+                normalize(rightRow[rSut] || '')
+            ];
             let matchCount = 0;
             const mismatches = [];
-            
-            const pairs = [
-                { left: leftRow[lName], right: rightRow[rName], name: 'Наименование' },
-                { left: leftRow[lMod], right: rightRow[rMod], name: 'Модификация' },
-                { left: leftRow[lReg], right: rightRow[rReg], name: 'Госреестр' },
-                { left: leftRow[lSut], right: rightRow[rSut], name: 'СУТ' }
-            ];
-            
-            for (let p of pairs) {
-                if (normalize(p.left) === normalize(p.right)) {
+            for (let j = 0; j < 4; j++) {
+                if (leftValues[j] === rightVals[j]) {
                     matchCount++;
                 } else {
-                    mismatches.push(p.name);
+                    mismatches.push(fieldNames[j]);
                 }
             }
-            
-            if (matchCount > maxMatchCount) {
-                maxMatchCount = matchCount;
+            if (matchCount > bestMatchCount) {
+                bestMatchCount = matchCount;
                 bestMismatches = mismatches;
+                bestRightRow = rightRow;
+                bestMatch = rightVals;
                 if (matchCount === 4) break;
             }
         }
         
-        if (i < maxLogs) {
-            log(`  📊 Лучшее совпадение: ${maxMatchCount} из 4 полей`);
-            if (maxMatchCount < 4) {
-                log(`  ❌ Не совпадает: ${bestMismatches.join(', ')}`);
-            }
-        }
-        
-        let reason = '';
-        if (maxMatchCount >= 3) {
+        let status, reason;
+        if (bestMatchCount >= 3) {
+            status = '⚠️ Частично';
             reason = `Не совпадает: ${bestMismatches.join(', ')}`;
             warningCount++;
-        } else if (maxMatchCount > 0) {
-            reason = `Совпадает только ${maxMatchCount} из 4 полей`;
+        } else if (bestMatchCount > 0) {
+            status = '❌ Ошибка';
+            reason = `Совпадает только ${bestMatchCount} из 4 полей`;
             errorCount++;
         } else {
+            status = '❌ Ошибка';
             reason = 'Ни одно поле не совпало';
             errorCount++;
         }
         
+        // Создаём массив совпадений для визуализации
+        const matches = [];
+        if (bestRightRow) {
+            const rightVals = [
+                normalize(bestRightRow[rName] || ''),
+                normalize(bestRightRow[rMod] || ''),
+                normalize(bestRightRow[rReg] || ''),
+                normalize(bestRightRow[rSut] || '')
+            ];
+            for (let j = 0; j < 4; j++) {
+                matches.push(leftValues[j] === rightVals[j]);
+            }
+        } else {
+            matches.push(false, false, false, false);
+        }
+        
         results.push({
-            ...leftRow,
-            'Результат': maxMatchCount >= 3 ? '⚠️ Частично' : '❌ Ошибка',
-            'Причина': reason
+            rowNum: i + 1,
+            leftRaw: leftRaw,
+            leftNorm: leftValues,
+            rightRaw: bestRightRow ? [
+                bestRightRow[rName] || '',
+                bestRightRow[rMod] || '',
+                bestRightRow[rReg] || '',
+                bestRightRow[rSut] || ''
+            ] : ['', '', '', ''],
+            rightNorm: bestMatch || ['', '', '', ''],
+            matches: matches,
+            status: status,
+            reason: reason
         });
     }
     
-    log(`\n📊 ИТОГИ СРАВНЕНИЯ:`);
-    log(`  ✅ Совпало: ${okCount}`);
-    log(`  ⚠️ Частично: ${warningCount}`);
-    log(`  ❌ Ошибок: ${errorCount}`);
-    log(`  📊 Всего: ${results.length}`);
-    
     document.getElementById('loadingOverlay').classList.remove('active');
-    showResults(results, okCount, errorCount, warningCount);
+    showDetailedResults(results, okCount, errorCount, warningCount);
 });
 
 // ============================================================
-//  ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ
+//  ОТОБРАЖЕНИЕ ДЕТАЛЬНЫХ РЕЗУЛЬТАТОВ
 // ============================================================
-function showResults(results, okCount, errorCount, warningCount) {
+function showDetailedResults(results, okCount, errorCount, warningCount) {
     const container = document.getElementById('resultContainer');
     container.classList.add('show');
     
@@ -764,55 +669,16 @@ function showResults(results, okCount, errorCount, warningCount) {
         <span class="badge bg-secondary stats-badge">📊 ${results.length}</span>
     `;
     
-    const thead = document.querySelector('#resultTable thead');
-    const tbody = document.querySelector('#resultTable tbody');
+    const tbody = document.getElementById('resultBody');
+    const fieldNames = ['Наименование', 'Модификация', 'Госреестр', 'СУТ'];
     
-    const leftCols = Object.keys(results[0]).filter(k => k !== 'Результат' && k !== 'Причина');
-    const allHeaders = [...leftCols, 'Результат', 'Причина'];
-    thead.innerHTML = `<tr>${allHeaders.map(h => `<th>${h}</th>`).join('')}</tr>`;
+    let html = '';
+    let totalRows = 0;
     
-    tbody.innerHTML = results.map(row => {
-        const cols = leftCols.map(k => `<td title="${row[k] || ''}">${row[k] || ''}</td>`);
-        const result = row['Результат'] || '';
-        const reason = row['Причина'] || '';
+    for (let res of results) {
+        totalRows++;
         
-        let badgeClass = 'reason-ok';
-        if (result.includes('Ошибка')) badgeClass = 'reason-error';
-        else if (result.includes('Частично')) badgeClass = 'reason-warning';
-        
-        return `<tr>
-            ${cols.join('')}
-            <td><span class="reason-badge ${badgeClass}">${result}</span></td>
-            <td>${reason}</td>
-        </tr>`;
-    }).join('');
-    
-    window._reportData = { results, allHeaders: [...leftCols, 'Результат', 'Причина'] };
-}
-
-// ============================================================
-//  СКАЧИВАНИЕ ОТЧЕТА
-// ============================================================
-document.getElementById('downloadBtn').addEventListener('click', function() {
-    const { results, allHeaders } = window._reportData || {};
-    if (!results || !results.length) {
-        alert('Нет данных для скачивания');
-        return;
-    }
-    
-    const rows = [
-        allHeaders,
-        ...results.map(row => allHeaders.map(h => row[h] || ''))
-    ];
-    
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    XLSX.utils.book_append_sheet(wb, ws, 'Результат');
-    XLSX.writeFile(wb, 'report_comparison.xlsx');
-});
-
-log('🧠 Умный сравнитель Excel/CSV загружен!');
-log('📌 Нажмите "Показать логи в консоли" для отключения логов');
-</script>
-</body>
-</html>
+        // Для каждой строки показываем 4 поля
+        for (let f = 0; f < 4; f++) {
+            const isMatch = res.matches[f];
+            const statusClass = isMatch ?
