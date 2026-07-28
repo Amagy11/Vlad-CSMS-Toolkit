@@ -129,14 +129,6 @@
         .file-list { margin-top: 10px; }
         .file-list .file-item { display: inline-block; background: #e9ecef; padding: 3px 12px; border-radius: 20px; font-size: 12px; margin: 2px 5px 2px 0; }
         
-        .detail-row { font-size: 11px; color: #6c757d; padding: 2px 0; }
-        .detail-match { color: #198754; }
-        .detail-mismatch { color: #dc3545; }
-        
-        .reason-detail { font-size: 11px; color: #495057; }
-        .reason-detail .expected { color: #0d6efd; font-weight: 600; }
-        .reason-detail .actual { color: #dc3545; }
-        
         @media (max-width: 768px) {
             .upload-zone { min-height: 120px; padding: 14px; }
             .compare-btn { min-height: 50px; font-size: 14px; }
@@ -308,7 +300,6 @@ const SEARCH_RULES = {
         displayName: 'номер СУТ',
         exclude: ['срок', 'действие', 'годен', 'годности', 'действителен']
     },
-    // Дополнительные колонки для отображения (НЕ участвуют в сравнении)
     'document': {
         keywords: ['номер документа', 'документ', '№ документа', 'номер док'],
         displayName: 'Номер документа',
@@ -635,7 +626,7 @@ document.getElementById('rightPreviewBtn').addEventListener('click', function() 
 });
 
 // ============================================================
-//  ОСНОВНОЕ СРАВНЕНИЕ
+//  ОСНОВНОЕ СРАВНЕНИЕ (ПОЛНЫЙ ПЕРЕБОР)
 // ============================================================
 document.getElementById('compareBtn').addEventListener('click', async function() {
     if (!leftData || !rightData) return;
@@ -666,26 +657,6 @@ document.getElementById('compareBtn').addEventListener('click', async function()
     const rDoc = rightColMap['document'] || null;
     const rSticker = rightColMap['sticker'] || null;
     
-    // Индекс эталона
-    const exactIndex = new Map();
-    rightData.forEach((row, idx) => {
-        const key = [
-            normalize(row[rName] || ''),
-            normalize(row[rMod] || ''),
-            normalize(row[rReg] || ''),
-            normalize(row[rSut] || '')
-        ].join('|||');
-        if (!exactIndex.has(key)) exactIndex.set(key, []);
-        exactIndex.get(key).push(idx);
-    });
-    
-    const nameIndex = new Map();
-    rightData.forEach((row, idx) => {
-        const name = normalize(row[rName] || '');
-        if (!nameIndex.has(name)) nameIndex.set(name, []);
-        nameIndex.get(name).push(idx);
-    });
-    
     const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
     const results = [];
     let okCount = 0, errorCount = 0, warningCount = 0;
@@ -706,60 +677,29 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             leftRow[lSut] || ''
         ];
         
-        // Дополнительные колонки
         const docValue = lDoc ? (leftRow[lDoc] || '') : '';
         const stickerValue = lSticker ? (leftRow[lSticker] || '') : '';
         
-        const exactKey = leftVals.join('|||');
-        const exactMatch = exactIndex.get(exactKey);
+        // ============================================================
+        //  ПОЛНЫЙ ПЕРЕБОР ВСЕХ СТРОК ЭТАЛОНА
+        // ============================================================
+        let bestMatch = null;
+        let bestMatchCount = -1;
         
-        if (exactMatch && exactMatch.length > 0) {
-            const rightRow = rightData[exactMatch[0]];
-            const rightDisplay = [
-                rightRow[rName] || '',
-                rightRow[rMod] || '',
-                rightRow[rReg] || '',
-                rightRow[rSut] || ''
-            ];
-            const rDocValue = rDoc ? (rightRow[rDoc] || '') : '';
-            const rStickerValue = rSticker ? (rightRow[rSticker] || '') : '';
-            
-            okCount++;
-            results.push({
-                rowNum: i + 1,
-                leftDisplay: leftDisplay,
-                rightDisplay: rightDisplay,
-                doc: docValue || rDocValue,
-                sticker: stickerValue || rStickerValue,
-                status: '✅ Найдено',
-                reason: 'Полное совпадение всех полей'
-            });
-            continue;
-        }
-        
-        let candidates = nameIndex.get(leftVals[0]) || [];
-        if (candidates.length === 0 && rightData.length <= 1000) {
-            candidates = rightData.map((_, idx) => idx);
-        }
-        
-        let bestMatchCount = 0;
-        let bestMismatches = [];
-        let bestRightDisplay = ['', '', '', ''];
-        let bestMismatchDetails = [];
-        let bestRDocValue = '';
-        let bestRStickerValue = '';
-        
-        for (let idx of candidates) {
+        for (let idx = 0; idx < rightData.length; idx++) {
             const rightRow = rightData[idx];
+            
             const rightVals = [
                 normalize(rightRow[rName] || ''),
                 normalize(rightRow[rMod] || ''),
                 normalize(rightRow[rReg] || ''),
                 normalize(rightRow[rSut] || '')
             ];
+            
             let matchCount = 0;
             const mismatches = [];
             const details = [];
+            
             for (let j = 0; j < 4; j++) {
                 const isMatch = leftVals[j] === rightVals[j];
                 if (isMatch) {
@@ -773,36 +713,58 @@ document.getElementById('compareBtn').addEventListener('click', async function()
                     });
                 }
             }
+            
+            // Сохраняем лучший результат
             if (matchCount > bestMatchCount) {
                 bestMatchCount = matchCount;
-                bestMismatches = mismatches;
-                bestRightDisplay = [
-                    rightRow[rName] || '',
-                    rightRow[rMod] || '',
-                    rightRow[rReg] || '',
-                    rightRow[rSut] || ''
-                ];
-                bestMismatchDetails = details;
-                bestRDocValue = rDoc ? (rightRow[rDoc] || '') : '';
-                bestRStickerValue = rSticker ? (rightRow[rSticker] || '') : '';
-                if (matchCount === 4) break;
+                bestMatch = {
+                    rightRow: rightRow,
+                    rightDisplay: [
+                        rightRow[rName] || '',
+                        rightRow[rMod] || '',
+                        rightRow[rReg] || '',
+                        rightRow[rSut] || ''
+                    ],
+                    mismatches: mismatches,
+                    details: details,
+                    matchCount: matchCount
+                };
             }
         }
         
+        // ============================================================
+        //  АНАЛИЗ РЕЗУЛЬТАТОВ
+        // ============================================================
         let status, reason;
-        if (bestMatchCount >= 3) {
+        const rightRow = bestMatch.rightRow;
+        const rightDisplay = bestMatch.rightDisplay;
+        const rDocValue = rDoc ? (rightRow[rDoc] || '') : '';
+        const rStickerValue = rSticker ? (rightRow[rSticker] || '') : '';
+        
+        if (bestMatchCount === 4) {
+            status = '✅ Найдено';
+            reason = 'Полное совпадение всех полей';
+            okCount++;
+        } else if (bestMatchCount === 3) {
+            const detailStr = bestMatch.details.map(d => 
+                `${d.field}: должно быть "${d.right}"`
+            ).join('; ');
             status = '⚠️ Частично';
-            let detailStr = bestMismatchDetails.map(d => 
-                `${d.field}: должно быть "${d.right}"`
-            ).join('; ');
-            reason = `Не совпадает: ${detailStr}`;
+            reason = `Совпало 3 из 4 полей. Ошибка: ${detailStr}`;
             warningCount++;
-        } else if (bestMatchCount > 0) {
-            status = '❌ Не найдено';
-            let detailStr = bestMismatchDetails.map(d => 
+        } else if (bestMatchCount === 2) {
+            const detailStr = bestMatch.details.map(d => 
                 `${d.field}: должно быть "${d.right}"`
             ).join('; ');
-            reason = `Совпадает только ${bestMatchCount} из 4 полей. ${detailStr}`;
+            status = '⚠️ Частично';
+            reason = `Совпало только 2 из 4 полей. Ошибки: ${detailStr}`;
+            warningCount++;
+        } else if (bestMatchCount === 1) {
+            const detailStr = bestMatch.details.map(d => 
+                `${d.field}: должно быть "${d.right}"`
+            ).join('; ');
+            status = '❌ Не найдено';
+            reason = `Совпало только 1 из 4 полей. Ошибки: ${detailStr}`;
             errorCount++;
         } else {
             status = '❌ Не найдено';
@@ -813,9 +775,9 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         results.push({
             rowNum: i + 1,
             leftDisplay: leftDisplay,
-            rightDisplay: bestRightDisplay,
-            doc: docValue || bestRDocValue,
-            sticker: stickerValue || bestRStickerValue,
+            rightDisplay: rightDisplay,
+            doc: docValue || rDocValue,
+            sticker: stickerValue || rStickerValue,
             status: status,
             reason: reason
         });
