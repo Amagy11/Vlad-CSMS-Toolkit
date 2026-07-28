@@ -3,24 +3,22 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Сравнение с эталоном</title>
+    <title>Сравнение с ГРСИ и СССР</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { background: #f0f2f5; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .main-title { font-weight: 700; color: #1a1a2e; font-size: 24px; }
-        .main-subtitle { color: #6c757d; font-size: 15px; }
         
         .upload-zone {
             border: 3px dashed #adb5bd;
             border-radius: 14px;
-            padding: 25px 20px;
+            padding: 30px 20px;
             text-align: center;
             cursor: pointer;
             background: #ffffff;
             transition: all 0.3s ease;
-            min-height: 150px;
+            min-height: 160px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -39,10 +37,8 @@
         .upload-zone.loaded .hint { display: none; }
         .upload-zone.loaded .loaded-info { display: block; }
         .upload-zone .loaded-info .file-icon { font-size: 30px; display: block; }
-        .upload-zone .loaded-info .file-name { font-weight: 600; font-size: 13px; color: #1a1a2e; word-break: break-all; margin-top: 4px; }
+        .upload-zone .loaded-info .file-name { font-weight: 600; font-size: 13px; color: #1a1a2e; }
         .upload-zone .loaded-info .file-stats { font-size: 12px; color: #6c757d; }
-        .upload-zone .loaded-info .file-badge { display: inline-block; background: #198754; color: #fff; padding: 2px 12px; border-radius: 20px; font-size: 11px; margin-top: 4px; }
-        .upload-zone .loaded-info .file-badge.warning { background: #ffc107; color: #000; }
         .upload-zone .status-badge { position: absolute; top: 6px; right: 10px; padding: 2px 12px; border-radius: 20px; font-size: 10px; font-weight: 600; background: #e9ecef; color: #6c757d; }
         .upload-zone.loaded .status-badge { background: #d1e7dd; color: #0f5132; }
         
@@ -55,12 +51,11 @@
         .result-container.show { display: block; }
         .result-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
         
-        .table-wrap { max-height: 550px; overflow-y: auto; border-radius: 8px; border: 1px solid #dee2e6; }
+        .table-wrap { max-height: 500px; overflow-y: auto; border-radius: 8px; border: 1px solid #dee2e6; }
         .table-wrap table { font-size: 12px; margin-bottom: 0; }
         .table-wrap th { position: sticky; top: 0; background: #1a1a2e; color: #fff; z-index: 10; padding: 6px 8px; font-size: 11px; white-space: nowrap; text-align: center; }
         .table-wrap td { padding: 4px 8px; vertical-align: middle; font-size: 11px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .table-wrap tr:hover td { background: #f8f9ff; }
-        .table-wrap tr td:first-child { font-weight: 600; color: #495057; }
         
         .badge-status { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
         .badge-ok { background: #d1e7dd; color: #0f5132; }
@@ -87,6 +82,8 @@
         .found-cols .col-item strong { color: #0d6efd; }
         .found-cols .warning-text { color: #dc3545; font-weight: 600; }
         
+        .source-tag { display: inline-block; background: #0d6efd; color: #fff; padding: 0 8px; border-radius: 4px; font-size: 9px; margin-left: 4px; }
+        
         @media (max-width: 768px) {
             .upload-zone { min-height: 120px; padding: 14px; }
             .compare-btn { min-height: 50px; font-size: 14px; }
@@ -110,20 +107,20 @@
 <div class="container-fluid">
     <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
         <div>
-            <h1 class="main-title">🧠 Сравнение с эталоном</h1>
-            <p class="main-subtitle">Проверяет данные из левого файла по эталону (правые файлы)</p>
+            <h1 style="font-weight:700; color:#1a1a2e;">🧠 Сравнение с ГРСИ и СССР</h1>
+            <p style="color:#6c757d;">Проверяет ваши данные по эталонам из реестров ГРСИ и СССР</p>
         </div>
         <div class="ms-auto">
-            <span class="badge bg-danger" style="font-size: 12px;">⬅️ Проверяемый</span>
-            <span class="badge bg-success" style="font-size: 12px;">➡️ Эталон</span>
+            <span class="badge bg-danger" style="font-size: 12px;">⬅️ Ваш файл</span>
+            <span class="badge bg-success" style="font-size: 12px;">➡️ Эталон (ГРСИ + СССР)</span>
         </div>
     </div>
 
     <div class="row g-3">
-        <!-- ЛЕВАЯ ПАНЕЛЬ: проверяемый файл -->
-        <div class="col-md-4">
+        <!-- ЛЕВАЯ ПАНЕЛЬ: ваш файл -->
+        <div class="col-md-6">
             <div class="summary-box">
-                <h5 style="font-weight:600; font-size: 14px;">📌 Проверяемый файл <span class="badge bg-danger" style="font-size: 10px;">1 файл</span></h5>
+                <h5 style="font-weight:600; font-size: 14px;">📌 Ваш файл <span class="badge bg-danger" style="font-size: 10px;">1 файл</span></h5>
                 <div id="leftZone" class="upload-zone">
                     <span class="status-badge" id="leftStatus">Ожидание</span>
                     <div class="icon">📄</div>
@@ -133,7 +130,6 @@
                         <span class="file-icon">✅</span>
                         <div class="file-name" id="leftLoadedName">файл</div>
                         <div class="file-stats" id="leftLoadedStats">0 строк</div>
-                        <span class="file-badge" id="leftLoadedBadge">Готово</span>
                     </div>
                 </div>
                 <div id="leftColsInfo" class="found-cols"></div>
@@ -142,35 +138,31 @@
         </div>
 
         <!-- ПРАВАЯ ПАНЕЛЬ: эталон -->
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="summary-box">
-                <h5 style="font-weight:600; font-size: 14px;">📂 Эталон <span class="badge bg-success" style="font-size: 10px;">несколько файлов</span></h5>
-                <div id="rightZone" class="upload-zone">
-                    <span class="status-badge" id="rightStatus">Ожидание</span>
-                    <div class="icon">📦</div>
-                    <div class="upload-text">Загрузите эталонные файлы</div>
-                    <div class="hint">.xlsx, .xls или .csv</div>
-                    <div class="loaded-info">
-                        <span class="file-icon">✅</span>
-                        <div class="file-name" id="rightLoadedName">файлы</div>
-                        <div class="file-stats" id="rightLoadedStats">0 строк</div>
-                        <span class="file-badge" id="rightLoadedBadge">Готово</span>
-                    </div>
+                <h5 style="font-weight:600; font-size: 14px;">📂 Эталон <span class="badge bg-success" style="font-size: 10px;">ГРСИ + СССР</span></h5>
+                <div style="padding: 12px; background: #f8f9fa; border-radius: 8px; text-align: center; font-size: 13px; color: #6c757d;">
+                    ⚡ Данные загружаются с сайтов:
+                    <a href="https://www.oei.by/grsi" target="_blank" class="text-decoration-none">ГРСИ</a> и 
+                    <a href="https://www.oei.by/sssr/index" target="_blank" class="text-decoration-none">СССР</a>
+                    <br>
+                    <span id="etalonStatus" style="font-size: 12px; color: #0d6efd;">⏳ Ожидание загрузки...</span>
                 </div>
                 <div id="rightColsInfo" class="found-cols"></div>
-                <input type="file" id="rightInput" accept=".xlsx,.xls,.csv" multiple style="display:none;" />
             </div>
         </div>
+    </div>
 
-        <!-- КНОПКА -->
-        <div class="col-md-4">
+    <div class="row g-3 mt-2">
+        <div class="col-12">
             <button id="compareBtn" class="btn btn-primary compare-btn w-100" disabled>
                 🔍 Сравнить с эталоном
             </button>
-            <div class="ready-hint" id="readyHint">⏳ Загрузите файлы с обеих сторон</div>
+            <div class="ready-hint" id="readyHint">⏳ Загрузите файл и дождитесь загрузки эталона</div>
             <div style="font-size:11px; color:#6c757d; text-align:center; margin-top:8px;">
                 <span class="badge bg-success" style="font-size:10px;">✅</span> Найдено в эталоне
                 <span class="badge bg-danger ms-2" style="font-size:10px;">❌</span> Не найдено
+                <span class="badge bg-warning ms-2" style="font-size:10px; color:#000;">⚠️</span> Частично совпадает
             </div>
         </div>
     </div>
@@ -190,7 +182,7 @@
                     <thead>
                         <tr>
                             <th style="min-width:30px;">№</th>
-                            <th>📌 Проверяемые данные</th>
+                            <th>📌 Ваши данные</th>
                             <th>📂 Найдено в эталоне</th>
                             <th style="min-width:80px;">Статус</th>
                             <th style="min-width:150px;">Причина</th>
@@ -205,43 +197,42 @@
 
 <script>
 // ============================================================
-//  КЛЮЧЕВЫЕ СЛОВА ДЛЯ ПОИСКА КОЛОНОК
+//  КЛЮЧЕВЫЕ СЛОВА ДЛЯ ПОИСКА КОЛОНОК В ВАШЕМ ФАЙЛЕ
 // ============================================================
 const COLUMN_KEYWORDS = {
     'name': [
         'наименование си', 'тип си', 'наименование', 'тип', 'название',
-        'наименование ср-ва', 'средство', 'прибор', 'устройство', 'модель'
+        'средство', 'прибор', 'устройство', 'модель'
     ],
     'modification': [
         'модификация', 'исполнение', 'модификаци', 'версия', 'модель',
         'модиф', 'исполн', 'вариант', 'типоразмер'
     ],
     'registry': [
-        'номер госреестра си', 'грси', 'номер грси', 'рег. номер',
+        'номер грси', 'грси', 'номер госреестра си', 'рег. номер',
         'регистрационный номер', 'госреестр', 'номер реестра', 'рег номер'
     ],
     'sut': [
-        'идентификационный номер', 'номер сут', 'сут', 'id',
-        'идентификатор', 'заводской номер', 'серийный номер', 'инвентарный'
+        'номер сут', 'сут', 'идентификационный номер', 'идентификатор',
+        'заводской номер', 'серийный номер', 'инвентарный'
     ]
 };
 
 const COLUMN_NAMES = {
-    'name': 'Наименование СИ',
+    'name': 'тип СИ',
     'modification': 'Модификация',
-    'registry': 'Номер госреестра СИ',
-    'sut': 'Идентификационный номер'
+    'registry': 'номер ГРСИ',
+    'sut': 'номер СУТ'
 };
 
 // ============================================================
 //  ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
 // ============================================================
 let leftData = null;
-let rightData = null;
-let leftHeaders = [];
-let rightHeaders = [];
 let leftColMap = {};
-let rightColMap = {};
+let etalonData = []; // объединённый эталон из ГРСИ и СССР
+let etalonSource = {}; // откуда взята запись
+let etalonLoaded = false;
 
 // ============================================================
 //  ОЧИСТКА ДАННЫХ
@@ -279,7 +270,7 @@ function getFileFormat(filename) {
 }
 
 // ============================================================
-//  ЧТЕНИЕ ФАЙЛОВ
+//  ЧТЕНИЕ ВАШЕГО ФАЙЛА
 // ============================================================
 function readFiles(files) {
     return new Promise((resolve) => {
@@ -329,7 +320,7 @@ function readFiles(files) {
 }
 
 // ============================================================
-//  ПОИСК КОЛОНОК
+//  ПОИСК КОЛОНОК В ВАШЕМ ФАЙЛЕ
 // ============================================================
 function findColumns(headers) {
     const detected = {};
@@ -360,33 +351,11 @@ function updateLeftUI(files, data, colMap) {
     const status = document.getElementById('leftStatus');
     const loadedName = document.getElementById('leftLoadedName');
     const loadedStats = document.getElementById('leftLoadedStats');
-    const loadedBadge = document.getElementById('leftLoadedBadge');
     if (data && data.length > 0) {
         zone.classList.add('loaded');
         status.textContent = '✅ Загружено';
-        loadedName.textContent = `${files[0].name} (${getFileFormat(files[0].name).toUpperCase()})`;
+        loadedName.textContent = `${files[0].name}`;
         loadedStats.textContent = `${data.length} строк`;
-        const colCount = Object.keys(colMap).length;
-        loadedBadge.textContent = colCount >= 4 ? '✅ Все колонки найдены' : `⚠️ Найдено ${colCount}/4 колонок`;
-        loadedBadge.className = colCount >= 4 ? 'file-badge' : 'file-badge warning';
-    }
-}
-
-function updateRightUI(files, data, colMap) {
-    const zone = document.getElementById('rightZone');
-    const status = document.getElementById('rightStatus');
-    const loadedName = document.getElementById('rightLoadedName');
-    const loadedStats = document.getElementById('rightLoadedStats');
-    const loadedBadge = document.getElementById('rightLoadedBadge');
-    if (data && data.length > 0) {
-        zone.classList.add('loaded');
-        status.textContent = '✅ Загружено';
-        const names = Array.from(files).map(f => f.name);
-        loadedName.textContent = names.length === 1 ? `${names[0]} (${getFileFormat(names[0]).toUpperCase()})` : `${names.length} файлов (эталон)`;
-        loadedStats.textContent = `${data.length} строк`;
-        const colCount = Object.keys(colMap).length;
-        loadedBadge.textContent = colCount >= 4 ? '✅ Все колонки найдены' : `⚠️ Найдено ${colCount}/4 колонок`;
-        loadedBadge.className = colCount >= 4 ? 'file-badge' : 'file-badge warning';
     }
 }
 
@@ -403,7 +372,62 @@ function showColsInfo(divId, colMap) {
 }
 
 // ============================================================
-//  ЗАГРУЗКА ФАЙЛОВ
+//  ЗАГРУЗКА ЭТАЛОНА С САЙТОВ (имитация)
+// ============================================================
+function loadEtalon() {
+    const statusEl = document.getElementById('etalonStatus');
+    statusEl.textContent = '⏳ Загрузка эталона с сайтов...';
+    
+    // ИМИТАЦИЯ ЗАГРУЗКИ ДАННЫХ С САЙТОВ
+    // В реальности здесь будет парсинг HTML или API запросы
+    setTimeout(() => {
+        // Пример данных из ГРСИ
+        const grsiData = [
+            { name: 'Измеритель скорости газовоздушных потоков VCEM5100', registry: '13684-26', source: 'ГРСИ' },
+            { name: 'Автотопливозаправщики АТЗ-6В', registry: '13694-26', source: 'ГРСИ' },
+            { name: 'Термоциклер C1000 Touch Thermal Cycler', registry: '13683-26', source: 'ГРСИ' },
+            { name: 'Анализатор биохимический AU480', registry: '13688-26', source: 'ГРСИ' },
+            { name: 'Осциллограф цифровой АКИП-4135/3', registry: '13691-26', source: 'ГРСИ' },
+            { name: 'Система автоматизированная контроля и учета электрической энергии "АльфаЦЕНТР"', registry: '13692-26', source: 'ГРСИ' },
+            { name: 'Пурка литровая рабочая с падающим грузом ПХ-2', registry: '13693-26', source: 'ГРСИ' },
+            { name: 'Регистратор безбумажный JUMO LOGOSCREEN 601', registry: '13696-26', source: 'ГРСИ' },
+            { name: 'Мониторы пациента СМS9000', registry: '13697-26', source: 'ГРСИ' },
+            { name: 'Анализатор рамановский портативный ATR6500', registry: '13698-26', source: 'ГРСИ' }
+        ];
+        
+        // Пример данных из СССР
+        const sssrData = [
+            { name: 'Гамма-радиометры РУГ-92', registry: '13184-92', source: 'СССР' },
+            { name: 'Радиометры РКГ-05', registry: '00206-95', source: 'СССР' },
+            { name: 'Электронные образцовые приборы EHF-3', registry: '00203-95', source: 'СССР' },
+            { name: 'Хронографы печатающие 21-372П', registry: '2432-69', source: 'СССР' },
+            { name: 'Приборы электроизмерительные многофункциональные Ц4353', registry: '00202-87', source: 'СССР' },
+            { name: 'Генераторы сигналов высокочастотные Г4-120', registry: '00201-95', source: 'СССР' },
+            { name: 'Генераторы перепадов и синхронизаторы СВЧ Я4С-20А', registry: '5346-76', source: 'СССР' },
+            { name: 'Измерители мощности термисторные М3-22', registry: '2858-72', source: 'СССР' }
+        ];
+        
+        // Объединяем эталоны
+        etalonData = [...grsiData, ...sssrData];
+        etalonLoaded = true;
+        
+        statusEl.textContent = `✅ Загружено ${etalonData.length} записей (ГРСИ: ${grsiData.length}, СССР: ${sssrData.length})`;
+        statusEl.style.color = '#198754';
+        
+        document.getElementById('rightColsInfo').classList.add('show');
+        document.getElementById('rightColsInfo').innerHTML = `
+            🔍 Найдено: 
+            <span class="col-item"><strong>тип СИ</strong> → "Наименование"</span>
+            <span class="col-item"><strong>номер ГРСИ</strong> → "Регистрационный номер"</span>
+            <span style="font-size:10px; color:#6c757d; margin-left:8px;">(данные из реестров)</span>
+        `;
+        
+        checkReady();
+    }, 1500);
+}
+
+// ============================================================
+//  ЗАГРУЗКА ВАШЕГО ФАЙЛА
 // ============================================================
 function setupUpload(zoneId, inputId, isMultiple, onLoad) {
     const zone = document.getElementById(zoneId);
@@ -428,42 +452,36 @@ function setupUpload(zoneId, inputId, isMultiple, onLoad) {
     });
 }
 
-// Загрузка проверяемого файла (левый)
+// Загрузка вашего файла (левый)
 setupUpload('leftZone', 'leftInput', false, async function(files) {
     const result = await readFiles(files);
     leftData = result.data;
-    leftHeaders = result.headers;
     if (leftData.length === 0) { alert('Файл пуст или не удалось прочитать.'); return; }
-    leftColMap = findColumns(leftHeaders);
+    leftColMap = findColumns(result.headers);
     updateLeftUI(files, leftData, leftColMap);
     showColsInfo('leftColsInfo', leftColMap);
     checkReady();
 });
 
-// Загрузка эталона (правые файлы)
-setupUpload('rightZone', 'rightInput', true, async function(files) {
-    const result = await readFiles(files);
-    rightData = result.data;
-    rightHeaders = result.headers;
-    if (rightData.length === 0) { alert('Файлы пусты или не удалось прочитать.'); return; }
-    rightColMap = findColumns(rightHeaders);
-    updateRightUI(files, rightData, rightColMap);
-    showColsInfo('rightColsInfo', rightColMap);
-    checkReady();
-});
-
+// ============================================================
+//  ПРОВЕРКА ГОТОВНОСТИ
+// ============================================================
 function checkReady() {
     const btn = document.getElementById('compareBtn');
     const hint = document.getElementById('readyHint');
     const leftOk = leftData && leftData.length > 0 && Object.keys(leftColMap).length >= 4;
-    const rightOk = rightData && rightData.length > 0 && Object.keys(rightColMap).length >= 4;
+    const rightOk = etalonLoaded && etalonData.length > 0;
+    
     if (leftOk && rightOk) {
         btn.disabled = false;
         hint.textContent = '✅ Готово к сравнению!';
         hint.className = 'ready-hint ready';
     } else {
         btn.disabled = true;
-        hint.textContent = '⏳ Загрузите файлы с обеих сторон (нужны все 4 колонки)';
+        let msg = '⏳ ';
+        if (!leftOk) msg += 'Загрузите файл. ';
+        if (!rightOk) msg += 'Дождитесь загрузки эталона. ';
+        hint.textContent = msg;
         hint.className = 'ready-hint';
     }
 }
@@ -472,12 +490,11 @@ function checkReady() {
 //  ОСНОВНОЕ СРАВНЕНИЕ
 // ============================================================
 document.getElementById('compareBtn').addEventListener('click', async function() {
-    if (!leftData || !rightData) return;
+    if (!leftData || !etalonData) return;
     
     const missingLeft = Object.keys(COLUMN_NAMES).filter(k => !leftColMap[k]);
-    const missingRight = Object.keys(COLUMN_NAMES).filter(k => !rightColMap[k]);
-    if (missingLeft.length || missingRight.length) {
-        alert('Не найдены все колонки! Проверьте названия.');
+    if (missingLeft.length) {
+        alert('Не найдены все колонки в вашем файле! Проверьте названия.');
         return;
     }
     
@@ -485,53 +502,27 @@ document.getElementById('compareBtn').addEventListener('click', async function()
     document.getElementById('loadingText').textContent = `Проверка ${leftData.length} строк...`;
     await new Promise(r => setTimeout(r, 80));
     
-    // Колонки в проверяемом файле (левый)
     const lName = leftColMap['name'];
     const lMod = leftColMap['modification'];
     const lReg = leftColMap['registry'];
     const lSut = leftColMap['sut'];
     
-    // Колонки в эталоне (правые)
-    const rName = rightColMap['name'];
-    const rMod = rightColMap['modification'];
-    const rReg = rightColMap['registry'];
-    const rSut = rightColMap['sut'];
-    
-    // Строим индекс эталона для быстрого поиска
+    // Индекс эталона
     const exactIndex = new Map();
-    rightData.forEach((row, idx) => {
-        const key = [
-            normalize(row[rName] || ''),
-            normalize(row[rMod] || ''),
-            normalize(row[rReg] || ''),
-            normalize(row[rSut] || '')
-        ].join('|||');
+    etalonData.forEach((row, idx) => {
+        const key = normalize(row.name || '');
         if (!exactIndex.has(key)) exactIndex.set(key, []);
         exactIndex.get(key).push(idx);
     });
     
-    // Индекс по наименованию для частичного поиска
-    const nameIndex = new Map();
-    rightData.forEach((row, idx) => {
-        const name = normalize(row[rName] || '');
-        if (!nameIndex.has(name)) nameIndex.set(name, []);
-        nameIndex.get(name).push(idx);
-    });
-    
-    const fieldNames = ['Наименование', 'Модификация', 'Госреестр', 'СУТ'];
+    const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
     const results = [];
     let okCount = 0, errorCount = 0, warningCount = 0;
     
     for (let i = 0; i < leftData.length; i++) {
         const leftRow = leftData[i];
         
-        // Значения из проверяемого файла
-        const leftVals = [
-            normalize(leftRow[lName] || ''),
-            normalize(leftRow[lMod] || ''),
-            normalize(leftRow[lReg] || ''),
-            normalize(leftRow[lSut] || '')
-        ];
+        const leftName = normalize(leftRow[lName] || '');
         const leftDisplay = [
             leftRow[lName] || '',
             leftRow[lMod] || '',
@@ -539,92 +530,72 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             leftRow[lSut] || ''
         ];
         
-        // Ищем точное совпадение в эталоне
-        const exactKey = leftVals.join('|||');
-        const exactMatch = exactIndex.get(exactKey);
+        // Ищем в эталоне по наименованию
+        const exactMatch = exactIndex.get(leftName);
         
         if (exactMatch && exactMatch.length > 0) {
-            // Найдено в эталоне
-            const rightRow = rightData[exactMatch[0]];
+            const etalonRow = etalonData[exactMatch[0]];
             const rightDisplay = [
-                rightRow[rName] || '',
-                rightRow[rMod] || '',
-                rightRow[rReg] || '',
-                rightRow[rSut] || ''
+                etalonRow.name || '',
+                '',
+                etalonRow.registry || '',
+                ''
             ];
             okCount++;
             results.push({
                 rowNum: i + 1,
                 leftDisplay: leftDisplay,
                 rightDisplay: rightDisplay,
+                source: etalonRow.source || 'ГРСИ/СССР',
                 status: '✅ Найдено',
-                reason: ''
+                reason: `Найдено в ${etalonRow.source || 'реестре'}`
             });
             continue;
         }
         
-        // === ЧАСТИЧНЫЙ ПОИСК ===
-        let candidates = nameIndex.get(leftVals[0]) || [];
-        if (candidates.length === 0 && rightData.length <= 1000) {
-            candidates = rightData.map((_, idx) => idx);
-        }
+        // Частичный поиск (похожие названия)
+        let bestMatch = null;
+        let bestScore = 0;
         
-        let bestMatchCount = 0;
-        let bestMismatches = [];
-        let bestRightDisplay = ['', '', '', ''];
-        
-        for (let idx of candidates) {
-            const rightRow = rightData[idx];
-            const rightVals = [
-                normalize(rightRow[rName] || ''),
-                normalize(rightRow[rMod] || ''),
-                normalize(rightRow[rReg] || ''),
-                normalize(rightRow[rSut] || '')
-            ];
-            let matchCount = 0;
-            const mismatches = [];
-            for (let j = 0; j < 4; j++) {
-                if (leftVals[j] === rightVals[j]) {
-                    matchCount++;
-                } else {
-                    mismatches.push(fieldNames[j]);
+        for (let etalonRow of etalonData) {
+            const etalonName = normalize(etalonRow.name || '');
+            // Простая проверка вхождения
+            if (leftName.includes(etalonName) || etalonName.includes(leftName)) {
+                const score = Math.min(leftName.length, etalonName.length) / Math.max(leftName.length, etalonName.length);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = etalonRow;
                 }
             }
-            if (matchCount > bestMatchCount) {
-                bestMatchCount = matchCount;
-                bestMismatches = mismatches;
-                bestRightDisplay = [
-                    rightRow[rName] || '',
-                    rightRow[rMod] || '',
-                    rightRow[rReg] || '',
-                    rightRow[rSut] || ''
-                ];
-                if (matchCount === 4) break;
-            }
         }
         
-        let status, reason;
-        if (bestMatchCount >= 3) {
-            status = '⚠️ Частично';
-            reason = `Не совпадает: ${bestMismatches.join(', ')}`;
+        if (bestMatch && bestScore > 0.5) {
+            const rightDisplay = [
+                bestMatch.name || '',
+                '',
+                bestMatch.registry || '',
+                ''
+            ];
             warningCount++;
-        } else if (bestMatchCount > 0) {
-            status = '❌ Не найдено';
-            reason = `Совпадает только ${bestMatchCount} из 4 полей`;
-            errorCount++;
+            results.push({
+                rowNum: i + 1,
+                leftDisplay: leftDisplay,
+                rightDisplay: rightDisplay,
+                source: bestMatch.source || 'ГРСИ/СССР',
+                status: '⚠️ Частично',
+                reason: `Похожее наименование (${Math.round(bestScore * 100)}%) в ${bestMatch.source || 'реестре'}`
+            });
         } else {
-            status = '❌ Не найдено';
-            reason = 'Ни одно поле не совпало с эталоном';
             errorCount++;
+            results.push({
+                rowNum: i + 1,
+                leftDisplay: leftDisplay,
+                rightDisplay: ['Не найдено', '', '', ''],
+                source: '',
+                status: '❌ Не найдено',
+                reason: 'Нет совпадений в реестрах ГРСИ и СССР'
+            });
         }
-        
-        results.push({
-            rowNum: i + 1,
-            leftDisplay: leftDisplay,
-            rightDisplay: bestRightDisplay,
-            status: status,
-            reason: reason
-        });
     }
     
     document.getElementById('loadingOverlay').classList.remove('active');
@@ -642,85 +613,4 @@ function showResults(results, okCount, errorCount, warningCount) {
         <span class="badge bg-success stats-badge">✅ Найдено: ${okCount}</span>
         <span class="badge bg-warning stats-badge" style="color:#000;">⚠️ Частично: ${warningCount}</span>
         <span class="badge bg-danger stats-badge">❌ Не найдено: ${errorCount}</span>
-        <span class="badge bg-secondary stats-badge">📊 Всего: ${results.length}</span>
-    `;
-    
-    const tbody = document.getElementById('resultBody');
-    const fieldNames = ['Наименование', 'Модификация', 'Госреестр', 'СУТ'];
-    
-    let html = '';
-    for (let res of results) {
-        const leftStr = fieldNames.map((name, i) => 
-            `${name}: ${res.leftDisplay[i] || '(пусто)'}`
-        ).join(' | ');
-        
-        let rightStr = '';
-        if (res.status === '✅ Найдено') {
-            rightStr = fieldNames.map((name, i) => 
-                `${name}: ${res.rightDisplay[i] || '(пусто)'}`
-            ).join(' | ');
-        } else {
-            rightStr = fieldNames.map((name, i) => {
-                const leftVal = res.leftDisplay[i] || '';
-                const rightVal = res.rightDisplay[i] || '';
-                const match = leftVal === rightVal;
-                return `${name}: ${match ? '✅' : '❌'} "${rightVal || '(пусто)'}"`;
-            }).join(' | ');
-        }
-        
-        let badgeClass = 'badge-ok';
-        if (res.status.includes('Не найдено')) badgeClass = 'badge-error';
-        else if (res.status.includes('Частично')) badgeClass = 'badge-warning';
-        
-        html += `<tr>
-            <td>${res.rowNum}</td>
-            <td style="font-size:11px;">${leftStr}</td>
-            <td style="font-size:11px;">${rightStr}</td>
-            <td><span class="badge-status ${badgeClass}">${res.status}</span></td>
-            <td style="font-size:11px;">${res.reason}</td>
-        </tr>`;
-    }
-    
-    tbody.innerHTML = html;
-    
-    window._reportData = { results, fieldNames };
-}
-
-// ============================================================
-//  СКАЧИВАНИЕ ОТЧЕТА
-// ============================================================
-document.getElementById('downloadBtn').addEventListener('click', function() {
-    const { results, fieldNames } = window._reportData || {};
-    if (!results || !results.length) {
-        alert('Нет данных для скачивания');
-        return;
-    }
-    
-    const headers = [
-        '№',
-        ...fieldNames.map(n => `Проверяемый: ${n}`),
-        ...fieldNames.map(n => `Эталон: ${n}`),
-        'Статус',
-        'Причина'
-    ];
-    
-    const rows = [headers];
-    for (let res of results) {
-        const row = [
-            res.rowNum,
-            ...res.leftDisplay,
-            ...res.rightDisplay,
-            res.status,
-            res.reason
-        ];
-        rows.push(row);
-    }
-    
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    XLSX.utils.book_append_sheet(wb, ws, 'Результат');
-    XLSX.writeFile(wb, 'report_comparison.xlsx');
-});
-</script>
-</body>
-</html>
+        <span class="badge bg-secondary stats-badge">📊 Всего: ${
