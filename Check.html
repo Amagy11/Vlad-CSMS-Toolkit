@@ -85,6 +85,8 @@
         .btn-download { border-radius: 8px; padding: 6px 18px; font-weight: 600; font-size: 13px; }
         .ready-hint { text-align: center; font-size: 12px; color: #6c757d; margin-top: 6px; }
         .ready-hint.ready { color: #198754; font-weight: 600; }
+        .col-match { color: #198754; font-weight: 600; }
+        .col-mismatch { color: #dc3545; font-weight: 600; }
         
         @media (max-width: 768px) {
             .upload-zone { min-height: 140px; padding: 16px; }
@@ -110,7 +112,7 @@
     <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
         <div>
             <h1 class="main-title">🧠 Сравнение Excel/CSV</h1>
-            <p class="main-subtitle">Сравнивает эталон с несколькими файлами</p>
+            <p class="main-subtitle">Автоматически находит столбцы в каждом файле и сравнивает их содержимое</p>
         </div>
         <div class="ms-auto">
             <span class="badge bg-primary" style="font-size: 12px;">⬅️ 1 эталон</span>
@@ -182,8 +184,9 @@
                     <thead>
                         <tr>
                             <th style="min-width:40px;">№</th>
-                            <th>Данные из эталона</th>
-                            <th style="min-width:80px;">Результат</th>
+                            <th>📌 Данные из эталона</th>
+                            <th>📂 Найдено в правых файлах</th>
+                            <th style="min-width:80px;">Статус</th>
                             <th style="min-width:200px;">Причина</th>
                         </tr>
                     </thead>
@@ -235,7 +238,7 @@ let leftColMap = {};
 let rightColMap = {};
 
 // ============================================================
-//  ОЧИСТКА ДАННЫХ
+//  ОЧИСТКА ДАННЫХ (убирает пробелы, приводит к нижнему регистру)
 // ============================================================
 function normalize(val) {
     if (val === null || val === undefined) return '';
@@ -320,7 +323,7 @@ function readFiles(files) {
 }
 
 // ============================================================
-//  ПОИСК КОЛОНОК
+//  ПОИСК КОЛОНОК В ЗАГОЛОВКАХ
 // ============================================================
 function findColumns(headers) {
     const detected = {};
@@ -474,17 +477,19 @@ document.getElementById('compareBtn').addEventListener('click', async function()
     document.getElementById('loadingText').textContent = `Сравнение ${leftData.length} строк...`;
     await new Promise(r => setTimeout(r, 80));
     
+    // Названия колонок, которые нашли в левом файле
     const lName = leftColMap['name'];
     const lMod = leftColMap['modification'];
     const lReg = leftColMap['registry'];
     const lSut = leftColMap['sut'];
     
+    // Названия колонок, которые нашли в правых файлах
     const rName = rightColMap['name'];
     const rMod = rightColMap['modification'];
     const rReg = rightColMap['registry'];
     const rSut = rightColMap['sut'];
     
-    // Индекс точных совпадений
+    // Индекс точных совпадений (по всем 4 полям)
     const exactIndex = new Map();
     rightData.forEach((row, idx) => {
         const key = [
@@ -505,12 +510,14 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         nameIndex.get(name).push(idx);
     });
     
+    const fieldNames = ['Наименование', 'Модификация', 'Госреестр', 'СУТ'];
     const results = [];
     let okCount = 0, errorCount = 0, warningCount = 0;
-    const fieldNames = ['Наименование', 'Модификация', 'Госреестр', 'СУТ'];
     
     for (let i = 0; i < leftData.length; i++) {
         const leftRow = leftData[i];
+        
+        // Берём значения из НАЙДЕННЫХ колонок
         const leftVals = [
             normalize(leftRow[lName] || ''),
             normalize(leftRow[lMod] || ''),
@@ -518,21 +525,38 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             normalize(leftRow[lSut] || '')
         ];
         
+        // Строка для отображения (сырые значения)
+        const leftDisplay = [
+            leftRow[lName] || '',
+            leftRow[lMod] || '',
+            leftRow[lReg] || '',
+            leftRow[lSut] || ''
+        ];
+        
         const exactKey = leftVals.join('|||');
         const exactMatch = exactIndex.get(exactKey);
         
         if (exactMatch && exactMatch.length > 0) {
+            // ТОЧНОЕ СОВПАДЕНИЕ
+            const rightRow = rightData[exactMatch[0]];
+            const rightDisplay = [
+                rightRow[rName] || '',
+                rightRow[rMod] || '',
+                rightRow[rReg] || '',
+                rightRow[rSut] || ''
+            ];
             okCount++;
             results.push({
                 rowNum: i + 1,
-                leftRow: leftRow,
+                leftDisplay: leftDisplay,
+                rightDisplay: rightDisplay,
                 status: '✅ Совпадает',
                 reason: ''
             });
             continue;
         }
         
-        // Частичный поиск
+        // === ЧАСТИЧНЫЙ ПОИСК ===
         let candidates = nameIndex.get(leftVals[0]) || [];
         if (candidates.length === 0 && rightData.length <= 1000) {
             candidates = rightData.map((_, idx) => idx);
@@ -540,6 +564,7 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         
         let bestMatchCount = 0;
         let bestMismatches = [];
+        let bestRightDisplay = ['', '', '', ''];
         
         for (let idx of candidates) {
             const rightRow = rightData[idx];
@@ -561,6 +586,12 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             if (matchCount > bestMatchCount) {
                 bestMatchCount = matchCount;
                 bestMismatches = mismatches;
+                bestRightDisplay = [
+                    rightRow[rName] || '',
+                    rightRow[rMod] || '',
+                    rightRow[rReg] || '',
+                    rightRow[rSut] || ''
+                ];
                 if (matchCount === 4) break;
             }
         }
@@ -582,7 +613,8 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         
         results.push({
             rowNum: i + 1,
-            leftRow: leftRow,
+            leftDisplay: leftDisplay,
+            rightDisplay: bestRightDisplay,
             status: status,
             reason: reason
         });
@@ -607,14 +639,25 @@ function showResults(results, okCount, errorCount, warningCount) {
     `;
     
     const tbody = document.getElementById('resultBody');
-    
-    // Определяем все колонки из левого файла
-    const leftCols = Object.keys(results[0]?.leftRow || {});
+    const fieldNames = ['Наименование', 'Модификация', 'Госреестр', 'СУТ'];
     
     let html = '';
     for (let res of results) {
-        const row = res.leftRow;
-        const cols = leftCols.map(k => row[k] || '').join(' | ');
+        // Формируем строку: "Наименование: Термометр | Модификация: Т-100 | ..."
+        const leftStr = fieldNames.map((name, i) => 
+            `${name}: ${res.leftDisplay[i] || '(пусто)'}`
+        ).join(' | ');
+        
+        const rightStr = res.status === '✅ Совпадает' 
+            ? fieldNames.map((name, i) => 
+                `${name}: ${res.rightDisplay[i] || '(пусто)'}`
+            ).join(' | ')
+            : fieldNames.map((name, i) => {
+                const leftVal = res.leftDisplay[i] || '';
+                const rightVal = res.rightDisplay[i] || '';
+                const match = leftVal === rightVal;
+                return `${name}: ${match ? '✅' : '❌'} "${rightVal || '(пусто)'}"`;
+            }).join(' | ');
         
         let badgeClass = 'reason-ok';
         if (res.status.includes('Ошибка')) badgeClass = 'reason-error';
@@ -622,34 +665,46 @@ function showResults(results, okCount, errorCount, warningCount) {
         
         html += `<tr>
             <td>${res.rowNum}</td>
-            <td>${cols}</td>
+            <td style="font-size:11px;">${leftStr}</td>
+            <td style="font-size:11px;">${rightStr}</td>
             <td><span class="reason-badge ${badgeClass}">${res.status}</span></td>
-            <td>${res.reason}</td>
+            <td style="font-size:11px;">${res.reason}</td>
         </tr>`;
     }
     
     tbody.innerHTML = html;
     
     // Сохраняем данные для скачивания
-    window._reportData = { results, leftCols };
+    window._reportData = { results, fieldNames };
 }
 
 // ============================================================
 //  СКАЧИВАНИЕ ОТЧЕТА
 // ============================================================
 document.getElementById('downloadBtn').addEventListener('click', function() {
-    const { results, leftCols } = window._reportData || {};
+    const { results, fieldNames } = window._reportData || {};
     if (!results || !results.length) {
         alert('Нет данных для скачивания');
         return;
     }
     
-    const headers = [...leftCols, 'Результат', 'Причина'];
-    const rows = [headers];
+    const headers = [
+        '№',
+        ...fieldNames.map(n => `Эталон: ${n}`),
+        ...fieldNames.map(n => `Найдено: ${n}`),
+        'Результат',
+        'Причина'
+    ];
     
+    const rows = [headers];
     for (let res of results) {
-        const row = leftCols.map(k => res.leftRow[k] || '');
-        row.push(res.status, res.reason);
+        const row = [
+            res.rowNum,
+            ...res.leftDisplay,
+            ...res.rightDisplay,
+            res.status,
+            res.reason
+        ];
         rows.push(row);
     }
     
