@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Умное сравнение Excel</title>
+    <title>Умное сравнение Excel + CSV</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
@@ -16,61 +16,57 @@
         .upload-zone {
             border: 3px dashed #adb5bd;
             border-radius: 14px;
-            padding: 35px 20px;
+            padding: 30px 20px;
             text-align: center;
             cursor: pointer;
             background: #ffffff;
             transition: all 0.3s ease;
-            min-height: 200px;
+            min-height: 180px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             position: relative;
         }
-        .upload-zone:hover { border-color: #0d6efd; background: #f8f9ff; transform: translateY(-2px); }
-        .upload-zone.dragover { border-color: #0d6efd; background: #e7edff; transform: scale(1.01); }
-        .upload-zone .icon { font-size: 48px; margin-bottom: 8px; }
-        .upload-zone .hint { font-size: 14px; color: #6c757d; margin-top: 4px; }
-        
-        /* СТИЛИ ДЛЯ СОСТОЯНИЯ ЗАГРУЖЕНО */
-        .upload-zone.loaded {
-            border-color: #198754;
-            background: #f0fff4;
-            border-style: solid;
-        }
-        .upload-zone.loaded .icon { display: none; }
-        .upload-zone.loaded .upload-text { display: none; }
-        .upload-zone.loaded .hint { display: none; }
-        .upload-zone.loaded .loaded-info { display: block; }
+        .upload-zone:hover { border-color: #0d6efd; background: #f8f9ff; }
+        .upload-zone.dragover { border-color: #0d6efd; background: #e7edff; }
+        .upload-zone.loaded { border-color: #198754; background: #f0fff4; border-style: solid; }
+        .upload-zone .icon { font-size: 40px; margin-bottom: 6px; }
+        .upload-zone .hint { font-size: 13px; color: #6c757d; margin-top: 4px; }
+        .upload-zone .upload-text { font-weight: 500; }
         
         .upload-zone .loaded-info {
             display: none;
             text-align: center;
             width: 100%;
         }
-        .upload-zone .loaded-info .file-icon { font-size: 40px; display: block; margin-bottom: 6px; }
-        .upload-zone .loaded-info .file-name { font-weight: 600; font-size: 15px; color: #1a1a2e; word-break: break-all; }
-        .upload-zone .loaded-info .file-stats { font-size: 13px; color: #6c757d; margin-top: 4px; }
-        .upload-zone .loaded-info .file-badge { 
-            display: inline-block; 
-            background: #198754; 
-            color: #fff; 
-            padding: 2px 14px; 
-            border-radius: 20px; 
-            font-size: 12px;
-            margin-top: 6px;
+        .upload-zone.loaded .icon { display: none; }
+        .upload-zone.loaded .upload-text { display: none; }
+        .upload-zone.loaded .hint { display: none; }
+        .upload-zone.loaded .loaded-info { display: block; }
+        
+        .upload-zone .loaded-info .file-icon { font-size: 36px; display: block; }
+        .upload-zone .loaded-info .file-name { font-weight: 600; font-size: 14px; color: #1a1a2e; word-break: break-all; margin-top: 4px; }
+        .upload-zone .loaded-info .file-stats { font-size: 12px; color: #6c757d; }
+        .upload-zone .loaded-info .file-badge {
+            display: inline-block;
+            background: #198754;
+            color: #fff;
+            padding: 2px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            margin-top: 4px;
         }
         .upload-zone .loaded-info .file-badge.warning { background: #ffc107; color: #000; }
         .upload-zone .loaded-info .file-badge.danger { background: #dc3545; }
         
         .upload-zone .status-badge {
             position: absolute;
-            top: 12px;
-            right: 12px;
-            padding: 4px 14px;
+            top: 8px;
+            right: 10px;
+            padding: 2px 12px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             background: #e9ecef;
             color: #6c757d;
@@ -80,57 +76,42 @@
             color: #0f5132;
         }
         
-        .file-info {
-            margin-top: 12px;
-            padding: 10px 14px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            font-size: 14px;
-            display: none;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        .file-info.show { display: flex; }
-        .file-info .badge-count { background: #0d6efd; color: #fff; border-radius: 20px; padding: 2px 12px; font-size: 12px; }
-        
         .detected-cols {
-            font-size: 12.5px;
+            font-size: 12px;
             color: #495057;
-            margin-top: 10px;
-            padding: 10px 14px;
+            margin-top: 8px;
+            padding: 8px 12px;
             background: #f8f9fa;
-            border-radius: 8px;
-            border-left: 4px solid #0d6efd;
+            border-radius: 6px;
+            border-left: 3px solid #0d6efd;
             display: none;
         }
         .detected-cols.show { display: block; }
-        .detected-cols .col-item { display: inline-block; background: #e9ecef; padding: 2px 10px; border-radius: 12px; margin: 2px 4px 2px 0; }
+        .detected-cols .col-item { display: inline-block; background: #e9ecef; padding: 1px 8px; border-radius: 10px; margin: 1px 3px 1px 0; font-size: 11px; }
         .detected-cols .col-item strong { color: #0d6efd; }
         .detected-cols .warning-text { color: #dc3545; font-weight: 600; }
         
         .summary-box {
             background: #fff;
-            border-radius: 14px;
-            padding: 22px 24px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border-radius: 12px;
+            padding: 18px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             height: 100%;
         }
         
         .compare-btn {
             height: 100%;
-            min-height: 80px;
-            font-size: 18px;
+            min-height: 70px;
+            font-size: 17px;
             font-weight: 600;
-            border-radius: 14px;
+            border-radius: 12px;
             transition: all 0.3s;
         }
         .compare-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .compare-btn:not(:disabled):hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(13,110,253,0.3); }
         
         .result-container {
-            margin-top: 28px;
+            margin-top: 24px;
             display: none;
         }
         .result-container.show { display: block; }
@@ -139,18 +120,18 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 16px;
+            gap: 10px;
+            margin-bottom: 12px;
         }
         
         .result-table-wrap {
-            max-height: 550px;
+            max-height: 500px;
             overflow-y: auto;
-            border-radius: 10px;
+            border-radius: 8px;
             border: 1px solid #dee2e6;
         }
         .result-table-wrap table {
-            font-size: 13px;
+            font-size: 12px;
             margin-bottom: 0;
         }
         .result-table-wrap th {
@@ -160,23 +141,25 @@
             color: #fff;
             z-index: 10;
             white-space: nowrap;
-            padding: 10px 12px;
+            padding: 8px 10px;
+            font-size: 12px;
         }
         .result-table-wrap td {
-            padding: 8px 12px;
+            padding: 6px 10px;
             vertical-align: middle;
-            max-width: 250px;
+            max-width: 200px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            font-size: 12px;
         }
         .result-table-wrap tr:hover td { background: #f8f9ff; }
         
         .reason-badge {
             display: inline-block;
-            padding: 3px 14px;
+            padding: 2px 12px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             white-space: nowrap;
         }
@@ -185,8 +168,8 @@
         .reason-warning { background: #fff3cd; color: #856404; }
         
         .stats-badge {
-            font-size: 13px;
-            padding: 5px 16px;
+            font-size: 12px;
+            padding: 4px 14px;
             border-radius: 20px;
         }
         
@@ -204,40 +187,50 @@
         .loading-overlay.active { display: flex; }
         .loading-box {
             background: #fff;
-            padding: 40px 55px;
-            border-radius: 16px;
+            padding: 30px 45px;
+            border-radius: 14px;
             text-align: center;
-            min-width: 300px;
+            min-width: 280px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
         .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #e9ecef;
-            border-top: 5px solid #0d6efd;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e9ecef;
+            border-top: 4px solid #0d6efd;
             border-radius: 50%;
             animation: spin 0.9s linear infinite;
-            margin: 0 auto 16px;
+            margin: 0 auto 12px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .loading-box .loading-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-        .loading-box .loading-sub { color: #6c757d; font-size: 14px; }
+        .loading-box .loading-title { font-size: 17px; font-weight: 600; margin-bottom: 2px; }
+        .loading-box .loading-sub { color: #6c757d; font-size: 13px; }
         
-        .btn-download { border-radius: 10px; padding: 8px 22px; font-weight: 600; }
+        .btn-download { border-radius: 8px; padding: 6px 18px; font-weight: 600; font-size: 13px; }
         
-        /* Анимация появления */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .ready-hint {
+            text-align: center;
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 6px;
         }
-        .fade-in { animation: fadeInUp 0.4s ease; }
+        .ready-hint.ready { color: #198754; font-weight: 600; }
+        
+        .format-badge {
+            font-size: 10px;
+            padding: 2px 10px;
+            border-radius: 12px;
+            background: #e9ecef;
+            color: #495057;
+            margin-left: 6px;
+        }
         
         @media (max-width: 768px) {
-            .upload-zone { min-height: 150px; padding: 20px; }
-            .compare-btn { min-height: 60px; font-size: 16px; }
-            .summary-box { padding: 16px; }
-            .result-table-wrap td { max-width: 120px; font-size: 12px; }
-            body { padding: 12px; }
+            .upload-zone { min-height: 140px; padding: 16px; }
+            .compare-btn { min-height: 50px; font-size: 15px; }
+            .summary-box { padding: 14px; }
+            .result-table-wrap td { max-width: 100px; font-size: 11px; }
+            body { padding: 10px; }
         }
     </style>
 </head>
@@ -253,61 +246,58 @@
 </div>
 
 <div class="container-fluid">
-    <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+    <!-- Заголовок -->
+    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
         <div>
-            <h1 class="main-title">🧠 Умное сравнение Excel</h1>
-            <p class="main-subtitle">Автоматически находит колонки по смыслу и сравнивает файлы</p>
+            <h1 class="main-title" style="font-size: 24px;">🧠 Умное сравнение Excel/CSV</h1>
+            <p class="main-subtitle" style="font-size: 14px;">Поддерживает .xlsx, .xls и .csv файлы</p>
         </div>
         <div class="ms-auto">
-            <span class="badge bg-primary" style="font-size:13px;">⬅️ 1 эталон</span>
-            <span class="badge bg-success" style="font-size:13px;">➡️ несколько файлов</span>
+            <span class="badge bg-primary" style="font-size: 12px;">⬅️ 1 эталон</span>
+            <span class="badge bg-success" style="font-size: 12px;">➡️ несколько файлов</span>
         </div>
     </div>
 
-    <div class="row g-4">
+    <div class="row g-3">
         <!-- ЛЕВАЯ ПАНЕЛЬ -->
         <div class="col-md-5">
             <div class="summary-box">
-                <h5 style="font-weight:600;">📌 Эталонный файл <span class="badge bg-primary" style="font-size:11px;">1 файл</span></h5>
+                <h5 style="font-weight:600; font-size: 15px;">📌 Эталонный файл <span class="badge bg-primary" style="font-size: 10px;">1 файл</span></h5>
                 <div id="leftZone" class="upload-zone">
                     <span class="status-badge" id="leftStatus">Ожидание</span>
                     <div class="icon">📄</div>
-                    <div class="upload-text" style="font-weight:500;">Нажмите или перетащите файл</div>
-                    <div class="hint">.xlsx или .xls</div>
-                    
-                    <!-- Информация о загруженном файле -->
+                    <div class="upload-text">Нажмите или перетащите файл</div>
+                    <div class="hint">.xlsx, .xls или .csv</div>
                     <div class="loaded-info">
                         <span class="file-icon">✅</span>
-                        <div class="file-name" id="leftLoadedName">файл.xlsx</div>
-                        <div class="file-stats" id="leftLoadedStats">100 строк</div>
+                        <div class="file-name" id="leftLoadedName">файл</div>
+                        <div class="file-stats" id="leftLoadedStats">0 строк</div>
                         <span class="file-badge" id="leftLoadedBadge">Готово</span>
                     </div>
                 </div>
                 <div id="leftColsInfo" class="detected-cols"></div>
-                <input type="file" id="leftInput" accept=".xlsx,.xls" style="display:none;" />
+                <input type="file" id="leftInput" accept=".xlsx,.xls,.csv" style="display:none;" />
             </div>
         </div>
 
         <!-- ПРАВАЯ ПАНЕЛЬ -->
         <div class="col-md-5">
             <div class="summary-box">
-                <h5 style="font-weight:600;">📂 Файлы для сравнения <span class="badge bg-success" style="font-size:11px;">несколько</span></h5>
+                <h5 style="font-weight:600; font-size: 15px;">📂 Файлы для сравнения <span class="badge bg-success" style="font-size: 10px;">несколько</span></h5>
                 <div id="rightZone" class="upload-zone">
                     <span class="status-badge" id="rightStatus">Ожидание</span>
                     <div class="icon">📦</div>
-                    <div class="upload-text" style="font-weight:500;">Нажмите или перетащите файлы</div>
-                    <div class="hint">.xlsx или .xls (можно несколько)</div>
-                    
-                    <!-- Информация о загруженных файлах -->
+                    <div class="upload-text">Нажмите или перетащите файлы</div>
+                    <div class="hint">.xlsx, .xls или .csv (можно несколько)</div>
                     <div class="loaded-info">
                         <span class="file-icon">✅</span>
                         <div class="file-name" id="rightLoadedName">файлы</div>
-                        <div class="file-stats" id="rightLoadedStats">100 строк</div>
+                        <div class="file-stats" id="rightLoadedStats">0 строк</div>
                         <span class="file-badge" id="rightLoadedBadge">Готово</span>
                     </div>
                 </div>
                 <div id="rightColsInfo" class="detected-cols"></div>
-                <input type="file" id="rightInput" accept=".xlsx,.xls" multiple style="display:none;" />
+                <input type="file" id="rightInput" accept=".xlsx,.xls,.csv" multiple style="display:none;" />
             </div>
         </div>
 
@@ -316,9 +306,7 @@
             <button id="compareBtn" class="btn btn-primary compare-btn w-100" disabled>
                 🔍 Сравнить
             </button>
-            <div class="text-center mt-2" style="font-size:12px; color:#6c757d;" id="readyHint">
-                Загрузите файлы с обеих сторон
-            </div>
+            <div class="ready-hint" id="readyHint">⏳ Загрузите файлы с обеих сторон</div>
         </div>
     </div>
 
@@ -326,7 +314,7 @@
     <div class="result-container" id="resultContainer">
         <div class="summary-box">
             <div class="result-header">
-                <h5 style="font-weight:600;margin:0;">📋 Результат сравнения</h5>
+                <h5 style="font-weight:600; margin:0; font-size: 16px;">📋 Результат сравнения</h5>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <span id="statsText"></span>
                     <button id="downloadBtn" class="btn btn-success btn-download btn-sm">⬇ Скачать .xlsx</button>
@@ -373,6 +361,139 @@ const COLUMN_NAMES = {
 };
 
 // ============================================================
+//  ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+// ============================================================
+let leftData = null;
+let rightData = null;
+let leftHeaders = [];
+let rightHeaders = [];
+let leftColMap = {};
+let rightColMap = {};
+let leftFileName = '';
+let rightFileNames = [];
+
+// ============================================================
+//  СУПЕР-ОЧИСТКА ДАННЫХ
+// ============================================================
+function normalize(val) {
+    if (val === null || val === undefined) return '';
+    
+    let result = String(val);
+    
+    result = result
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .replace(/["'""''']/g, '')
+        .replace(/[.,;:!?]/g, '')
+        .replace(/[()\[\]{}<>]/g, '')
+        .replace(/№/g, '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/\\n/g, ' ')
+        .replace(/\\r/g, ' ')
+        .replace(/\\t/g, ' ')
+        .replace(/ +/g, ' ')
+        .trim();
+    
+    // Для номеров — убираем все пробелы и дефисы
+    if (/^[\d\s\-]+$/.test(result)) {
+        result = result.replace(/\s/g, '');
+        result = result.replace(/-/g, '');
+    }
+    
+    if (result === '' && !isNaN(parseFloat(val))) {
+        result = String(val).trim();
+    }
+    
+    return result;
+}
+
+// ============================================================
+//  ОПРЕДЕЛЕНИЕ ФОРМАТА ФАЙЛА
+// ============================================================
+function getFileFormat(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    if (ext === 'csv') return 'csv';
+    if (ext === 'xlsx' || ext === 'xls') return 'excel';
+    return 'unknown';
+}
+
+// ============================================================
+//  ЧТЕНИЕ ФАЙЛОВ (ПОДДЕРЖИВАЕТ CSV И EXCEL)
+// ============================================================
+function readFiles(files) {
+    return new Promise((resolve) => {
+        const allData = [];
+        let headers = [];
+        let completed = 0;
+        
+        if (!files || files.length === 0) {
+            resolve({ data: [], headers: [] });
+            return;
+        }
+        
+        for (let file of files) {
+            const reader = new FileReader();
+            const format = getFileFormat(file.name);
+            
+            reader.onload = function(e) {
+                try {
+                    let json = [];
+                    
+                    if (format === 'csv') {
+                        // === ЧТЕНИЕ CSV ===
+                        const text = e.target.result;
+                        // Пробуем разные разделители
+                        let delimiter = ',';
+                        const firstLine = text.split('\n')[0] || '';
+                        if (firstLine.includes(';')) delimiter = ';';
+                        if (firstLine.includes('\t')) delimiter = '\t';
+                        
+                        // Читаем CSV с определённым разделителем
+                        const workbook = XLSX.read(text, { 
+                            type: 'string',
+                            raw: true,
+                            codepage: 65001 // UTF-8
+                        });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+                        
+                    } else {
+                        // === ЧТЕНИЕ EXCEL ===
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+                    }
+                    
+                    if (json.length > 0) {
+                        if (headers.length === 0) {
+                            headers = Object.keys(json[0]);
+                        }
+                        allData.push(...json);
+                    }
+                    
+                } catch (err) {
+                    console.error('Ошибка чтения файла:', file.name, err);
+                }
+                
+                completed++;
+                if (completed === files.length) {
+                    resolve({ data: allData, headers: headers });
+                }
+            };
+            
+            // Читаем в зависимости от формата
+            if (format === 'csv') {
+                reader.readAsText(file, 'UTF-8');
+            } else {
+                reader.readAsArrayBuffer(file);
+            }
+        }
+    });
+}
+
+// ============================================================
 //  УМНЫЙ ПОИСК КОЛОНОК
 // ============================================================
 function findColumns(headers) {
@@ -408,67 +529,7 @@ function findColumns(headers) {
 }
 
 // ============================================================
-//  ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
-// ============================================================
-let leftData = null;
-let rightData = null;
-let leftHeaders = [];
-let rightHeaders = [];
-let leftColMap = {};
-let rightColMap = {};
-
-// ============================================================
-//  ЧТЕНИЕ ФАЙЛОВ
-// ============================================================
-function readFiles(files) {
-    return new Promise((resolve) => {
-        const allData = [];
-        let headers = [];
-        let completed = 0;
-        
-        if (!files || files.length === 0) {
-            resolve({ data: [], headers: [] });
-            return;
-        }
-        
-        for (let file of files) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
-                    
-                    if (json.length > 0) {
-                        if (headers.length === 0) {
-                            headers = Object.keys(json[0]);
-                        }
-                        allData.push(...json);
-                    }
-                } catch (err) {
-                    console.error('Ошибка чтения файла:', file.name, err);
-                }
-                
-                completed++;
-                if (completed === files.length) {
-                    resolve({ data: allData, headers: headers });
-                }
-            };
-            reader.onerror = function() {
-                console.error('Ошибка загрузки файла:', file.name);
-                completed++;
-                if (completed === files.length) {
-                    resolve({ data: allData, headers: headers });
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-    });
-}
-
-// ============================================================
-//  ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ОТОБРАЖЕНИЯ
+//  ОБНОВЛЕНИЕ UI
 // ============================================================
 function updateLeftUI(files, data, colMap) {
     const zone = document.getElementById('leftZone');
@@ -480,7 +541,8 @@ function updateLeftUI(files, data, colMap) {
     if (data && data.length > 0) {
         zone.classList.add('loaded');
         status.textContent = '✅ Загружено';
-        loadedName.textContent = files[0].name;
+        const format = getFileFormat(files[0].name).toUpperCase();
+        loadedName.textContent = `${files[0].name} (${format})`;
         loadedStats.textContent = `${data.length} строк`;
         
         const colCount = Object.keys(colMap).length;
@@ -506,9 +568,10 @@ function updateRightUI(files, data, colMap) {
         status.textContent = '✅ Загружено';
         const names = Array.from(files).map(f => f.name);
         if (names.length === 1) {
-            loadedName.textContent = names[0];
+            const format = getFileFormat(names[0]).toUpperCase();
+            loadedName.textContent = `${names[0]} (${format})`;
         } else {
-            loadedName.textContent = `${names.length} файлов: ${names.join(', ')}`;
+            loadedName.textContent = `${names.length} файлов`;
         }
         loadedStats.textContent = `${data.length} строк`;
         
@@ -520,6 +583,20 @@ function updateRightUI(files, data, colMap) {
             loadedBadge.textContent = `⚠️ Найдено ${colCount}/4 колонок`;
             loadedBadge.className = 'file-badge warning';
         }
+    }
+}
+
+function showColsInfo(divId, colMap) {
+    const div = document.getElementById(divId);
+    const found = Object.entries(colMap);
+    if (found.length > 0) {
+        div.classList.add('show');
+        div.innerHTML = '🔍 Найдено: ' + found.map(([key, col]) => 
+            `<span class="col-item"><strong>${COLUMN_NAMES[key]}</strong> → "${col}"</span>`
+        ).join(' ');
+    }
+    if (found.length < 4) {
+        div.innerHTML += ' <span class="warning-text">⚠️ Не все колонки найдены!</span>';
     }
 }
 
@@ -566,11 +643,14 @@ function setupUpload(zoneId, inputId, isMultiple, onLoad) {
     });
 }
 
-// Загрузка эталона
+// ============================================================
+//  ЗАГРУЗКА ЭТАЛОНА
+// ============================================================
 setupUpload('leftZone', 'leftInput', false, async function(files) {
     const result = await readFiles(files);
     leftData = result.data;
     leftHeaders = result.headers;
+    leftFileName = files[0].name;
     
     if (leftData.length === 0) {
         alert('Не удалось прочитать файл или он пуст.');
@@ -579,27 +659,18 @@ setupUpload('leftZone', 'leftInput', false, async function(files) {
     
     leftColMap = findColumns(leftHeaders);
     updateLeftUI(files, leftData, leftColMap);
-    
-    const colsDiv = document.getElementById('leftColsInfo');
-    const found = Object.entries(leftColMap);
-    if (found.length > 0) {
-        colsDiv.classList.add('show');
-        colsDiv.innerHTML = '🔍 Найдено: ' + found.map(([key, col]) => 
-            `<span class="col-item"><strong>${COLUMN_NAMES[key]}</strong> → "${col}"</span>`
-        ).join(' ');
-    }
-    if (found.length < 4) {
-        colsDiv.innerHTML += ' <span class="warning-text">⚠️ Не все колонки найдены!</span>';
-    }
-    
+    showColsInfo('leftColsInfo', leftColMap);
     checkReady();
 });
 
-// Загрузка правых файлов
+// ============================================================
+//  ЗАГРУЗКА ПРАВЫХ ФАЙЛОВ
+// ============================================================
 setupUpload('rightZone', 'rightInput', true, async function(files) {
     const result = await readFiles(files);
     rightData = result.data;
     rightHeaders = result.headers;
+    rightFileNames = Array.from(files).map(f => f.name);
     
     if (rightData.length === 0) {
         alert('Не удалось прочитать файлы или они пусты.');
@@ -608,22 +679,13 @@ setupUpload('rightZone', 'rightInput', true, async function(files) {
     
     rightColMap = findColumns(rightHeaders);
     updateRightUI(files, rightData, rightColMap);
-    
-    const colsDiv = document.getElementById('rightColsInfo');
-    const found = Object.entries(rightColMap);
-    if (found.length > 0) {
-        colsDiv.classList.add('show');
-        colsDiv.innerHTML = '🔍 Найдено: ' + found.map(([key, col]) => 
-            `<span class="col-item"><strong>${COLUMN_NAMES[key]}</strong> → "${col}"</span>`
-        ).join(' ');
-    }
-    if (found.length < 4) {
-        colsDiv.innerHTML += ' <span class="warning-text">⚠️ Не все колонки найдены!</span>';
-    }
-    
+    showColsInfo('rightColsInfo', rightColMap);
     checkReady();
 });
 
+// ============================================================
+//  ПРОВЕРКА ГОТОВНОСТИ
+// ============================================================
 function checkReady() {
     const btn = document.getElementById('compareBtn');
     const hint = document.getElementById('readyHint');
@@ -634,11 +696,11 @@ function checkReady() {
     if (leftOk && rightOk) {
         btn.disabled = false;
         hint.textContent = '✅ Готово к сравнению!';
-        hint.style.color = '#198754';
+        hint.className = 'ready-hint ready';
     } else {
         btn.disabled = true;
         hint.textContent = '⏳ Загрузите файлы с обеих сторон (нужны все 4 колонки)';
-        hint.style.color = '#6c757d';
+        hint.className = 'ready-hint';
     }
 }
 
@@ -655,7 +717,7 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         let msg = '⚠️ Не найдены колонки в файлах:\n';
         if (missingLeft.length) msg += `\n📌 В эталоне: ${missingLeft.map(k => COLUMN_NAMES[k]).join(', ')}`;
         if (missingRight.length) msg += `\n📂 В правых файлах: ${missingRight.map(k => COLUMN_NAMES[k]).join(', ')}`;
-        msg += '\n\nПроверьте названия колонок или добавьте их в COLUMN_KEYWORDS в коде.';
+        msg += '\n\nПроверьте названия колонок в ваших файлах.';
         alert(msg);
         return;
     }
@@ -663,8 +725,6 @@ document.getElementById('compareBtn').addEventListener('click', async function()
     document.getElementById('loadingOverlay').classList.add('active');
     document.getElementById('loadingText').textContent = `Сравнение ${leftData.length} строк...`;
     await new Promise(r => setTimeout(r, 80));
-    
-    const normalize = (val) => String(val).trim().toLowerCase();
     
     const lName = leftColMap['name'];
     const lMod = leftColMap['modification'];
@@ -676,7 +736,8 @@ document.getElementById('compareBtn').addEventListener('click', async function()
     const rReg = rightColMap['registry'];
     const rSut = rightColMap['sut'];
     
-    const rightIndex = new Map();
+    // Индекс для точных совпадений
+    const exactIndex = new Map();
     rightData.forEach((row, idx) => {
         const key = [
             normalize(row[rName] || ''),
@@ -684,78 +745,96 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             normalize(row[rReg] || ''),
             normalize(row[rSut] || '')
         ].join('|||');
-        if (!rightIndex.has(key)) rightIndex.set(key, []);
-        rightIndex.get(key).push(idx);
+        if (!exactIndex.has(key)) exactIndex.set(key, []);
+        exactIndex.get(key).push(idx);
+    });
+    
+    // Индекс по наименованию
+    const nameIndex = new Map();
+    rightData.forEach((row, idx) => {
+        const name = normalize(row[rName] || '');
+        if (!nameIndex.has(name)) nameIndex.set(name, []);
+        nameIndex.get(name).push(idx);
     });
     
     const results = [];
     let okCount = 0, errorCount = 0, warningCount = 0;
     
-    leftData.forEach((leftRow) => {
-        const leftKey = [
-            normalize(leftRow[lName] || ''),
-            normalize(leftRow[lMod] || ''),
-            normalize(leftRow[lReg] || ''),
-            normalize(leftRow[lSut] || '')
-        ].join('|||');
+    for (let leftRow of leftData) {
+        const leftName = normalize(leftRow[lName] || '');
+        const leftMod = normalize(leftRow[lMod] || '');
+        const leftReg = normalize(leftRow[lReg] || '');
+        const leftSut = normalize(leftRow[lSut] || '');
         
-        const matchedIndices = rightIndex.get(leftKey) || [];
+        const exactKey = [leftName, leftMod, leftReg, leftSut].join('|||');
+        const exactMatch = exactIndex.get(exactKey);
         
-        if (matchedIndices.length > 0) {
+        if (exactMatch && exactMatch.length > 0) {
             okCount++;
             results.push({
                 ...leftRow,
                 'Результат': '✅ Совпадает',
                 'Причина': ''
             });
-        } else {
-            let maxMatchCount = 0;
-            let bestMismatches = [];
+            continue;
+        }
+        
+        let candidates = nameIndex.get(leftName) || [];
+        
+        if (candidates.length === 0) {
+            if (rightData.length <= 1000) {
+                candidates = rightData.map((_, idx) => idx);
+            }
+        }
+        
+        let maxMatchCount = 0;
+        let bestMismatches = ['Наименование'];
+        
+        for (let idx of candidates) {
+            const rightRow = rightData[idx];
+            let matchCount = 0;
+            const mismatches = [];
             
-            rightData.forEach((rightRow) => {
-                let matchCount = 0;
-                const mismatches = [];
-                
-                const pairs = [
-                    { left: leftRow[lName], right: rightRow[rName], name: 'Наименование' },
-                    { left: leftRow[lMod], right: rightRow[rMod], name: 'Модификация' },
-                    { left: leftRow[lReg], right: rightRow[rReg], name: 'Госреестр' },
-                    { left: leftRow[lSut], right: rightRow[rSut], name: 'СУТ' }
-                ];
-                
-                for (let p of pairs) {
-                    if (normalize(p.left) === normalize(p.right)) {
-                        matchCount++;
-                    } else {
-                        mismatches.push(p.name);
-                    }
-                }
-                
-                if (matchCount > maxMatchCount) {
-                    maxMatchCount = matchCount;
-                    bestMismatches = mismatches;
-                }
-            });
+            const pairs = [
+                { left: leftRow[lName], right: rightRow[rName], name: 'Наименование' },
+                { left: leftRow[lMod], right: rightRow[rMod], name: 'Модификация' },
+                { left: leftRow[lReg], right: rightRow[rReg], name: 'Госреестр' },
+                { left: leftRow[lSut], right: rightRow[rSut], name: 'СУТ' }
+            ];
             
-            let reason = '';
-            if (maxMatchCount >= 3) {
-                reason = `Не совпадает: ${bestMismatches.join(', ')}`;
-                warningCount++;
-            } else if (maxMatchCount > 0) {
-                reason = `Совпадает только ${maxMatchCount} из 4 полей`;
-                errorCount++;
-            } else {
-                reason = 'Ни одно поле не совпало';
-                errorCount++;
+            for (let p of pairs) {
+                if (normalize(p.left) === normalize(p.right)) {
+                    matchCount++;
+                } else {
+                    mismatches.push(p.name);
+                }
             }
             
-            results.push({
-                ...leftRow,
-                'Результат': maxMatchCount >= 3 ? '⚠️ Частично' : '❌ Ошибка',
-                'Причина': reason
-            });
+            if (matchCount > maxMatchCount) {
+                maxMatchCount = matchCount;
+                bestMismatches = mismatches;
+                if (matchCount === 4) break;
+            }
         }
-    });
+        
+        let reason = '';
+        if (maxMatchCount >= 3) {
+            reason = `Не совпадает: ${bestMismatches.join(', ')}`;
+            warningCount++;
+        } else if (maxMatchCount > 0) {
+            reason = `Совпадает только ${maxMatchCount} из 4 полей`;
+            errorCount++;
+        } else {
+            reason = 'Ни одно поле не совпало';
+            errorCount++;
+        }
+        
+        results.push({
+            ...leftRow,
+            'Результат': maxMatchCount >= 3 ? '⚠️ Частично' : '❌ Ошибка',
+            'Причина': reason
+        });
+    }
     
     document.getElementById('loadingOverlay').classList.remove('active');
     showResults(results, okCount, errorCount, warningCount);
@@ -767,7 +846,6 @@ document.getElementById('compareBtn').addEventListener('click', async function()
 function showResults(results, okCount, errorCount, warningCount) {
     const container = document.getElementById('resultContainer');
     container.classList.add('show');
-    container.classList.add('fade-in');
     
     document.getElementById('statsText').innerHTML = `
         <span class="badge bg-success stats-badge">✅ ${okCount}</span>
@@ -781,52 +859,4 @@ function showResults(results, okCount, errorCount, warningCount) {
     
     const leftCols = Object.keys(results[0]).filter(k => k !== 'Результат' && k !== 'Причина');
     const allHeaders = [...leftCols, 'Результат', 'Причина'];
-    thead.innerHTML = `<tr>${allHeaders.map(h => `<th>${h}</th>`).join('')}</tr>`;
-    
-    tbody.innerHTML = results.map(row => {
-        const cols = leftCols.map(k => `<td title="${row[k] || ''}">${row[k] || ''}</td>`);
-        const result = row['Результат'] || '';
-        const reason = row['Причина'] || '';
-        
-        let badgeClass = 'reason-ok';
-        if (result.includes('Ошибка')) badgeClass = 'reason-error';
-        else if (result.includes('Частично')) badgeClass = 'reason-warning';
-        
-        return `<tr>
-            ${cols.join('')}
-            <td><span class="reason-badge ${badgeClass}">${result}</span></td>
-            <td>${reason}</td>
-        </tr>`;
-    }).join('');
-    
-    window._reportData = { results, allHeaders: [...leftCols, 'Результат', 'Причина'] };
-    
-    // Скролл к результатам
-    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-// ============================================================
-//  СКАЧИВАНИЕ ОТЧЕТА
-// ============================================================
-document.getElementById('downloadBtn').addEventListener('click', function() {
-    const { results, allHeaders } = window._reportData || {};
-    if (!results || !results.length) {
-        alert('Нет данных для скачивания');
-        return;
-    }
-    
-    const rows = [
-        allHeaders,
-        ...results.map(row => allHeaders.map(h => row[h] || ''))
-    ];
-    
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    XLSX.utils.book_append_sheet(wb, ws, 'Результат');
-    XLSX.writeFile(wb, 'report_comparison.xlsx');
-});
-
-console.log('🧠 Умный сравнитель Excel загружен!');
-</script>
-</body>
-</html>
+    thead.innerHTML = `<tr>${allHeaders.map(h => `<th>${h}</
