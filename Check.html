@@ -70,7 +70,7 @@
     <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
         <div>
             <h1 style="font-weight:700; color:#1a1a2e;">📂 Загрузка эталона</h1>
-            <p style="color:#6c757d;">Загрузите файлы эталона. Будут взяты только колонки: <strong>тип СИ</strong>, <strong>Модификация</strong>, <strong>номер ГРСИ</strong>, <strong>номер СУТ</strong></p>
+            <p style="color:#6c757d;">Загрузите файлы. Система сама найдёт колонки: <strong>тип СИ</strong>, <strong>Модификация</strong>, <strong>номер ГРСИ</strong>, <strong>номер СУТ</strong></p>
         </div>
     </div>
 
@@ -118,7 +118,8 @@
             </div>
             <div class="modal-body">
                 <div style="margin-bottom: 12px; font-size:14px; color:#6c757d;">
-                    Показаны только колонки: <strong>тип СИ</strong>, <strong>Модификация</strong>, <strong>номер ГРСИ</strong>, <strong>номер СУТ</strong>
+                    Показаны только найденные колонки: 
+                    <span id="modalColsNames"></span>
                     <span class="badge bg-secondary ms-2" id="modalRowCount">0 строк</span>
                 </div>
                 <div class="table-wrap">
@@ -137,20 +138,25 @@
 
 <script>
 // ============================================================
-//  НАСТРОЙКА: какие колонки ищем
+//  НАСТРОЙКА: какие колонки ищем (гибкий поиск)
 // ============================================================
-const REQUIRED_COLUMNS = {
-    'type': ['тип си', 'тип', 'наименование си', 'наименование', 'название'],
-    'modification': ['модификация', 'исполнение', 'модификаци', 'модель', 'версия'],
-    'registry': ['номер грси', 'грси', 'номер госреестра си', 'рег. номер', 'регистрационный номер'],
-    'sut': ['номер сут', 'сут', 'идентификационный номер', 'идентификатор', 'id']
-};
-
-const COLUMN_NAMES = {
-    'type': 'тип СИ',
-    'modification': 'Модификация',
-    'registry': 'номер ГРСИ',
-    'sut': 'номер СУТ'
+const SEARCH_RULES = {
+    'type': {
+        keywords: ['тип си', 'тип', 'наименование си', 'наименование', 'название', 'средство', 'прибор'],
+        displayName: 'тип СИ'
+    },
+    'modification': {
+        keywords: ['модификация', 'исполнение', 'модификаци', 'модель', 'версия', 'исполн'],
+        displayName: 'Модификация'
+    },
+    'registry': {
+        keywords: ['номер грси', 'грси', 'номер госреестра си', 'рег. номер', 'регистрационный номер', 'госреестр'],
+        displayName: 'номер ГРСИ'
+    },
+    'sut': {
+        keywords: ['номер сут', 'сут', 'идентификационный номер', 'идентификатор', 'заводской номер', 'серийный номер'],
+        displayName: 'номер СУТ'
+    }
 };
 
 // ============================================================
@@ -162,19 +168,22 @@ let foundColumns = {};
 let fileNames = [];
 
 // ============================================================
-//  ПОИСК КОЛОНОК
+//  ПОИСК КОЛОНОК (гибкий, по ключевым словам)
 // ============================================================
 function findColumns(headers) {
     const detected = {};
     const usedColumns = new Set();
 
-    for (let [key, keywords] of Object.entries(REQUIRED_COLUMNS)) {
+    for (let [key, rule] of Object.entries(SEARCH_RULES)) {
         let found = null;
         let bestScore = 0;
+        
         for (let h of headers) {
             if (usedColumns.has(h)) continue;
             const lower = h.toLowerCase().trim();
-            for (let kw of keywords) {
+            
+            for (let kw of rule.keywords) {
+                // Проверяем, содержит ли заголовок ключевое слово
                 if (lower.includes(kw) || kw.includes(lower)) {
                     const score = Math.max(kw.length, lower.length);
                     if (score > bestScore) {
@@ -184,11 +193,13 @@ function findColumns(headers) {
                 }
             }
         }
+        
         if (found) {
             detected[key] = found;
             usedColumns.add(found);
         }
     }
+    
     return detected;
 }
 
@@ -298,7 +309,7 @@ async function loadFiles(files) {
         return;
     }
     
-    // Ищем нужные колонки
+    // Ищем нужные колонки (гибкий поиск)
     foundColumns = findColumns(allHeaders);
     
     // Показываем информацию
@@ -321,12 +332,12 @@ async function loadFiles(files) {
     const colsInfo = document.getElementById('colsInfo');
     if (foundKeys.length === 4) {
         colsInfo.innerHTML = '✅ Найдены все колонки: ' + 
-            foundKeys.map(key => `<span class="col-tag"><strong>${COLUMN_NAMES[key]}</strong> → "${foundColumns[key]}"</span>`).join('');
+            foundKeys.map(key => `<span class="col-tag"><strong>${SEARCH_RULES[key].displayName}</strong> → "${foundColumns[key]}"</span>`).join('');
         colsInfo.style.color = '#198754';
     } else {
-        const missing = Object.keys(COLUMN_NAMES).filter(k => !foundColumns[k]);
+        const missing = Object.keys(SEARCH_RULES).filter(k => !foundColumns[k]);
         colsInfo.innerHTML = '⚠️ Найдено ' + foundKeys.length + ' из 4 колонок. Не найдены: ' + 
-            missing.map(k => `<strong>${COLUMN_NAMES[k]}</strong>`).join(', ');
+            missing.map(k => `<strong>${SEARCH_RULES[k].displayName}</strong>`).join(', ');
         colsInfo.style.color = '#dc3545';
     }
     
@@ -343,10 +354,10 @@ previewBtn.addEventListener('click', function() {
         return;
     }
     
-    // Берём только нужные колонки в правильном порядке
+    // Берём только найденные колонки в правильном порядке
     const order = ['type', 'modification', 'registry', 'sut'];
     const displayCols = order.filter(k => foundColumns[k]);
-    const displayNames = displayCols.map(k => COLUMN_NAMES[k]);
+    const displayNames = displayCols.map(k => SEARCH_RULES[k].displayName);
     
     // Заголовки
     const thead = document.getElementById('previewHead');
@@ -358,12 +369,17 @@ previewBtn.addEventListener('click', function() {
     for (let row of allData) {
         const cells = displayCols.map(key => {
             const colName = foundColumns[key];
-            return `<td>${row[colName] !== undefined ? row[colName] : ''}</td>`;
+            const value = row[colName] !== undefined ? row[colName] : '';
+            return `<td>${value}</td>`;
         });
         html += `<tr>${cells.join('')}</tr>`;
     }
     tbody.innerHTML = html;
     
+    // Информация в модалке
+    document.getElementById('modalColsNames').innerHTML = displayNames.map(name => 
+        `<span class="badge bg-primary">${name}</span>`
+    ).join(' ');
     document.getElementById('modalRowCount').textContent = allData.length + ' строк';
     
     // Показываем модалку
@@ -371,7 +387,8 @@ previewBtn.addEventListener('click', function() {
     modal.show();
 });
 
-console.log('✅ Сайт готов! Загрузите файлы и нажмите "Просмотр таблицы"');
+console.log('✅ Сайт готов! Загрузите файлы — система сама найдёт нужные колонки.');
+console.log('🔍 Поиск по ключевым словам:', SEARCH_RULES);
 </script>
 
 <!-- Подключаем Bootstrap JS для модалки -->
