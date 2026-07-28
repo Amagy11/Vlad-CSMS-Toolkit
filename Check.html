@@ -1,422 +1,380 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Сравнение с ГРСИ и СССР</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Загрузка эталона</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
-        body { background: #f4f6f9; padding: 20px; }
+        * { box-sizing: border-box; }
+        body { background: #f0f2f5; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
         .upload-zone {
-            border: 2px dashed #6c757d;
-            border-radius: 10px;
-            padding: 40px;
+            border: 3px dashed #adb5bd;
+            border-radius: 14px;
+            padding: 40px 20px;
             text-align: center;
             cursor: pointer;
-            background: white;
-            transition: 0.3s;
-            min-height: 150px;
+            background: #ffffff;
+            transition: all 0.3s ease;
+            min-height: 200px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
         }
-        .upload-zone:hover { border-color: #0d6efd; background: #f0f7ff; }
+        .upload-zone:hover { border-color: #0d6efd; background: #f8f9ff; }
         .upload-zone.dragover { border-color: #0d6efd; background: #e7edff; }
         .upload-zone.loaded { border-color: #198754; background: #f0fff4; border-style: solid; }
-        .upload-zone .icon { font-size: 48px; }
-        .upload-zone .loaded-info { display: none; }
-        .upload-zone.loaded .loaded-info { display: block; }
-        .upload-zone.loaded .upload-text { display: none; }
+        .upload-zone .icon { font-size: 48px; margin-bottom: 8px; }
+        .upload-zone .hint { font-size: 14px; color: #6c757d; margin-top: 4px; }
+        .upload-zone .upload-text { font-weight: 500; font-size: 16px; }
+        .upload-zone .loaded-info { display: none; text-align: center; width: 100%; }
         .upload-zone.loaded .icon { display: none; }
+        .upload-zone.loaded .upload-text { display: none; }
+        .upload-zone.loaded .hint { display: none; }
+        .upload-zone.loaded .loaded-info { display: block; }
+        .upload-zone .loaded-info .file-icon { font-size: 36px; display: block; }
+        .upload-zone .loaded-info .file-name { font-weight: 600; font-size: 15px; color: #1a1a2e; }
+        .upload-zone .loaded-info .file-stats { font-size: 13px; color: #6c757d; }
+        
+        .modal-content { border-radius: 14px; }
+        .modal-header { background: #1a1a2e; color: #fff; border-radius: 14px 14px 0 0; }
+        .modal-header .btn-close { filter: invert(1); }
         .table-wrap { max-height: 500px; overflow-y: auto; }
-        .badge-ok { background: #d1e7dd; color: #0f5132; }
-        .badge-error { background: #f8d7da; color: #842029; }
-        .badge-warning { background: #fff3cd; color: #856404; }
-        .file-info { margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 6px; display: none; }
-        .file-info.show { display: block; }
-        #statusMsg { font-size: 14px; margin-top: 8px; }
+        .table-wrap table { font-size: 13px; margin-bottom: 0; }
+        .table-wrap th { position: sticky; top: 0; background: #1a1a2e; color: #fff; z-index: 10; padding: 10px 12px; white-space: nowrap; }
+        .table-wrap td { padding: 8px 12px; vertical-align: middle; }
+        .table-wrap tr:hover td { background: #f8f9ff; }
+        
+        .summary-box { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .btn-preview { border-radius: 10px; padding: 8px 20px; font-weight: 600; }
+        
+        .col-tag { display: inline-block; background: #e9ecef; padding: 2px 12px; border-radius: 12px; font-size: 12px; margin: 2px 4px 2px 0; }
+        .col-tag strong { color: #0d6efd; }
+        
+        .file-list { margin-top: 12px; }
+        .file-list .file-item { display: inline-block; background: #e9ecef; padding: 4px 14px; border-radius: 20px; font-size: 13px; margin: 3px 6px 3px 0; }
+        
+        @media (max-width: 768px) {
+            .upload-zone { min-height: 150px; padding: 20px; }
+            .table-wrap td { font-size: 12px; padding: 6px 8px; }
+            body { padding: 12px; }
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1 class="mb-3">📊 Проверка по реестрам ГРСИ и СССР</h1>
-    <p class="text-muted">Загрузите ваш Excel/CSV файл. Система проверит его по эталону.</p>
-
-    <div class="row">
-        <div class="col-md-8 mx-auto">
-            <div class="card p-4">
-                <!-- Зона загрузки -->
-                <div id="uploadZone" class="upload-zone">
-                    <div class="icon">📂</div>
-                    <div class="upload-text fw-bold">Нажмите или перетащите файл</div>
-                    <div class="text-muted" style="font-size: 14px;">Поддерживаются .xlsx, .xls, .csv</div>
-                    <div class="loaded-info">
-                        <div style="font-size: 40px;">✅</div>
-                        <div class="fw-bold" id="fileName">Файл загружен</div>
-                        <div class="text-muted" id="fileStats">0 строк</div>
-                    </div>
-                </div>
-                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;">
-
-                <!-- Информация о загрузке -->
-                <div id="fileInfo" class="file-info">
-                    <div><strong>Файл:</strong> <span id="infoFileName"></span></div>
-                    <div><strong>Строк:</strong> <span id="infoRows"></span></div>
-                    <div><strong>Колонки:</strong> <span id="infoCols"></span></div>
-                </div>
-
-                <button id="compareBtn" class="btn btn-primary btn-lg w-100 mt-3" disabled>🔍 Сравнить с эталоном</button>
-                <div id="statusMsg" class="text-center text-muted">Загрузите файл для проверки</div>
-            </div>
+<div class="container-fluid">
+    <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+        <div>
+            <h1 style="font-weight:700; color:#1a1a2e;">📂 Загрузка эталона</h1>
+            <p style="color:#6c757d;">Загрузите файлы эталона. Будут взяты только колонки: <strong>тип СИ</strong>, <strong>Модификация</strong>, <strong>номер ГРСИ</strong>, <strong>номер СУТ</strong></p>
         </div>
     </div>
 
-    <!-- Результат -->
-    <div id="resultContainer" class="mt-4" style="display: none;">
-        <div class="card p-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="mb-0">📋 Результат проверки</h5>
-                <div id="statsText"></div>
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="summary-box">
+                <!-- Зона загрузки -->
+                <div id="uploadZone" class="upload-zone">
+                    <div class="icon">📦</div>
+                    <div class="upload-text">Нажмите или перетащите файлы</div>
+                    <div class="hint">.xlsx, .xls или .csv (можно несколько)</div>
+                    <div class="loaded-info">
+                        <span class="file-icon">✅</span>
+                        <div class="file-name" id="loadedName">файлы загружены</div>
+                        <div class="file-stats" id="loadedStats">0 строк</div>
+                    </div>
+                </div>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple style="display:none;" />
+
+                <!-- Информация о загруженных файлах -->
+                <div id="fileInfo" style="display:none; margin-top: 12px;">
+                    <div class="file-list" id="fileList"></div>
+                    <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <button id="previewBtn" class="btn btn-primary btn-preview" disabled>
+                            👁️ Просмотр таблицы
+                        </button>
+                        <span style="font-size:13px; color:#6c757d;">
+                            Найдено колонок: <span id="foundColsCount">0</span>/4
+                        </span>
+                    </div>
+                    <div style="margin-top: 6px; font-size:12px; color:#6c757d;" id="colsInfo"></div>
+                </div>
             </div>
-            <div class="table-wrap">
-                <table class="table table-bordered table-striped table-hover" id="resultTable">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>№</th>
-                            <th>Ваши данные</th>
-                            <th>Найдено в эталоне</th>
-                            <th>Статус</th>
-                            <th>Причина</th>
-                        </tr>
-                    </thead>
-                    <tbody id="resultBody"></tbody>
-                </table>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра таблицы -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">📊 Данные эталона</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 12px; font-size:14px; color:#6c757d;">
+                    Показаны только колонки: <strong>тип СИ</strong>, <strong>Модификация</strong>, <strong>номер ГРСИ</strong>, <strong>номер СУТ</strong>
+                    <span class="badge bg-secondary ms-2" id="modalRowCount">0 строк</span>
+                </div>
+                <div class="table-wrap">
+                    <table class="table table-bordered table-striped" id="previewTable">
+                        <thead id="previewHead"></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // ============================================================
-    // 1. ЭТАЛОН (данные с сайтов ГРСИ и СССР)
-    // ============================================================
-    const ETALON = {
-        grsi: [
-            { name: 'Измеритель скорости газовоздушных потоков VCEM5100', registry: '13684-26' },
-            { name: 'Автотопливозаправщики АТЗ-6В', registry: '13694-26' },
-            { name: 'Термоциклер C1000 Touch Thermal Cycler', registry: '13683-26' },
-            { name: 'Анализатор биохимический AU480', registry: '13688-26' },
-            { name: 'Осциллограф цифровой АКИП-4135/3', registry: '13691-26' },
-            { name: 'Система автоматизированная "АльфаЦЕНТР"', registry: '13692-26' },
-            { name: 'Пурка литровая с падающим грузом ПХ-2', registry: '13693-26' },
-            { name: 'Регистратор безбумажный JUMO LOGOSCREEN 601', registry: '13696-26' },
-            { name: 'Мониторы пациента СМS9000', registry: '13697-26' },
-            { name: 'Анализатор рамановский портативный ATR6500', registry: '13698-26' }
-        ],
-        sssr: [
-            { name: 'Гамма-радиометры РУГ-92', registry: '13184-92' },
-            { name: 'Радиометры РКГ-05', registry: '00206-95' },
-            { name: 'Электронные образцовые приборы EHF-3', registry: '00203-95' },
-            { name: 'Хронографы печатающие 21-372П', registry: '2432-69' },
-            { name: 'Приборы электроизмерительные Ц4353', registry: '00202-87' },
-            { name: 'Генераторы сигналов высокочастотные Г4-120', registry: '00201-95' },
-            { name: 'Генераторы перепадов СВЧ Я4С-20А', registry: '5346-76' },
-            { name: 'Измерители мощности термисторные М3-22', registry: '2858-72' }
-        ]
-    };
+// ============================================================
+//  НАСТРОЙКА: какие колонки ищем
+// ============================================================
+const REQUIRED_COLUMNS = {
+    'type': ['тип си', 'тип', 'наименование си', 'наименование', 'название'],
+    'modification': ['модификация', 'исполнение', 'модификаци', 'модель', 'версия'],
+    'registry': ['номер грси', 'грси', 'номер госреестра си', 'рег. номер', 'регистрационный номер'],
+    'sut': ['номер сут', 'сут', 'идентификационный номер', 'идентификатор', 'id']
+};
 
-    const allEtalon = [...ETALON.grsi, ...ETALON.sssr];
+const COLUMN_NAMES = {
+    'type': 'тип СИ',
+    'modification': 'Модификация',
+    'registry': 'номер ГРСИ',
+    'sut': 'номер СУТ'
+};
 
-    // ============================================================
-    // 2. ПОИСК КОЛОНОК
-    // ============================================================
-    const KEYWORDS = {
-        name: ['наименование си', 'тип си', 'наименование', 'тип', 'название', 'средство', 'прибор'],
-        modification: ['модификация', 'исполнение', 'модифик', 'модель', 'версия'],
-        registry: ['номер грси', 'грси', 'номер госреестра', 'рег. номер', 'регистрационный номер'],
-        sut: ['номер сут', 'сут', 'идентификационный номер', 'идентификатор', 'заводской номер']
-    };
-    const FIELD_NAMES = {
-        name: 'тип СИ',
-        modification: 'Модификация',
-        registry: 'номер ГРСИ',
-        sut: 'номер СУТ'
-    };
+// ============================================================
+//  ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+// ============================================================
+let allData = [];
+let allHeaders = [];
+let foundColumns = {};
+let fileNames = [];
 
-    function findColumns(headers) {
-        const detected = {};
-        const used = new Set();
-        for (let [key, words] of Object.entries(KEYWORDS)) {
-            for (let h of headers) {
-                if (used.has(h)) continue;
-                const lower = h.toLowerCase().trim();
-                for (let w of words) {
-                    if (lower.includes(w) || w.includes(lower)) {
-                        detected[key] = h;
-                        used.add(h);
-                        break;
+// ============================================================
+//  ПОИСК КОЛОНОК
+// ============================================================
+function findColumns(headers) {
+    const detected = {};
+    const usedColumns = new Set();
+
+    for (let [key, keywords] of Object.entries(REQUIRED_COLUMNS)) {
+        let found = null;
+        let bestScore = 0;
+        for (let h of headers) {
+            if (usedColumns.has(h)) continue;
+            const lower = h.toLowerCase().trim();
+            for (let kw of keywords) {
+                if (lower.includes(kw) || kw.includes(lower)) {
+                    const score = Math.max(kw.length, lower.length);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        found = h;
                     }
                 }
-                if (detected[key]) break;
             }
         }
-        return detected;
+        if (found) {
+            detected[key] = found;
+            usedColumns.add(found);
+        }
     }
+    return detected;
+}
 
-    // ============================================================
-    // 3. ЧТЕНИЕ ФАЙЛА
-    // ============================================================
-    function readFile(file) {
-        return new Promise((resolve) => {
+// ============================================================
+//  ЧТЕНИЕ ФАЙЛОВ
+// ============================================================
+function readFiles(files) {
+    return new Promise((resolve) => {
+        const allData = [];
+        let headers = [];
+        let completed = 0;
+        
+        if (!files || files.length === 0) {
+            resolve({ data: [], headers: [], fileNames: [] });
+            return;
+        }
+
+        const fileNames = Array.from(files).map(f => f.name);
+
+        for (let file of files) {
             const reader = new FileReader();
             const format = file.name.split('.').pop().toLowerCase();
             
             reader.onload = function(e) {
                 try {
-                    let data = [];
+                    let json = [];
                     if (format === 'csv') {
-                        const workbook = XLSX.read(e.target.result, { type: 'string', raw: true, codepage: 65001 });
-                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                        data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                        const text = e.target.result;
+                        const workbook = XLSX.read(text, { type: 'string', raw: true, codepage: 65001 });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
                     } else {
-                        const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                        data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
                     }
-                    resolve(data);
+                    
+                    if (json.length > 0) {
+                        if (headers.length === 0) {
+                            headers = Object.keys(json[0]);
+                        }
+                        allData.push(...json);
+                    }
                 } catch (err) {
-                    console.error('Ошибка чтения:', err);
-                    resolve([]);
+                    console.error('Ошибка чтения:', file.name, err);
+                }
+                completed++;
+                if (completed === files.length) {
+                    resolve({ data: allData, headers: headers, fileNames: fileNames });
                 }
             };
             
-            reader.onerror = function() {
-                console.error('Ошибка загрузки файла');
-                resolve([]);
-            };
-
             if (format === 'csv') {
                 reader.readAsText(file, 'UTF-8');
             } else {
                 reader.readAsArrayBuffer(file);
             }
+        }
+    });
+}
+
+// ============================================================
+//  ЗАГРУЗКА ФАЙЛОВ
+// ============================================================
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const previewBtn = document.getElementById('previewBtn');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+
+uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+});
+
+uploadZone.addEventListener('dragleave', () => {
+    uploadZone.classList.remove('dragover');
+});
+
+uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        fileInput.dispatchEvent(new Event('change'));
+    }
+});
+
+fileInput.addEventListener('change', async function() {
+    if (this.files.length === 0) return;
+    await loadFiles(this.files);
+    this.value = '';
+});
+
+// ============================================================
+//  ЗАГРУЗКА И ОБРАБОТКА
+// ============================================================
+async function loadFiles(files) {
+    const result = await readFiles(files);
+    allData = result.data;
+    allHeaders = result.headers;
+    fileNames = result.fileNames;
+    
+    if (allData.length === 0) {
+        alert('Не удалось прочитать файлы или они пусты.');
+        return;
+    }
+    
+    // Ищем нужные колонки
+    foundColumns = findColumns(allHeaders);
+    
+    // Показываем информацию
+    document.getElementById('fileInfo').style.display = 'block';
+    uploadZone.classList.add('loaded');
+    
+    document.getElementById('loadedName').textContent = 
+        fileNames.length === 1 ? fileNames[0] : `${fileNames.length} файлов`;
+    document.getElementById('loadedStats').textContent = `${allData.length} строк`;
+    
+    // Список файлов
+    document.getElementById('fileList').innerHTML = fileNames.map(name => 
+        `<span class="file-item">📄 ${name}</span>`
+    ).join('');
+    
+    // Информация о найденных колонках
+    const foundKeys = Object.keys(foundColumns);
+    document.getElementById('foundColsCount').textContent = foundKeys.length;
+    
+    const colsInfo = document.getElementById('colsInfo');
+    if (foundKeys.length === 4) {
+        colsInfo.innerHTML = '✅ Найдены все колонки: ' + 
+            foundKeys.map(key => `<span class="col-tag"><strong>${COLUMN_NAMES[key]}</strong> → "${foundColumns[key]}"</span>`).join('');
+        colsInfo.style.color = '#198754';
+    } else {
+        const missing = Object.keys(COLUMN_NAMES).filter(k => !foundColumns[k]);
+        colsInfo.innerHTML = '⚠️ Найдено ' + foundKeys.length + ' из 4 колонок. Не найдены: ' + 
+            missing.map(k => `<strong>${COLUMN_NAMES[k]}</strong>`).join(', ');
+        colsInfo.style.color = '#dc3545';
+    }
+    
+    // Активируем кнопку просмотра (если найдена хотя бы одна колонка)
+    previewBtn.disabled = foundKeys.length === 0;
+}
+
+// ============================================================
+//  ПРОСМОТР ТАБЛИЦЫ
+// ============================================================
+previewBtn.addEventListener('click', function() {
+    if (allData.length === 0 || Object.keys(foundColumns).length === 0) {
+        alert('Нет данных для отображения');
+        return;
+    }
+    
+    // Берём только нужные колонки в правильном порядке
+    const order = ['type', 'modification', 'registry', 'sut'];
+    const displayCols = order.filter(k => foundColumns[k]);
+    const displayNames = displayCols.map(k => COLUMN_NAMES[k]);
+    
+    // Заголовки
+    const thead = document.getElementById('previewHead');
+    thead.innerHTML = `<tr>${displayNames.map(name => `<th>${name}</th>`).join('')}</tr>`;
+    
+    // Данные
+    const tbody = document.getElementById('previewBody');
+    let html = '';
+    for (let row of allData) {
+        const cells = displayCols.map(key => {
+            const colName = foundColumns[key];
+            return `<td>${row[colName] !== undefined ? row[colName] : ''}</td>`;
         });
+        html += `<tr>${cells.join('')}</tr>`;
     }
+    tbody.innerHTML = html;
+    
+    document.getElementById('modalRowCount').textContent = allData.length + ' строк';
+    
+    // Показываем модалку
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+});
 
-    // ============================================================
-    // 4. ОЧИСТКА
-    // ============================================================
-    function normalize(val) {
-        if (!val) return '';
-        return String(val).trim().toLowerCase().replace(/\s+/g, ' ').trim();
-    }
-
-    // ============================================================
-    // 5. UI ЛОГИКА
-    // ============================================================
-    let userData = null;
-    let userColMap = {};
-
-    const uploadZone = document.getElementById('uploadZone');
-    const fileInput = document.getElementById('fileInput');
-    const compareBtn = document.getElementById('compareBtn');
-    const statusMsg = document.getElementById('statusMsg');
-
-    // Клик для загрузки
-    uploadZone.addEventListener('click', function(e) {
-        e.preventDefault();
-        fileInput.click();
-    });
-
-    // Drag and Drop
-    uploadZone.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        this.classList.add('dragover');
-    });
-
-    uploadZone.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        this.classList.remove('dragover');
-    });
-
-    uploadZone.addEventListener('drop', function(e) {
-        e.preventDefault();
-        this.classList.remove('dragover');
-        if (e.dataTransfer.files.length > 0) {
-            fileInput.files = e.dataTransfer.files;
-            fileInput.dispatchEvent(new Event('change'));
-        }
-    });
-
-    // Обработка выбора файла
-    fileInput.addEventListener('change', async function() {
-        if (!this.files || !this.files.length) {
-            console.log('Файл не выбран');
-            return;
-        }
-
-        const file = this.files[0];
-        console.log('Выбран файл:', file.name);
-        statusMsg.textContent = '⏳ Чтение файла...';
-        statusMsg.className = 'text-center text-primary';
-
-        try {
-            const data = await readFile(file);
-            console.log('Данные прочитаны:', data.length, 'строк');
-            
-            if (!data || data.length === 0) {
-                alert('Файл пуст или не удалось прочитать. Проверьте формат.');
-                statusMsg.textContent = '❌ Ошибка чтения файла';
-                statusMsg.className = 'text-center text-danger';
-                return;
-            }
-
-            userData = data;
-            const headers = Object.keys(data[0]);
-            userColMap = findColumns(headers);
-
-            // Обновляем интерфейс
-            uploadZone.classList.add('loaded');
-            document.getElementById('fileName').textContent = file.name;
-            document.getElementById('fileStats').textContent = `${data.length} строк`;
-
-            // Показываем информацию о файле
-            const fileInfo = document.getElementById('fileInfo');
-            fileInfo.classList.add('show');
-            document.getElementById('infoFileName').textContent = file.name;
-            document.getElementById('infoRows').textContent = data.length;
-            document.getElementById('infoCols').textContent = headers.join(', ');
-
-            // Проверяем найденные колонки
-            const found = Object.keys(userColMap);
-            if (found.length >= 3) {
-                compareBtn.disabled = false;
-                statusMsg.textContent = '✅ Готово к сравнению! Найдено ' + found.length + ' колонок.';
-                statusMsg.className = 'text-center text-success';
-            } else {
-                compareBtn.disabled = true;
-                const missing = Object.keys(FIELD_NAMES).filter(k => !userColMap[k]);
-                statusMsg.textContent = '⚠️ Найдено только ' + found.length + ' из 4. Не найдены: ' + missing.join(', ');
-                statusMsg.className = 'text-center text-warning';
-            }
-
-        } catch (err) {
-            console.error('Ошибка:', err);
-            alert('Ошибка при чтении файла: ' + err.message);
-            statusMsg.textContent = '❌ Ошибка чтения файла';
-            statusMsg.className = 'text-center text-danger';
-        }
-    });
-
-    // ============================================================
-    // 6. СРАВНЕНИЕ
-    // ============================================================
-    compareBtn.addEventListener('click', function() {
-        if (!userData || !userColMap.name) {
-            alert('Не найден столбец "Наименование"!');
-            return;
-        }
-
-        const colName = userColMap.name;
-        const colMod = userColMap.modification;
-        const colReg = userColMap.registry;
-        const colSut = userColMap.sut;
-
-        const results = [];
-        let foundCount = 0, partialCount = 0, notFoundCount = 0;
-
-        for (let row of userData) {
-            const userName = normalize(row[colName] || '');
-            const userMod = colMod ? normalize(row[colMod] || '') : '';
-            const userReg = colReg ? normalize(row[colReg] || '') : '';
-            const userSut = colSut ? normalize(row[colSut] || '') : '';
-
-            let bestMatch = null;
-            let bestScore = 0;
-
-            // Ищем в эталоне
-            for (let etalon of allEtalon) {
-                const etalonName = normalize(etalon.name);
-                if (userName === etalonName) {
-                    bestMatch = etalon;
-                    bestScore = 1;
-                    break;
-                }
-                if (userName.includes(etalonName) || etalonName.includes(userName)) {
-                    const score = Math.min(userName.length, etalonName.length) / Math.max(userName.length, etalonName.length);
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMatch = etalon;
-                    }
-                }
-            }
-
-            const leftDisplay = `${FIELD_NAMES.name}: ${row[colName] || ''}` +
-                (colMod ? ` | ${FIELD_NAMES.modification}: ${row[colMod] || ''}` : '') +
-                (colReg ? ` | ${FIELD_NAMES.registry}: ${row[colReg] || ''}` : '') +
-                (colSut ? ` | ${FIELD_NAMES.sut}: ${row[colSut] || ''}` : '');
-
-            if (bestMatch && bestScore === 1) {
-                foundCount++;
-                results.push({
-                    left: leftDisplay,
-                    right: `${bestMatch.name} (№ ${bestMatch.registry})`,
-                    status: '✅ Найдено',
-                    reason: 'Точное совпадение'
-                });
-            } else if (bestMatch && bestScore > 0.5) {
-                partialCount++;
-                results.push({
-                    left: leftDisplay,
-                    right: `${bestMatch.name} (№ ${bestMatch.registry})`,
-                    status: '⚠️ Частично',
-                    reason: `Похожее наименование (${Math.round(bestScore*100)}%)`
-                });
-            } else {
-                notFoundCount++;
-                results.push({
-                    left: leftDisplay,
-                    right: '—',
-                    status: '❌ Не найдено',
-                    reason: 'Нет в реестрах ГРСИ и СССР'
-                });
-            }
-        }
-
-        // Показываем результат
-        document.getElementById('resultContainer').style.display = 'block';
-        document.getElementById('statsText').innerHTML = `
-            <span class="badge bg-success">✅ ${foundCount}</span>
-            <span class="badge bg-warning text-dark">⚠️ ${partialCount}</span>
-            <span class="badge bg-danger">❌ ${notFoundCount}</span>
-            <span class="badge bg-secondary">📊 ${results.length}</span>
-        `;
-
-        const tbody = document.getElementById('resultBody');
-        let html = '';
-        for (let i = 0; i < results.length; i++) {
-            const r = results[i];
-            let badgeClass = 'badge-ok';
-            if (r.status.includes('Частично')) badgeClass = 'badge-warning';
-            else if (r.status.includes('Не найдено')) badgeClass = 'badge-error';
-            
-            html += `<tr>
-                <td>${i+1}</td>
-                <td style="font-size:12px;">${r.left}</td>
-                <td style="font-size:12px;">${r.right}</td>
-                <td><span class="badge ${badgeClass}">${r.status}</span></td>
-                <td style="font-size:12px;">${r.reason}</td>
-            </tr>`;
-        }
-        tbody.innerHTML = html;
-
-        document.getElementById('resultContainer').scrollIntoView({ behavior: 'smooth' });
-    });
-
-    console.log('Сайт загружен. Готов к работе!');
+console.log('✅ Сайт готов! Загрузите файлы и нажмите "Просмотр таблицы"');
 </script>
+
+<!-- Подключаем Bootstrap JS для модалки -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
