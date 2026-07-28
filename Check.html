@@ -1,11 +1,849 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Сравнение с эталоном</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #f0f2f5; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        .upload-zone {
+            border: 3px dashed #adb5bd;
+            border-radius: 14px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            background: #ffffff;
+            transition: all 0.3s ease;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        .upload-zone:hover { border-color: #0d6efd; background: #f8f9ff; }
+        .upload-zone.dragover { border-color: #0d6efd; background: #e7edff; }
+        .upload-zone.loaded { border-color: #198754; background: #f0fff4; border-style: solid; }
+        .upload-zone .icon { font-size: 40px; margin-bottom: 6px; }
+        .upload-zone .hint { font-size: 12px; color: #6c757d; margin-top: 4px; }
+        .upload-zone .upload-text { font-weight: 500; font-size: 14px; }
+        .upload-zone .loaded-info { display: none; text-align: center; width: 100%; }
+        .upload-zone.loaded .icon { display: none; }
+        .upload-zone.loaded .upload-text { display: none; }
+        .upload-zone.loaded .hint { display: none; }
+        .upload-zone.loaded .loaded-info { display: block; }
+        .upload-zone .loaded-info .file-icon { font-size: 30px; display: block; }
+        .upload-zone .loaded-info .file-name { font-weight: 600; font-size: 13px; color: #1a1a2e; word-break: break-all; }
+        .upload-zone .loaded-info .file-stats { font-size: 12px; color: #6c757d; }
+        .upload-zone .status-badge { position: absolute; top: 6px; right: 10px; padding: 2px 12px; border-radius: 20px; font-size: 10px; font-weight: 600; background: #e9ecef; color: #6c757d; }
+        .upload-zone.loaded .status-badge { background: #d1e7dd; color: #0f5132; }
+        
+        .summary-box { background: #fff; border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 100%; }
+        .compare-btn { height: 100%; min-height: 60px; font-size: 16px; font-weight: 600; border-radius: 12px; }
+        .compare-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .compare-btn:not(:disabled):hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(13,110,253,0.3); }
+        
+        .result-container { margin-top: 20px; display: none; }
+        .result-container.show { display: block; }
+        .result-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+        
+        .table-wrap { 
+            max-height: 600px; 
+            overflow-y: auto; 
+            border-radius: 8px; 
+            border: 1px solid #dee2e6; 
+        }
+        .table-wrap table { 
+            font-size: 13px; 
+            margin-bottom: 0; 
+            width: 100%;
+            table-layout: fixed;
+        }
+        .table-wrap th { 
+            position: sticky; 
+            top: 0; 
+            background: #1a1a2e; 
+            color: #fff; 
+            z-index: 10; 
+            padding: 8px 10px; 
+            font-size: 12px; 
+            white-space: nowrap; 
+            text-align: center; 
+        }
+        .table-wrap td { 
+            padding: 6px 10px; 
+            vertical-align: middle; 
+            font-size: 12px; 
+            word-wrap: break-word;
+            white-space: normal;
+            max-width: 300px;
+        }
+        .table-wrap td:nth-child(2) { max-width: 250px; }
+        .table-wrap td:nth-child(3) { max-width: 300px; background: #f8f9fa; }
+        .table-wrap tr:hover td { background: #f8f9ff; }
+        .table-wrap td:nth-child(3):hover { background: #e7edff; }
+        
+        .badge-status { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+        .badge-ok { background: #d1e7dd; color: #0f5132; }
+        .badge-error { background: #f8d7da; color: #842029; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        
+        .stats-badge { font-size: 12px; padding: 4px 14px; border-radius: 20px; }
+        
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .loading-overlay.active { display: flex; }
+        .loading-box { background: #fff; padding: 25px 40px; border-radius: 14px; text-align: center; min-width: 250px; }
+        .spinner { width: 35px; height: 35px; border: 4px solid #e9ecef; border-top: 4px solid #0d6efd; border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-box .loading-title { font-size: 16px; font-weight: 600; }
+        .loading-box .loading-sub { color: #6c757d; font-size: 13px; }
+        
+        .btn-download { border-radius: 8px; padding: 5px 16px; font-weight: 600; font-size: 12px; }
+        .ready-hint { text-align: center; font-size: 11px; color: #6c757d; margin-top: 6px; }
+        .ready-hint.ready { color: #198754; font-weight: 600; }
+        
+        .found-cols { font-size: 11px; color: #495057; margin-top: 6px; padding: 6px 10px; background: #f8f9fa; border-radius: 6px; display: none; }
+        .found-cols.show { display: block; }
+        .found-cols .col-item { display: inline-block; background: #e9ecef; padding: 1px 8px; border-radius: 10px; margin: 1px 3px 1px 0; font-size: 10px; }
+        .found-cols .col-item strong { color: #0d6efd; }
+        .found-cols .warning-text { color: #dc3545; font-weight: 600; }
+        
+        .modal-content { border-radius: 14px; }
+        .modal-header { background: #1a1a2e; color: #fff; border-radius: 14px 14px 0 0; }
+        .modal-header .btn-close { filter: invert(1); }
+        .modal-table-wrap { max-height: 500px; overflow-y: auto; }
+        .modal-table-wrap table { font-size: 13px; margin-bottom: 0; }
+        .modal-table-wrap th { position: sticky; top: 0; background: #1a1a2e; color: #fff; z-index: 10; padding: 10px 12px; white-space: nowrap; }
+        .modal-table-wrap td { padding: 8px 12px; vertical-align: middle; }
+        .modal-table-wrap tr:hover td { background: #f8f9ff; }
+        
+        .col-tag { display: inline-block; background: #e9ecef; padding: 2px 12px; border-radius: 12px; font-size: 12px; margin: 2px 4px 2px 0; }
+        .col-tag strong { color: #0d6efd; }
+        .file-list { margin-top: 10px; }
+        .file-list .file-item { display: inline-block; background: #e9ecef; padding: 3px 12px; border-radius: 20px; font-size: 12px; margin: 2px 5px 2px 0; }
+        
+        .detail-row { font-size: 11px; color: #6c757d; padding: 2px 0; }
+        .detail-match { color: #198754; }
+        .detail-mismatch { color: #dc3545; }
+        
+        @media (max-width: 768px) {
+            .upload-zone { min-height: 120px; padding: 14px; }
+            .compare-btn { min-height: 50px; font-size: 14px; }
+            .summary-box { padding: 12px; }
+            .table-wrap td { font-size: 11px; padding: 4px 6px; max-width: 120px; }
+            body { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Лоадер -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-box">
+        <div class="spinner"></div>
+        <div class="loading-title">⏳ Идет сравнение...</div>
+        <div class="loading-sub" id="loadingText">Обработка данных</div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+        <div>
+            <h1 style="font-weight:700; color:#1a1a2e;">🧠 Сравнение с эталоном</h1>
+            <p style="color:#6c757d;">Загрузите проверяемый файл (слева) и эталон (справа)</p>
+        </div>
+        <div class="ms-auto">
+            <span class="badge bg-danger" style="font-size: 12px;">⬅️ Проверяемый</span>
+            <span class="badge bg-success" style="font-size: 12px;">➡️ Эталон</span>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- ЛЕВАЯ ПАНЕЛЬ: проверяемый файл -->
+        <div class="col-md-5">
+            <div class="summary-box">
+                <h5 style="font-weight:600; font-size: 14px;">📌 Проверяемый файл <span class="badge bg-danger" style="font-size: 10px;">1 файл</span></h5>
+                <div id="leftZone" class="upload-zone">
+                    <span class="status-badge" id="leftStatus">Ожидание</span>
+                    <div class="icon">📄</div>
+                    <div class="upload-text">Загрузите файл для проверки</div>
+                    <div class="hint">.xlsx, .xls или .csv</div>
+                    <div class="loaded-info">
+                        <span class="file-icon">✅</span>
+                        <div class="file-name" id="leftLoadedName">файл</div>
+                        <div class="file-stats" id="leftLoadedStats">0 строк</div>
+                    </div>
+                </div>
+                <div id="leftColsInfo" class="found-cols"></div>
+                <button id="leftPreviewBtn" class="btn btn-outline-primary btn-sm mt-2" disabled>👁️ Просмотр</button>
+                <input type="file" id="leftInput" accept=".xlsx,.xls,.csv" style="display:none;" />
+            </div>
+        </div>
+
+        <!-- ПРАВАЯ ПАНЕЛЬ: эталон -->
+        <div class="col-md-5">
+            <div class="summary-box">
+                <h5 style="font-weight:600; font-size: 14px;">📂 Эталон <span class="badge bg-success" style="font-size: 10px;">несколько файлов</span></h5>
+                <div id="rightZone" class="upload-zone">
+                    <span class="status-badge" id="rightStatus">Ожидание</span>
+                    <div class="icon">📦</div>
+                    <div class="upload-text">Загрузите эталонные файлы</div>
+                    <div class="hint">.xlsx, .xls или .csv</div>
+                    <div class="loaded-info">
+                        <span class="file-icon">✅</span>
+                        <div class="file-name" id="rightLoadedName">файлы</div>
+                        <div class="file-stats" id="rightLoadedStats">0 строк</div>
+                    </div>
+                </div>
+                <div id="rightColsInfo" class="found-cols"></div>
+                <button id="rightPreviewBtn" class="btn btn-outline-primary btn-sm mt-2" disabled>👁️ Просмотр</button>
+                <input type="file" id="rightInput" accept=".xlsx,.xls,.csv" multiple style="display:none;" />
+            </div>
+        </div>
+
+        <!-- КНОПКА -->
+        <div class="col-md-2">
+            <button id="compareBtn" class="btn btn-primary compare-btn w-100" disabled>
+                🔍 Сравнить
+            </button>
+            <div class="ready-hint" id="readyHint">⏳ Загрузите файлы с обеих сторон</div>
+            <div style="font-size:11px; color:#6c757d; text-align:center; margin-top:8px;">
+                <span class="badge bg-success" style="font-size:10px;">✅</span> Найдено
+                <span class="badge bg-danger ms-2" style="font-size:10px;">❌</span> Не найдено
+                <span class="badge bg-warning ms-2" style="font-size:10px; color:#000;">⚠️</span> Частично
+            </div>
+        </div>
+    </div>
+
+    <!-- РЕЗУЛЬТАТЫ -->
+    <div class="result-container" id="resultContainer">
+        <div class="summary-box">
+            <div class="result-header">
+                <h5 style="font-weight:600; margin:0; font-size: 15px;">📋 Результат проверки</h5>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span id="statsText"></span>
+                    <button id="downloadBtn" class="btn btn-success btn-download btn-sm">⬇ Скачать .xlsx</button>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="table table-bordered table-striped" id="resultTable">
+                    <thead>
+                        <tr>
+                            <th style="min-width:30px; width:5%;">№</th>
+                            <th style="width:25%;">📌 Проверяемые данные</th>
+                            <th style="width:40%;">📂 Найдено в эталоне</th>
+                            <th style="min-width:80px; width:10%;">Статус</th>
+                            <th style="min-width:150px; width:20%;">Причина</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра таблицы -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalTitle">📊 Данные</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 12px; font-size:14px; color:#6c757d;">
+                    <span id="modalColsNames"></span>
+                    <span class="badge bg-secondary ms-2" id="modalRowCount">0 строк</span>
+                </div>
+                <div class="modal-table-wrap">
+                    <table class="table table-bordered table-striped" id="previewTable">
+                        <thead id="previewHead"></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+//  НАСТРОЙКА ПОИСКА КОЛОНОК
+// ============================================================
+const SEARCH_RULES = {
+    'type': {
+        keywords: ['тип си', 'тип си', 'наименование си', 'тип', 'наименование'],
+        displayName: 'тип СИ',
+        exclude: ['дата', 'внесения']
+    },
+    'modification': {
+        keywords: ['модификация', 'исполнение', 'модификаци', 'модель', 'версия'],
+        displayName: 'Модификация',
+        exclude: []
+    },
+    'registry': {
+        keywords: ['номер грси', 'грси', 'номер госреестра', 'рег. номер', 'регистрационный номер'],
+        displayName: 'номер ГРСИ',
+        exclude: ['дата', 'внесения']
+    },
+    'sut': {
+        keywords: ['номер сут', 'сут', 'идентификационный номер', 'идентификатор', 'заводской номер', 'серийный номер'],
+        displayName: 'номер СУТ',
+        exclude: ['срок', 'действие', 'годен', 'годности', 'действителен']
+    }
+};
+
+// ============================================================
+//  ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+// ============================================================
+let leftData = null;
+let rightData = null;
+let leftColMap = {};
+let rightColMap = {};
+let leftFileName = '';
+let rightFileNames = [];
+
+// ============================================================
+//  ⭐ ГЛАВНОЕ: ОЧИСТКА ДАННЫХ (ПРОЧЕРК = ПУСТОТА)
+// ============================================================
 function normalize(val) {
     if (val === null || val === undefined) return '';
     let result = String(val).trim();
     
-    // Если значение — это прочерк (любой вариант), считаем как пустую строку
+    // Прочерк (любой вариант) = пустая строка
     if (result === '-' || result === '–' || result === '—') {
         return '';
     }
     
     return result.toLowerCase().replace(/\s+/g, ' ').trim();
 }
+
+function getFileFormat(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    if (ext === 'csv') return 'csv';
+    if (ext === 'xlsx' || ext === 'xls') return 'excel';
+    return 'unknown';
+}
+
+// ============================================================
+//  ПОИСК КОЛОНОК
+// ============================================================
+function findColumns(headers) {
+    const detected = {};
+    const usedColumns = new Set();
+
+    for (let [key, rule] of Object.entries(SEARCH_RULES)) {
+        let found = null;
+        let bestScore = 0;
+        
+        for (let h of headers) {
+            if (usedColumns.has(h)) continue;
+            const lower = h.toLowerCase().trim();
+            
+            if (rule.exclude) {
+                let skip = false;
+                for (let ex of rule.exclude) {
+                    if (lower.includes(ex)) { skip = true; break; }
+                }
+                if (skip) continue;
+            }
+            
+            for (let kw of rule.keywords) {
+                if (lower.includes(kw) || kw.includes(lower)) {
+                    const score = Math.max(kw.length, lower.length);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        found = h;
+                    }
+                }
+            }
+        }
+        
+        if (found) {
+            detected[key] = found;
+            usedColumns.add(found);
+        }
+    }
+    
+    return detected;
+}
+
+// ============================================================
+//  ЧТЕНИЕ ФАЙЛОВ
+// ============================================================
+function readFiles(files) {
+    return new Promise((resolve) => {
+        const allData = [];
+        let headers = [];
+        let completed = 0;
+        
+        if (!files || files.length === 0) {
+            resolve({ data: [], headers: [] });
+            return;
+        }
+
+        for (let file of files) {
+            const reader = new FileReader();
+            const format = getFileFormat(file.name);
+            
+            reader.onload = function(e) {
+                try {
+                    let json = [];
+                    if (format === 'csv') {
+                        const text = e.target.result;
+                        const workbook = XLSX.read(text, { type: 'string', raw: true, codepage: 65001 });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+                    } else {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+                    }
+                    
+                    if (json.length > 0) {
+                        if (headers.length === 0) {
+                            headers = Object.keys(json[0]);
+                        }
+                        allData.push(...json);
+                    }
+                } catch (err) {
+                    console.error('Ошибка чтения:', file.name, err);
+                }
+                completed++;
+                if (completed === files.length) {
+                    resolve({ data: allData, headers: headers });
+                }
+            };
+            
+            if (format === 'csv') {
+                reader.readAsText(file, 'UTF-8');
+            } else {
+                reader.readAsArrayBuffer(file);
+            }
+        }
+    });
+}
+
+// ============================================================
+//  UI ОБНОВЛЕНИЯ
+// ============================================================
+function updateLeftUI(files, data, colMap) {
+    const zone = document.getElementById('leftZone');
+    const status = document.getElementById('leftStatus');
+    const loadedName = document.getElementById('leftLoadedName');
+    const loadedStats = document.getElementById('leftLoadedStats');
+    const previewBtn = document.getElementById('leftPreviewBtn');
+    
+    if (data && data.length > 0) {
+        zone.classList.add('loaded');
+        status.textContent = '✅ Загружено';
+        loadedName.textContent = files[0].name;
+        loadedStats.textContent = `${data.length} строк`;
+        previewBtn.disabled = false;
+    }
+}
+
+function updateRightUI(files, data, colMap) {
+    const zone = document.getElementById('rightZone');
+    const status = document.getElementById('rightStatus');
+    const loadedName = document.getElementById('rightLoadedName');
+    const loadedStats = document.getElementById('rightLoadedStats');
+    const previewBtn = document.getElementById('rightPreviewBtn');
+    
+    if (data && data.length > 0) {
+        zone.classList.add('loaded');
+        status.textContent = '✅ Загружено';
+        const names = Array.from(files).map(f => f.name);
+        loadedName.textContent = names.length === 1 ? names[0] : `${names.length} файлов`;
+        loadedStats.textContent = `${data.length} строк`;
+        previewBtn.disabled = false;
+    }
+}
+
+function showColsInfo(divId, colMap) {
+    const div = document.getElementById(divId);
+    const found = Object.entries(colMap);
+    if (found.length > 0) {
+        div.classList.add('show');
+        div.innerHTML = '🔍 Найдено: ' + found.map(([key, col]) => 
+            `<span class="col-item"><strong>${SEARCH_RULES[key].displayName}</strong> → "${col}"</span>`
+        ).join(' ');
+        if (found.length < 4) div.innerHTML += ' <span class="warning-text">⚠️ Не все колонки найдены!</span>';
+    }
+}
+
+// ============================================================
+//  ЗАГРУЗКА ФАЙЛОВ
+// ============================================================
+function setupUpload(zoneId, inputId, isMultiple, onLoad) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            if (!isMultiple && files.length > 1) { alert('Загрузите только 1 файл!'); return; }
+            input.files = files;
+            input.dispatchEvent(new Event('change'));
+        }
+    });
+    input.addEventListener('change', async function() {
+        if (this.files.length === 0) return;
+        await onLoad(this.files);
+        this.value = '';
+    });
+}
+
+// Загрузка проверяемого файла (левый)
+setupUpload('leftZone', 'leftInput', false, async function(files) {
+    const result = await readFiles(files);
+    leftData = result.data;
+    leftFileName = files[0].name;
+    if (leftData.length === 0) { alert('Файл пуст или не удалось прочитать.'); return; }
+    leftColMap = findColumns(result.headers);
+    updateLeftUI(files, leftData, leftColMap);
+    showColsInfo('leftColsInfo', leftColMap);
+    checkReady();
+});
+
+// Загрузка эталона (правые файлы)
+setupUpload('rightZone', 'rightInput', true, async function(files) {
+    const result = await readFiles(files);
+    rightData = result.data;
+    rightFileNames = Array.from(files).map(f => f.name);
+    if (rightData.length === 0) { alert('Файлы пусты или не удалось прочитать.'); return; }
+    rightColMap = findColumns(result.headers);
+    updateRightUI(files, rightData, rightColMap);
+    showColsInfo('rightColsInfo', rightColMap);
+    checkReady();
+});
+
+function checkReady() {
+    const btn = document.getElementById('compareBtn');
+    const hint = document.getElementById('readyHint');
+    const leftOk = leftData && leftData.length > 0 && Object.keys(leftColMap).length >= 4;
+    const rightOk = rightData && rightData.length > 0 && Object.keys(rightColMap).length >= 4;
+    
+    if (leftOk && rightOk) {
+        btn.disabled = false;
+        hint.textContent = '✅ Готово к сравнению!';
+        hint.className = 'ready-hint ready';
+    } else {
+        btn.disabled = true;
+        hint.textContent = '⏳ Загрузите файлы с обеих сторон (нужны все 4 колонки)';
+        hint.className = 'ready-hint';
+    }
+}
+
+// ============================================================
+//  ПРОСМОТР ТАБЛИЦЫ
+// ============================================================
+function showPreview(data, colMap, title) {
+    if (!data || data.length === 0 || Object.keys(colMap).length === 0) {
+        alert('Нет данных для отображения');
+        return;
+    }
+    
+    const order = ['type', 'modification', 'registry', 'sut'];
+    const displayCols = order.filter(k => colMap[k]);
+    const displayNames = displayCols.map(k => SEARCH_RULES[k].displayName);
+    
+    document.getElementById('previewModalTitle').textContent = title;
+    
+    const thead = document.getElementById('previewHead');
+    thead.innerHTML = `<tr>${displayNames.map(name => `<th>${name}</th>`).join('')}</tr>`;
+    
+    const tbody = document.getElementById('previewBody');
+    let html = '';
+    for (let row of data) {
+        const cells = displayCols.map(key => {
+            const colName = colMap[key];
+            const value = row[colName] !== undefined ? row[colName] : '';
+            return `<td>${value}</td>`;
+        });
+        html += `<tr>${cells.join('')}</tr>`;
+    }
+    tbody.innerHTML = html;
+    
+    document.getElementById('modalColsNames').innerHTML = displayNames.map(name => 
+        `<span class="badge bg-primary">${name}</span>`
+    ).join(' ');
+    document.getElementById('modalRowCount').textContent = data.length + ' строк';
+    
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+}
+
+document.getElementById('leftPreviewBtn').addEventListener('click', function() {
+    showPreview(leftData, leftColMap, '📊 Проверяемые данные');
+});
+
+document.getElementById('rightPreviewBtn').addEventListener('click', function() {
+    showPreview(rightData, rightColMap, '📊 Данные эталона');
+});
+
+// ============================================================
+//  ОСНОВНОЕ СРАВНЕНИЕ
+// ============================================================
+document.getElementById('compareBtn').addEventListener('click', async function() {
+    if (!leftData || !rightData) return;
+    
+    const missingLeft = Object.keys(SEARCH_RULES).filter(k => !leftColMap[k]);
+    const missingRight = Object.keys(SEARCH_RULES).filter(k => !rightColMap[k]);
+    if (missingLeft.length || missingRight.length) {
+        alert('Не найдены все колонки! Проверьте названия.');
+        return;
+    }
+    
+    document.getElementById('loadingOverlay').classList.add('active');
+    document.getElementById('loadingText').textContent = `Проверка ${leftData.length} строк...`;
+    await new Promise(r => setTimeout(r, 80));
+    
+    const lName = leftColMap['type'];
+    const lMod = leftColMap['modification'];
+    const lReg = leftColMap['registry'];
+    const lSut = leftColMap['sut'];
+    
+    const rName = rightColMap['type'];
+    const rMod = rightColMap['modification'];
+    const rReg = rightColMap['registry'];
+    const rSut = rightColMap['sut'];
+    
+    // Индекс эталона
+    const exactIndex = new Map();
+    rightData.forEach((row, idx) => {
+        const key = [
+            normalize(row[rName] || ''),
+            normalize(row[rMod] || ''),
+            normalize(row[rReg] || ''),
+            normalize(row[rSut] || '')
+        ].join('|||');
+        if (!exactIndex.has(key)) exactIndex.set(key, []);
+        exactIndex.get(key).push(idx);
+    });
+    
+    const nameIndex = new Map();
+    rightData.forEach((row, idx) => {
+        const name = normalize(row[rName] || '');
+        if (!nameIndex.has(name)) nameIndex.set(name, []);
+        nameIndex.get(name).push(idx);
+    });
+    
+    const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
+    const results = [];
+    let okCount = 0, errorCount = 0, warningCount = 0;
+    
+    for (let i = 0; i < leftData.length; i++) {
+        const leftRow = leftData[i];
+        
+        const leftVals = [
+            normalize(leftRow[lName] || ''),
+            normalize(leftRow[lMod] || ''),
+            normalize(leftRow[lReg] || ''),
+            normalize(leftRow[lSut] || '')
+        ];
+        const leftDisplay = [
+            leftRow[lName] || '',
+            leftRow[lMod] || '',
+            leftRow[lReg] || '',
+            leftRow[lSut] || ''
+        ];
+        
+        const exactKey = leftVals.join('|||');
+        const exactMatch = exactIndex.get(exactKey);
+        
+        if (exactMatch && exactMatch.length > 0) {
+            const rightRow = rightData[exactMatch[0]];
+            const rightDisplay = [
+                rightRow[rName] || '',
+                rightRow[rMod] || '',
+                rightRow[rReg] || '',
+                rightRow[rSut] || ''
+            ];
+            okCount++;
+            results.push({
+                rowNum: i + 1,
+                leftDisplay: leftDisplay,
+                rightDisplay: rightDisplay,
+                status: '✅ Найдено',
+                reason: 'Полное совпадение всех полей'
+            });
+            continue;
+        }
+        
+        let candidates = nameIndex.get(leftVals[0]) || [];
+        if (candidates.length === 0 && rightData.length <= 1000) {
+            candidates = rightData.map((_, idx) => idx);
+        }
+        
+        let bestMatchCount = 0;
+        let bestMismatches = [];
+        let bestRightDisplay = ['', '', '', ''];
+        
+        for (let idx of candidates) {
+            const rightRow = rightData[idx];
+            const rightVals = [
+                normalize(rightRow[rName] || ''),
+                normalize(rightRow[rMod] || ''),
+                normalize(rightRow[rReg] || ''),
+                normalize(rightRow[rSut] || '')
+            ];
+            let matchCount = 0;
+            const mismatches = [];
+            for (let j = 0; j < 4; j++) {
+                if (leftVals[j] === rightVals[j]) {
+                    matchCount++;
+                } else {
+                    mismatches.push(fieldNames[j]);
+                }
+            }
+            if (matchCount > bestMatchCount) {
+                bestMatchCount = matchCount;
+                bestMismatches = mismatches;
+                bestRightDisplay = [
+                    rightRow[rName] || '',
+                    rightRow[rMod] || '',
+                    rightRow[rReg] || '',
+                    rightRow[rSut] || ''
+                ];
+                if (matchCount === 4) break;
+            }
+        }
+        
+        let status, reason;
+        if (bestMatchCount >= 3) {
+            status = '⚠️ Частично';
+            reason = `Не совпадает: ${bestMismatches.join(', ')}`;
+            warningCount++;
+        } else if (bestMatchCount > 0) {
+            status = '❌ Не найдено';
+            reason = `Совпадает только ${bestMatchCount} из 4 полей`;
+            errorCount++;
+        } else {
+            status = '❌ Не найдено';
+            reason = 'Ни одно поле не совпало с эталоном';
+            errorCount++;
+        }
+        
+        results.push({
+            rowNum: i + 1,
+            leftDisplay: leftDisplay,
+            rightDisplay: bestRightDisplay,
+            status: status,
+            reason: reason
+        });
+    }
+    
+    document.getElementById('loadingOverlay').classList.remove('active');
+    showResults(results, okCount, errorCount, warningCount);
+});
+
+// ============================================================
+//  ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ
+// ============================================================
+function showResults(results, okCount, errorCount, warningCount) {
+    const container = document.getElementById('resultContainer');
+    container.classList.add('show');
+    
+    document.getElementById('statsText').innerHTML = `
+        <span class="badge bg-success stats-badge">✅ ${okCount}</span>
+        <span class="badge bg-warning stats-badge" style="color:#000;">⚠️ ${warningCount}</span>
+        <span class="badge bg-danger stats-badge">❌ ${errorCount}</span>
+        <span class="badge bg-secondary stats-badge">📊 ${results.length}</span>
+    `;
+    
+    const tbody = document.getElementById('resultBody');
+    const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
+    
+    let html = '';
+    for (let res of results) {
+        const leftStr = fieldNames.map((name, i) => 
+            `${name}: ${res.leftDisplay[i] || '(пусто)'}`
+        ).join(' | ');
+        
+        let rightStr = '';
+        if (res.status === '✅ Найдено') {
+            rightStr = fieldNames.map((name, i) => 
+                `${name}: ${res.rightDisplay[i] || '(пусто)'}`
+            ).join(' | ');
+        } else {
+            rightStr = fieldNames.map((name, i) => {
+                const leftVal = res.leftDisplay[i] || '';
+                const rightVal = res.rightDisplay[i] || '';
+                const match = leftVal === rightVal;
+                return `${name}: ${match ? '✅' : '❌'} "${rightVal || '(пусто)'}"`;
+            }).join(' | ');
+        }
+        
+        let badgeClass = 'badge-ok';
+        if (res.status.includes('Не найдено')) badgeClass = 'badge-error';
+        else if (res.status.includes('Частично')) badgeClass = 'badge-warning';
+        
+        html += `<tr>
+            <td>${res.rowNum}</td>
+            <td style="font-size:11px;">${leftStr}</td>
+            <td style="font-size:11px;">${rightStr}</td>
+            <td><span class="badge-status ${badgeClass}">${res.status}</span></td>
+            <td style="font-size:11px;">${res.reason}</td>
+        </tr>`;
+    }
+    tbody.innerHTML = html;
+    
+    window._reportData = { results, fieldNames };
+}
+
+// ============================================================
+//  СКАЧИВАНИЕ ОТЧЕТА
+// ============================================================
+document.getElementById('downloadBtn').addEventListener('click', function() {
+    const { results, fieldNames } = window._reportData || {};
+    if (!results || !results.length) {
+        alert('Нет данных для скачивания');
+        return;
+    }
+    
+    const headers = [
+        '№',
+        ...fieldNames.map(n => `Проверяемый: ${n}`),
+        ...fieldNames.map(n => `Эталон: ${n}`),
+        'Статус',
+        'Причина'
+    ];
+    
+    const rows = [headers];
+    for (let res of results) {
+        const row = [
+            res.rowNum,
+            ...res.leftDisplay,
+            ...res.rightDisplay,
+            res.status,
+            res.reason
+        ];
+        rows.push(row);
+    }
+    
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Результат');
+    XLSX.writeFile(wb, 'report_comparison.xlsx');
+});
+
+console.log('✅ Сайт готов! Прочерк (-) приравнивается к пустой ячейке.');
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
