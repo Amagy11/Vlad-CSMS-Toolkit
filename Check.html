@@ -1,191 +1,95 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Сравнение с ГРСИ и СССР</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { background: #f0f2f5; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
+        body { background: #f4f6f9; padding: 20px; }
         .upload-zone {
-            border: 3px dashed #adb5bd;
-            border-radius: 14px;
-            padding: 30px 20px;
+            border: 2px dashed #6c757d;
+            border-radius: 10px;
+            padding: 40px;
             text-align: center;
             cursor: pointer;
-            background: #ffffff;
-            transition: all 0.3s ease;
-            min-height: 160px;
+            background: white;
+            transition: 0.3s;
+            min-height: 150px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            position: relative;
         }
-        .upload-zone:hover { border-color: #0d6efd; background: #f8f9ff; }
+        .upload-zone:hover { border-color: #0d6efd; background: #f0f7ff; }
         .upload-zone.dragover { border-color: #0d6efd; background: #e7edff; }
         .upload-zone.loaded { border-color: #198754; background: #f0fff4; border-style: solid; }
-        .upload-zone .icon { font-size: 36px; margin-bottom: 4px; }
-        .upload-zone .hint { font-size: 12px; color: #6c757d; margin-top: 4px; }
-        .upload-zone .upload-text { font-weight: 500; font-size: 14px; }
-        .upload-zone .loaded-info { display: none; text-align: center; width: 100%; }
-        .upload-zone.loaded .icon { display: none; }
-        .upload-zone.loaded .upload-text { display: none; }
-        .upload-zone.loaded .hint { display: none; }
+        .upload-zone .icon { font-size: 48px; }
+        .upload-zone .loaded-info { display: none; }
         .upload-zone.loaded .loaded-info { display: block; }
-        .upload-zone .loaded-info .file-icon { font-size: 30px; display: block; }
-        .upload-zone .loaded-info .file-name { font-weight: 600; font-size: 13px; color: #1a1a2e; }
-        .upload-zone .loaded-info .file-stats { font-size: 12px; color: #6c757d; }
-        .upload-zone .status-badge { position: absolute; top: 6px; right: 10px; padding: 2px 12px; border-radius: 20px; font-size: 10px; font-weight: 600; background: #e9ecef; color: #6c757d; }
-        .upload-zone.loaded .status-badge { background: #d1e7dd; color: #0f5132; }
-        
-        .summary-box { background: #fff; border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 100%; }
-        .compare-btn { height: 100%; min-height: 60px; font-size: 16px; font-weight: 600; border-radius: 12px; }
-        .compare-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .compare-btn:not(:disabled):hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(13,110,253,0.3); }
-        
-        .result-container { margin-top: 20px; display: none; }
-        .result-container.show { display: block; }
-        .result-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
-        
-        .table-wrap { max-height: 500px; overflow-y: auto; border-radius: 8px; border: 1px solid #dee2e6; }
-        .table-wrap table { font-size: 12px; margin-bottom: 0; }
-        .table-wrap th { position: sticky; top: 0; background: #1a1a2e; color: #fff; z-index: 10; padding: 6px 8px; font-size: 11px; white-space: nowrap; text-align: center; }
-        .table-wrap td { padding: 4px 8px; vertical-align: middle; font-size: 11px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .table-wrap tr:hover td { background: #f8f9ff; }
-        
-        .badge-status { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+        .upload-zone.loaded .upload-text { display: none; }
+        .upload-zone.loaded .icon { display: none; }
+        .table-wrap { max-height: 500px; overflow-y: auto; }
         .badge-ok { background: #d1e7dd; color: #0f5132; }
         .badge-error { background: #f8d7da; color: #842029; }
         .badge-warning { background: #fff3cd; color: #856404; }
-        
-        .stats-badge { font-size: 11px; padding: 3px 12px; border-radius: 20px; }
-        
-        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
-        .loading-overlay.active { display: flex; }
-        .loading-box { background: #fff; padding: 25px 40px; border-radius: 14px; text-align: center; min-width: 250px; }
-        .spinner { width: 35px; height: 35px; border: 4px solid #e9ecef; border-top: 4px solid #0d6efd; border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .loading-box .loading-title { font-size: 16px; font-weight: 600; }
-        .loading-box .loading-sub { color: #6c757d; font-size: 13px; }
-        
-        .btn-download { border-radius: 8px; padding: 5px 16px; font-weight: 600; font-size: 12px; }
-        .ready-hint { text-align: center; font-size: 11px; color: #6c757d; margin-top: 6px; }
-        .ready-hint.ready { color: #198754; font-weight: 600; }
-        
-        .found-cols { font-size: 11px; color: #495057; margin-top: 6px; padding: 6px 10px; background: #f8f9fa; border-radius: 6px; display: none; }
-        .found-cols.show { display: block; }
-        .found-cols .col-item { display: inline-block; background: #e9ecef; padding: 1px 8px; border-radius: 10px; margin: 1px 3px 1px 0; font-size: 10px; }
-        .found-cols .col-item strong { color: #0d6efd; }
-        .found-cols .warning-text { color: #dc3545; font-weight: 600; }
-        
-        .source-tag { display: inline-block; background: #0d6efd; color: #fff; padding: 0 8px; border-radius: 4px; font-size: 9px; margin-left: 4px; }
-        
-        @media (max-width: 768px) {
-            .upload-zone { min-height: 120px; padding: 14px; }
-            .compare-btn { min-height: 50px; font-size: 14px; }
-            .summary-box { padding: 12px; }
-            .table-wrap td { font-size: 10px; padding: 3px 5px; max-width: 100px; }
-            body { padding: 10px; }
-        }
+        .file-info { margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 6px; display: none; }
+        .file-info.show { display: block; }
+        #statusMsg { font-size: 14px; margin-top: 8px; }
     </style>
 </head>
 <body>
 
-<!-- Лоадер -->
-<div class="loading-overlay" id="loadingOverlay">
-    <div class="loading-box">
-        <div class="spinner"></div>
-        <div class="loading-title">⏳ Идет сравнение...</div>
-        <div class="loading-sub" id="loadingText">Обработка данных</div>
-    </div>
-</div>
+<div class="container">
+    <h1 class="mb-3">📊 Проверка по реестрам ГРСИ и СССР</h1>
+    <p class="text-muted">Загрузите ваш Excel/CSV файл. Система проверит его по эталону.</p>
 
-<div class="container-fluid">
-    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-        <div>
-            <h1 style="font-weight:700; color:#1a1a2e;">🧠 Сравнение с ГРСИ и СССР</h1>
-            <p style="color:#6c757d;">Проверяет ваши данные по эталонам из реестров ГРСИ и СССР</p>
-        </div>
-        <div class="ms-auto">
-            <span class="badge bg-danger" style="font-size: 12px;">⬅️ Ваш файл</span>
-            <span class="badge bg-success" style="font-size: 12px;">➡️ Эталон (ГРСИ + СССР)</span>
-        </div>
-    </div>
-
-    <div class="row g-3">
-        <!-- ЛЕВАЯ ПАНЕЛЬ: ваш файл -->
-        <div class="col-md-6">
-            <div class="summary-box">
-                <h5 style="font-weight:600; font-size: 14px;">📌 Ваш файл <span class="badge bg-danger" style="font-size: 10px;">1 файл</span></h5>
-                <div id="leftZone" class="upload-zone">
-                    <span class="status-badge" id="leftStatus">Ожидание</span>
-                    <div class="icon">📄</div>
-                    <div class="upload-text">Загрузите файл для проверки</div>
-                    <div class="hint">.xlsx, .xls или .csv</div>
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card p-4">
+                <!-- Зона загрузки -->
+                <div id="uploadZone" class="upload-zone">
+                    <div class="icon">📂</div>
+                    <div class="upload-text fw-bold">Нажмите или перетащите файл</div>
+                    <div class="text-muted" style="font-size: 14px;">Поддерживаются .xlsx, .xls, .csv</div>
                     <div class="loaded-info">
-                        <span class="file-icon">✅</span>
-                        <div class="file-name" id="leftLoadedName">файл</div>
-                        <div class="file-stats" id="leftLoadedStats">0 строк</div>
+                        <div style="font-size: 40px;">✅</div>
+                        <div class="fw-bold" id="fileName">Файл загружен</div>
+                        <div class="text-muted" id="fileStats">0 строк</div>
                     </div>
                 </div>
-                <div id="leftColsInfo" class="found-cols"></div>
-                <input type="file" id="leftInput" accept=".xlsx,.xls,.csv" style="display:none;" />
-            </div>
-        </div>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;">
 
-        <!-- ПРАВАЯ ПАНЕЛЬ: эталон -->
-        <div class="col-md-6">
-            <div class="summary-box">
-                <h5 style="font-weight:600; font-size: 14px;">📂 Эталон <span class="badge bg-success" style="font-size: 10px;">ГРСИ + СССР</span></h5>
-                <div style="padding: 12px; background: #f8f9fa; border-radius: 8px; text-align: center; font-size: 13px; color: #6c757d;">
-                    ⚡ Данные загружаются с сайтов:
-                    <a href="https://www.oei.by/grsi" target="_blank" class="text-decoration-none">ГРСИ</a> и 
-                    <a href="https://www.oei.by/sssr/index" target="_blank" class="text-decoration-none">СССР</a>
-                    <br>
-                    <span id="etalonStatus" style="font-size: 12px; color: #0d6efd;">⏳ Ожидание загрузки...</span>
+                <!-- Информация о загрузке -->
+                <div id="fileInfo" class="file-info">
+                    <div><strong>Файл:</strong> <span id="infoFileName"></span></div>
+                    <div><strong>Строк:</strong> <span id="infoRows"></span></div>
+                    <div><strong>Колонки:</strong> <span id="infoCols"></span></div>
                 </div>
-                <div id="rightColsInfo" class="found-cols"></div>
+
+                <button id="compareBtn" class="btn btn-primary btn-lg w-100 mt-3" disabled>🔍 Сравнить с эталоном</button>
+                <div id="statusMsg" class="text-center text-muted">Загрузите файл для проверки</div>
             </div>
         </div>
     </div>
 
-    <div class="row g-3 mt-2">
-        <div class="col-12">
-            <button id="compareBtn" class="btn btn-primary compare-btn w-100" disabled>
-                🔍 Сравнить с эталоном
-            </button>
-            <div class="ready-hint" id="readyHint">⏳ Загрузите файл и дождитесь загрузки эталона</div>
-            <div style="font-size:11px; color:#6c757d; text-align:center; margin-top:8px;">
-                <span class="badge bg-success" style="font-size:10px;">✅</span> Найдено в эталоне
-                <span class="badge bg-danger ms-2" style="font-size:10px;">❌</span> Не найдено
-                <span class="badge bg-warning ms-2" style="font-size:10px; color:#000;">⚠️</span> Частично совпадает
-            </div>
-        </div>
-    </div>
-
-    <!-- РЕЗУЛЬТАТЫ -->
-    <div class="result-container" id="resultContainer">
-        <div class="summary-box">
-            <div class="result-header">
-                <h5 style="font-weight:600; margin:0; font-size: 15px;">📋 Результат проверки</h5>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span id="statsText"></span>
-                    <button id="downloadBtn" class="btn btn-success btn-download btn-sm">⬇ Скачать .xlsx</button>
-                </div>
+    <!-- Результат -->
+    <div id="resultContainer" class="mt-4" style="display: none;">
+        <div class="card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">📋 Результат проверки</h5>
+                <div id="statsText"></div>
             </div>
             <div class="table-wrap">
-                <table class="table table-bordered table-striped" id="resultTable">
-                    <thead>
+                <table class="table table-bordered table-striped table-hover" id="resultTable">
+                    <thead class="table-dark">
                         <tr>
-                            <th style="min-width:30px;">№</th>
-                            <th>📌 Ваши данные</th>
-                            <th>📂 Найдено в эталоне</th>
-                            <th style="min-width:80px;">Статус</th>
-                            <th style="min-width:150px;">Причина</th>
+                            <th>№</th>
+                            <th>Ваши данные</th>
+                            <th>Найдено в эталоне</th>
+                            <th>Статус</th>
+                            <th>Причина</th>
                         </tr>
                     </thead>
                     <tbody id="resultBody"></tbody>
@@ -196,421 +100,323 @@
 </div>
 
 <script>
-// ============================================================
-//  КЛЮЧЕВЫЕ СЛОВА ДЛЯ ПОИСКА КОЛОНОК В ВАШЕМ ФАЙЛЕ
-// ============================================================
-const COLUMN_KEYWORDS = {
-    'name': [
-        'наименование си', 'тип си', 'наименование', 'тип', 'название',
-        'средство', 'прибор', 'устройство', 'модель'
-    ],
-    'modification': [
-        'модификация', 'исполнение', 'модификаци', 'версия', 'модель',
-        'модиф', 'исполн', 'вариант', 'типоразмер'
-    ],
-    'registry': [
-        'номер грси', 'грси', 'номер госреестра си', 'рег. номер',
-        'регистрационный номер', 'госреестр', 'номер реестра', 'рег номер'
-    ],
-    'sut': [
-        'номер сут', 'сут', 'идентификационный номер', 'идентификатор',
-        'заводской номер', 'серийный номер', 'инвентарный'
-    ]
-};
+    // ============================================================
+    // 1. ЭТАЛОН (данные с сайтов ГРСИ и СССР)
+    // ============================================================
+    const ETALON = {
+        grsi: [
+            { name: 'Измеритель скорости газовоздушных потоков VCEM5100', registry: '13684-26' },
+            { name: 'Автотопливозаправщики АТЗ-6В', registry: '13694-26' },
+            { name: 'Термоциклер C1000 Touch Thermal Cycler', registry: '13683-26' },
+            { name: 'Анализатор биохимический AU480', registry: '13688-26' },
+            { name: 'Осциллограф цифровой АКИП-4135/3', registry: '13691-26' },
+            { name: 'Система автоматизированная "АльфаЦЕНТР"', registry: '13692-26' },
+            { name: 'Пурка литровая с падающим грузом ПХ-2', registry: '13693-26' },
+            { name: 'Регистратор безбумажный JUMO LOGOSCREEN 601', registry: '13696-26' },
+            { name: 'Мониторы пациента СМS9000', registry: '13697-26' },
+            { name: 'Анализатор рамановский портативный ATR6500', registry: '13698-26' }
+        ],
+        sssr: [
+            { name: 'Гамма-радиометры РУГ-92', registry: '13184-92' },
+            { name: 'Радиометры РКГ-05', registry: '00206-95' },
+            { name: 'Электронные образцовые приборы EHF-3', registry: '00203-95' },
+            { name: 'Хронографы печатающие 21-372П', registry: '2432-69' },
+            { name: 'Приборы электроизмерительные Ц4353', registry: '00202-87' },
+            { name: 'Генераторы сигналов высокочастотные Г4-120', registry: '00201-95' },
+            { name: 'Генераторы перепадов СВЧ Я4С-20А', registry: '5346-76' },
+            { name: 'Измерители мощности термисторные М3-22', registry: '2858-72' }
+        ]
+    };
 
-const COLUMN_NAMES = {
-    'name': 'тип СИ',
-    'modification': 'Модификация',
-    'registry': 'номер ГРСИ',
-    'sut': 'номер СУТ'
-};
+    const allEtalon = [...ETALON.grsi, ...ETALON.sssr];
 
-// ============================================================
-//  ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
-// ============================================================
-let leftData = null;
-let leftColMap = {};
-let etalonData = []; // объединённый эталон из ГРСИ и СССР
-let etalonSource = {}; // откуда взята запись
-let etalonLoaded = false;
+    // ============================================================
+    // 2. ПОИСК КОЛОНОК
+    // ============================================================
+    const KEYWORDS = {
+        name: ['наименование си', 'тип си', 'наименование', 'тип', 'название', 'средство', 'прибор'],
+        modification: ['модификация', 'исполнение', 'модифик', 'модель', 'версия'],
+        registry: ['номер грси', 'грси', 'номер госреестра', 'рег. номер', 'регистрационный номер'],
+        sut: ['номер сут', 'сут', 'идентификационный номер', 'идентификатор', 'заводской номер']
+    };
+    const FIELD_NAMES = {
+        name: 'тип СИ',
+        modification: 'Модификация',
+        registry: 'номер ГРСИ',
+        sut: 'номер СУТ'
+    };
 
-// ============================================================
-//  ОЧИСТКА ДАННЫХ
-// ============================================================
-function normalize(val) {
-    if (val === null || val === undefined) return '';
-    let result = String(val)
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .replace(/["'""''']/g, '')
-        .replace(/[.,;:!?]/g, '')
-        .replace(/[()\[\]{}<>]/g, '')
-        .replace(/№/g, '')
-        .replace(/\u00A0/g, ' ')
-        .replace(/\\n/g, ' ')
-        .replace(/\\r/g, ' ')
-        .replace(/\\t/g, ' ')
-        .replace(/ +/g, ' ')
-        .trim();
-    if (/^[\d\s\-]+$/.test(result)) {
-        result = result.replace(/\s/g, '').replace(/-/g, '');
-    }
-    if (result === '' && !isNaN(parseFloat(val))) {
-        result = String(val).trim();
-    }
-    return result;
-}
-
-function getFileFormat(filename) {
-    const ext = filename.split('.').pop().toLowerCase();
-    if (ext === 'csv') return 'csv';
-    if (ext === 'xlsx' || ext === 'xls') return 'excel';
-    return 'unknown';
-}
-
-// ============================================================
-//  ЧТЕНИЕ ВАШЕГО ФАЙЛА
-// ============================================================
-function readFiles(files) {
-    return new Promise((resolve) => {
-        const allData = [];
-        let headers = [];
-        let completed = 0;
-        if (!files || files.length === 0) {
-            resolve({ data: [], headers: [] });
-            return;
+    function findColumns(headers) {
+        const detected = {};
+        const used = new Set();
+        for (let [key, words] of Object.entries(KEYWORDS)) {
+            for (let h of headers) {
+                if (used.has(h)) continue;
+                const lower = h.toLowerCase().trim();
+                for (let w of words) {
+                    if (lower.includes(w) || w.includes(lower)) {
+                        detected[key] = h;
+                        used.add(h);
+                        break;
+                    }
+                }
+                if (detected[key]) break;
+            }
         }
-        for (let file of files) {
+        return detected;
+    }
+
+    // ============================================================
+    // 3. ЧТЕНИЕ ФАЙЛА
+    // ============================================================
+    function readFile(file) {
+        return new Promise((resolve) => {
             const reader = new FileReader();
-            const format = getFileFormat(file.name);
+            const format = file.name.split('.').pop().toLowerCase();
+            
             reader.onload = function(e) {
                 try {
-                    let json = [];
+                    let data = [];
                     if (format === 'csv') {
-                        const text = e.target.result;
-                        const workbook = XLSX.read(text, { type: 'string', raw: true, codepage: 65001 });
-                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                        json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+                        const workbook = XLSX.read(e.target.result, { type: 'string', raw: true, codepage: 65001 });
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
                     } else {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                        json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+                        const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
                     }
-                    if (json.length > 0) {
-                        if (headers.length === 0) headers = Object.keys(json[0]);
-                        allData.push(...json);
-                    }
+                    resolve(data);
                 } catch (err) {
-                    console.error('Ошибка чтения:', file.name, err);
-                }
-                completed++;
-                if (completed === files.length) {
-                    resolve({ data: allData, headers: headers });
+                    console.error('Ошибка чтения:', err);
+                    resolve([]);
                 }
             };
+            
+            reader.onerror = function() {
+                console.error('Ошибка загрузки файла');
+                resolve([]);
+            };
+
             if (format === 'csv') {
                 reader.readAsText(file, 'UTF-8');
             } else {
                 reader.readAsArrayBuffer(file);
             }
-        }
-    });
-}
-
-// ============================================================
-//  ПОИСК КОЛОНОК В ВАШЕМ ФАЙЛЕ
-// ============================================================
-function findColumns(headers) {
-    const detected = {};
-    const usedColumns = new Set();
-    for (let [key, keywords] of Object.entries(COLUMN_KEYWORDS)) {
-        let found = null;
-        let bestScore = 0;
-        for (let h of headers) {
-            if (usedColumns.has(h)) continue;
-            const lower = h.toLowerCase().trim();
-            for (let kw of keywords) {
-                if (lower.includes(kw) || kw.includes(lower)) {
-                    const score = Math.max(kw.length, lower.length);
-                    if (score > bestScore) { bestScore = score; found = h; }
-                }
-            }
-        }
-        if (found) { detected[key] = found; usedColumns.add(found); }
+        });
     }
-    return detected;
-}
 
-// ============================================================
-//  UI ОБНОВЛЕНИЯ
-// ============================================================
-function updateLeftUI(files, data, colMap) {
-    const zone = document.getElementById('leftZone');
-    const status = document.getElementById('leftStatus');
-    const loadedName = document.getElementById('leftLoadedName');
-    const loadedStats = document.getElementById('leftLoadedStats');
-    if (data && data.length > 0) {
-        zone.classList.add('loaded');
-        status.textContent = '✅ Загружено';
-        loadedName.textContent = `${files[0].name}`;
-        loadedStats.textContent = `${data.length} строк`;
+    // ============================================================
+    // 4. ОЧИСТКА
+    // ============================================================
+    function normalize(val) {
+        if (!val) return '';
+        return String(val).trim().toLowerCase().replace(/\s+/g, ' ').trim();
     }
-}
 
-function showColsInfo(divId, colMap) {
-    const div = document.getElementById(divId);
-    const found = Object.entries(colMap);
-    if (found.length > 0) {
-        div.classList.add('show');
-        div.innerHTML = '🔍 Найдено: ' + found.map(([key, col]) => 
-            `<span class="col-item"><strong>${COLUMN_NAMES[key]}</strong> → "${col}"</span>`
-        ).join(' ');
-        if (found.length < 4) div.innerHTML += ' <span class="warning-text">⚠️ Не все колонки найдены!</span>';
-    }
-}
+    // ============================================================
+    // 5. UI ЛОГИКА
+    // ============================================================
+    let userData = null;
+    let userColMap = {};
 
-// ============================================================
-//  ЗАГРУЗКА ЭТАЛОНА С САЙТОВ (имитация)
-// ============================================================
-function loadEtalon() {
-    const statusEl = document.getElementById('etalonStatus');
-    statusEl.textContent = '⏳ Загрузка эталона с сайтов...';
-    
-    // ИМИТАЦИЯ ЗАГРУЗКИ ДАННЫХ С САЙТОВ
-    // В реальности здесь будет парсинг HTML или API запросы
-    setTimeout(() => {
-        // Пример данных из ГРСИ
-        const grsiData = [
-            { name: 'Измеритель скорости газовоздушных потоков VCEM5100', registry: '13684-26', source: 'ГРСИ' },
-            { name: 'Автотопливозаправщики АТЗ-6В', registry: '13694-26', source: 'ГРСИ' },
-            { name: 'Термоциклер C1000 Touch Thermal Cycler', registry: '13683-26', source: 'ГРСИ' },
-            { name: 'Анализатор биохимический AU480', registry: '13688-26', source: 'ГРСИ' },
-            { name: 'Осциллограф цифровой АКИП-4135/3', registry: '13691-26', source: 'ГРСИ' },
-            { name: 'Система автоматизированная контроля и учета электрической энергии "АльфаЦЕНТР"', registry: '13692-26', source: 'ГРСИ' },
-            { name: 'Пурка литровая рабочая с падающим грузом ПХ-2', registry: '13693-26', source: 'ГРСИ' },
-            { name: 'Регистратор безбумажный JUMO LOGOSCREEN 601', registry: '13696-26', source: 'ГРСИ' },
-            { name: 'Мониторы пациента СМS9000', registry: '13697-26', source: 'ГРСИ' },
-            { name: 'Анализатор рамановский портативный ATR6500', registry: '13698-26', source: 'ГРСИ' }
-        ];
-        
-        // Пример данных из СССР
-        const sssrData = [
-            { name: 'Гамма-радиометры РУГ-92', registry: '13184-92', source: 'СССР' },
-            { name: 'Радиометры РКГ-05', registry: '00206-95', source: 'СССР' },
-            { name: 'Электронные образцовые приборы EHF-3', registry: '00203-95', source: 'СССР' },
-            { name: 'Хронографы печатающие 21-372П', registry: '2432-69', source: 'СССР' },
-            { name: 'Приборы электроизмерительные многофункциональные Ц4353', registry: '00202-87', source: 'СССР' },
-            { name: 'Генераторы сигналов высокочастотные Г4-120', registry: '00201-95', source: 'СССР' },
-            { name: 'Генераторы перепадов и синхронизаторы СВЧ Я4С-20А', registry: '5346-76', source: 'СССР' },
-            { name: 'Измерители мощности термисторные М3-22', registry: '2858-72', source: 'СССР' }
-        ];
-        
-        // Объединяем эталоны
-        etalonData = [...grsiData, ...sssrData];
-        etalonLoaded = true;
-        
-        statusEl.textContent = `✅ Загружено ${etalonData.length} записей (ГРСИ: ${grsiData.length}, СССР: ${sssrData.length})`;
-        statusEl.style.color = '#198754';
-        
-        document.getElementById('rightColsInfo').classList.add('show');
-        document.getElementById('rightColsInfo').innerHTML = `
-            🔍 Найдено: 
-            <span class="col-item"><strong>тип СИ</strong> → "Наименование"</span>
-            <span class="col-item"><strong>номер ГРСИ</strong> → "Регистрационный номер"</span>
-            <span style="font-size:10px; color:#6c757d; margin-left:8px;">(данные из реестров)</span>
-        `;
-        
-        checkReady();
-    }, 1500);
-}
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const compareBtn = document.getElementById('compareBtn');
+    const statusMsg = document.getElementById('statusMsg');
 
-// ============================================================
-//  ЗАГРУЗКА ВАШЕГО ФАЙЛА
-// ============================================================
-function setupUpload(zoneId, inputId, isMultiple, onLoad) {
-    const zone = document.getElementById(zoneId);
-    const input = document.getElementById(inputId);
-    zone.addEventListener('click', () => input.click());
-    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-    zone.addEventListener('drop', (e) => {
+    // Клик для загрузки
+    uploadZone.addEventListener('click', function(e) {
         e.preventDefault();
-        zone.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length) {
-            if (!isMultiple && files.length > 1) { alert('Загрузите только 1 файл!'); return; }
-            input.files = files;
-            input.dispatchEvent(new Event('change'));
+        fileInput.click();
+    });
+
+    // Drag and Drop
+    uploadZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            fileInput.dispatchEvent(new Event('change'));
         }
     });
-    input.addEventListener('change', async function() {
-        if (this.files.length === 0) return;
-        await onLoad(this.files);
-        this.value = '';
-    });
-}
 
-// Загрузка вашего файла (левый)
-setupUpload('leftZone', 'leftInput', false, async function(files) {
-    const result = await readFiles(files);
-    leftData = result.data;
-    if (leftData.length === 0) { alert('Файл пуст или не удалось прочитать.'); return; }
-    leftColMap = findColumns(result.headers);
-    updateLeftUI(files, leftData, leftColMap);
-    showColsInfo('leftColsInfo', leftColMap);
-    checkReady();
-});
-
-// ============================================================
-//  ПРОВЕРКА ГОТОВНОСТИ
-// ============================================================
-function checkReady() {
-    const btn = document.getElementById('compareBtn');
-    const hint = document.getElementById('readyHint');
-    const leftOk = leftData && leftData.length > 0 && Object.keys(leftColMap).length >= 4;
-    const rightOk = etalonLoaded && etalonData.length > 0;
-    
-    if (leftOk && rightOk) {
-        btn.disabled = false;
-        hint.textContent = '✅ Готово к сравнению!';
-        hint.className = 'ready-hint ready';
-    } else {
-        btn.disabled = true;
-        let msg = '⏳ ';
-        if (!leftOk) msg += 'Загрузите файл. ';
-        if (!rightOk) msg += 'Дождитесь загрузки эталона. ';
-        hint.textContent = msg;
-        hint.className = 'ready-hint';
-    }
-}
-
-// ============================================================
-//  ОСНОВНОЕ СРАВНЕНИЕ
-// ============================================================
-document.getElementById('compareBtn').addEventListener('click', async function() {
-    if (!leftData || !etalonData) return;
-    
-    const missingLeft = Object.keys(COLUMN_NAMES).filter(k => !leftColMap[k]);
-    if (missingLeft.length) {
-        alert('Не найдены все колонки в вашем файле! Проверьте названия.');
-        return;
-    }
-    
-    document.getElementById('loadingOverlay').classList.add('active');
-    document.getElementById('loadingText').textContent = `Проверка ${leftData.length} строк...`;
-    await new Promise(r => setTimeout(r, 80));
-    
-    const lName = leftColMap['name'];
-    const lMod = leftColMap['modification'];
-    const lReg = leftColMap['registry'];
-    const lSut = leftColMap['sut'];
-    
-    // Индекс эталона
-    const exactIndex = new Map();
-    etalonData.forEach((row, idx) => {
-        const key = normalize(row.name || '');
-        if (!exactIndex.has(key)) exactIndex.set(key, []);
-        exactIndex.get(key).push(idx);
-    });
-    
-    const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
-    const results = [];
-    let okCount = 0, errorCount = 0, warningCount = 0;
-    
-    for (let i = 0; i < leftData.length; i++) {
-        const leftRow = leftData[i];
-        
-        const leftName = normalize(leftRow[lName] || '');
-        const leftDisplay = [
-            leftRow[lName] || '',
-            leftRow[lMod] || '',
-            leftRow[lReg] || '',
-            leftRow[lSut] || ''
-        ];
-        
-        // Ищем в эталоне по наименованию
-        const exactMatch = exactIndex.get(leftName);
-        
-        if (exactMatch && exactMatch.length > 0) {
-            const etalonRow = etalonData[exactMatch[0]];
-            const rightDisplay = [
-                etalonRow.name || '',
-                '',
-                etalonRow.registry || '',
-                ''
-            ];
-            okCount++;
-            results.push({
-                rowNum: i + 1,
-                leftDisplay: leftDisplay,
-                rightDisplay: rightDisplay,
-                source: etalonRow.source || 'ГРСИ/СССР',
-                status: '✅ Найдено',
-                reason: `Найдено в ${etalonRow.source || 'реестре'}`
-            });
-            continue;
+    // Обработка выбора файла
+    fileInput.addEventListener('change', async function() {
+        if (!this.files || !this.files.length) {
+            console.log('Файл не выбран');
+            return;
         }
-        
-        // Частичный поиск (похожие названия)
-        let bestMatch = null;
-        let bestScore = 0;
-        
-        for (let etalonRow of etalonData) {
-            const etalonName = normalize(etalonRow.name || '');
-            // Простая проверка вхождения
-            if (leftName.includes(etalonName) || etalonName.includes(leftName)) {
-                const score = Math.min(leftName.length, etalonName.length) / Math.max(leftName.length, etalonName.length);
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMatch = etalonRow;
+
+        const file = this.files[0];
+        console.log('Выбран файл:', file.name);
+        statusMsg.textContent = '⏳ Чтение файла...';
+        statusMsg.className = 'text-center text-primary';
+
+        try {
+            const data = await readFile(file);
+            console.log('Данные прочитаны:', data.length, 'строк');
+            
+            if (!data || data.length === 0) {
+                alert('Файл пуст или не удалось прочитать. Проверьте формат.');
+                statusMsg.textContent = '❌ Ошибка чтения файла';
+                statusMsg.className = 'text-center text-danger';
+                return;
+            }
+
+            userData = data;
+            const headers = Object.keys(data[0]);
+            userColMap = findColumns(headers);
+
+            // Обновляем интерфейс
+            uploadZone.classList.add('loaded');
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileStats').textContent = `${data.length} строк`;
+
+            // Показываем информацию о файле
+            const fileInfo = document.getElementById('fileInfo');
+            fileInfo.classList.add('show');
+            document.getElementById('infoFileName').textContent = file.name;
+            document.getElementById('infoRows').textContent = data.length;
+            document.getElementById('infoCols').textContent = headers.join(', ');
+
+            // Проверяем найденные колонки
+            const found = Object.keys(userColMap);
+            if (found.length >= 3) {
+                compareBtn.disabled = false;
+                statusMsg.textContent = '✅ Готово к сравнению! Найдено ' + found.length + ' колонок.';
+                statusMsg.className = 'text-center text-success';
+            } else {
+                compareBtn.disabled = true;
+                const missing = Object.keys(FIELD_NAMES).filter(k => !userColMap[k]);
+                statusMsg.textContent = '⚠️ Найдено только ' + found.length + ' из 4. Не найдены: ' + missing.join(', ');
+                statusMsg.className = 'text-center text-warning';
+            }
+
+        } catch (err) {
+            console.error('Ошибка:', err);
+            alert('Ошибка при чтении файла: ' + err.message);
+            statusMsg.textContent = '❌ Ошибка чтения файла';
+            statusMsg.className = 'text-center text-danger';
+        }
+    });
+
+    // ============================================================
+    // 6. СРАВНЕНИЕ
+    // ============================================================
+    compareBtn.addEventListener('click', function() {
+        if (!userData || !userColMap.name) {
+            alert('Не найден столбец "Наименование"!');
+            return;
+        }
+
+        const colName = userColMap.name;
+        const colMod = userColMap.modification;
+        const colReg = userColMap.registry;
+        const colSut = userColMap.sut;
+
+        const results = [];
+        let foundCount = 0, partialCount = 0, notFoundCount = 0;
+
+        for (let row of userData) {
+            const userName = normalize(row[colName] || '');
+            const userMod = colMod ? normalize(row[colMod] || '') : '';
+            const userReg = colReg ? normalize(row[colReg] || '') : '';
+            const userSut = colSut ? normalize(row[colSut] || '') : '';
+
+            let bestMatch = null;
+            let bestScore = 0;
+
+            // Ищем в эталоне
+            for (let etalon of allEtalon) {
+                const etalonName = normalize(etalon.name);
+                if (userName === etalonName) {
+                    bestMatch = etalon;
+                    bestScore = 1;
+                    break;
+                }
+                if (userName.includes(etalonName) || etalonName.includes(userName)) {
+                    const score = Math.min(userName.length, etalonName.length) / Math.max(userName.length, etalonName.length);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatch = etalon;
+                    }
                 }
             }
-        }
-        
-        if (bestMatch && bestScore > 0.5) {
-            const rightDisplay = [
-                bestMatch.name || '',
-                '',
-                bestMatch.registry || '',
-                ''
-            ];
-            warningCount++;
-            results.push({
-                rowNum: i + 1,
-                leftDisplay: leftDisplay,
-                rightDisplay: rightDisplay,
-                source: bestMatch.source || 'ГРСИ/СССР',
-                status: '⚠️ Частично',
-                reason: `Похожее наименование (${Math.round(bestScore * 100)}%) в ${bestMatch.source || 'реестре'}`
-            });
-        } else {
-            errorCount++;
-            results.push({
-                rowNum: i + 1,
-                leftDisplay: leftDisplay,
-                rightDisplay: ['Не найдено', '', '', ''],
-                source: '',
-                status: '❌ Не найдено',
-                reason: 'Нет совпадений в реестрах ГРСИ и СССР'
-            });
-        }
-    }
-    
-    document.getElementById('loadingOverlay').classList.remove('active');
-    showResults(results, okCount, errorCount, warningCount);
-});
 
-// ============================================================
-//  ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ
-// ============================================================
-function showResults(results, okCount, errorCount, warningCount) {
-    const container = document.getElementById('resultContainer');
-    container.classList.add('show');
-    
-    document.getElementById('statsText').innerHTML = `
-        <span class="badge bg-success stats-badge">✅ Найдено: ${okCount}</span>
-        <span class="badge bg-warning stats-badge" style="color:#000;">⚠️ Частично: ${warningCount}</span>
-        <span class="badge bg-danger stats-badge">❌ Не найдено: ${errorCount}</span>
-        <span class="badge bg-secondary stats-badge">📊 Всего: ${
+            const leftDisplay = `${FIELD_NAMES.name}: ${row[colName] || ''}` +
+                (colMod ? ` | ${FIELD_NAMES.modification}: ${row[colMod] || ''}` : '') +
+                (colReg ? ` | ${FIELD_NAMES.registry}: ${row[colReg] || ''}` : '') +
+                (colSut ? ` | ${FIELD_NAMES.sut}: ${row[colSut] || ''}` : '');
+
+            if (bestMatch && bestScore === 1) {
+                foundCount++;
+                results.push({
+                    left: leftDisplay,
+                    right: `${bestMatch.name} (№ ${bestMatch.registry})`,
+                    status: '✅ Найдено',
+                    reason: 'Точное совпадение'
+                });
+            } else if (bestMatch && bestScore > 0.5) {
+                partialCount++;
+                results.push({
+                    left: leftDisplay,
+                    right: `${bestMatch.name} (№ ${bestMatch.registry})`,
+                    status: '⚠️ Частично',
+                    reason: `Похожее наименование (${Math.round(bestScore*100)}%)`
+                });
+            } else {
+                notFoundCount++;
+                results.push({
+                    left: leftDisplay,
+                    right: '—',
+                    status: '❌ Не найдено',
+                    reason: 'Нет в реестрах ГРСИ и СССР'
+                });
+            }
+        }
+
+        // Показываем результат
+        document.getElementById('resultContainer').style.display = 'block';
+        document.getElementById('statsText').innerHTML = `
+            <span class="badge bg-success">✅ ${foundCount}</span>
+            <span class="badge bg-warning text-dark">⚠️ ${partialCount}</span>
+            <span class="badge bg-danger">❌ ${notFoundCount}</span>
+            <span class="badge bg-secondary">📊 ${results.length}</span>
+        `;
+
+        const tbody = document.getElementById('resultBody');
+        let html = '';
+        for (let i = 0; i < results.length; i++) {
+            const r = results[i];
+            let badgeClass = 'badge-ok';
+            if (r.status.includes('Частично')) badgeClass = 'badge-warning';
+            else if (r.status.includes('Не найдено')) badgeClass = 'badge-error';
+            
+            html += `<tr>
+                <td>${i+1}</td>
+                <td style="font-size:12px;">${r.left}</td>
+                <td style="font-size:12px;">${r.right}</td>
+                <td><span class="badge ${badgeClass}">${r.status}</span></td>
+                <td style="font-size:12px;">${r.reason}</td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+
+        document.getElementById('resultContainer').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    console.log('Сайт загружен. Готов к работе!');
+</script>
+</body>
+</html>
