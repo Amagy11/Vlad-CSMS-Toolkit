@@ -138,19 +138,20 @@
 
 <script>
 // ============================================================
-//  НАСТРОЙКА: какие колонки ищем (гибкий поиск)
+//  НАСТРОЙКА: какие колонки ищем (ТОЛЬКО ТОЧНЫЕ КЛЮЧЕВЫЕ СЛОВА)
 // ============================================================
 const SEARCH_RULES = {
     'type': {
-        keywords: ['тип си', 'тип', 'наименование си', 'наименование', 'название', 'средство', 'прибор'],
+        // Ищем "тип СИ" или "наименование" — НЕ "дата внесения"
+        keywords: ['тип си', 'тип си', 'наименование си', 'тип', 'наименование'],
         displayName: 'тип СИ'
     },
     'modification': {
-        keywords: ['модификация', 'исполнение', 'модификаци', 'модель', 'версия', 'исполн'],
+        keywords: ['модификация', 'исполнение', 'модификаци', 'модель', 'версия'],
         displayName: 'Модификация'
     },
     'registry': {
-        keywords: ['номер грси', 'грси', 'номер госреестра си', 'рег. номер', 'регистрационный номер', 'госреестр'],
+        keywords: ['номер грси', 'грси', 'номер госреестра', 'рег. номер', 'регистрационный номер'],
         displayName: 'номер ГРСИ'
     },
     'sut': {
@@ -174,6 +175,8 @@ function findColumns(headers) {
     const detected = {};
     const usedColumns = new Set();
 
+    console.log('🔍 Поиск колонок в заголовках:', headers);
+
     for (let [key, rule] of Object.entries(SEARCH_RULES)) {
         let found = null;
         let bestScore = 0;
@@ -182,8 +185,12 @@ function findColumns(headers) {
             if (usedColumns.has(h)) continue;
             const lower = h.toLowerCase().trim();
             
+            // Проверяем, что это НЕ "дата внесения"
+            if (lower.includes('дата') && lower.includes('внесения')) {
+                continue; // пропускаем
+            }
+            
             for (let kw of rule.keywords) {
-                // Проверяем, содержит ли заголовок ключевое слово
                 if (lower.includes(kw) || kw.includes(lower)) {
                     const score = Math.max(kw.length, lower.length);
                     if (score > bestScore) {
@@ -197,6 +204,9 @@ function findColumns(headers) {
         if (found) {
             detected[key] = found;
             usedColumns.add(found);
+            console.log(`  ✅ ${rule.displayName} → "${found}"`);
+        } else {
+            console.log(`  ❌ ${rule.displayName} — не найдена`);
         }
     }
     
@@ -388,7 +398,8 @@ previewBtn.addEventListener('click', function() {
 });
 
 console.log('✅ Сайт готов! Загрузите файлы — система сама найдёт нужные колонки.');
-console.log('🔍 Поиск по ключевым словам:', SEARCH_RULES);
+console.log('🔍 Ищем ТОЛЬКО: тип СИ, Модификация, номер ГРСИ, номер СУТ');
+console.log('⛔ Игнорируем: дата внесения типа СИ');
 </script>
 
 <!-- Подключаем Bootstrap JS для модалки -->
