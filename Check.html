@@ -1,286 +1,314 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Сравнение выгрузки БелГИМ со справочником</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-  <style>
-    * { box-sizing: border-box; }
-    body { background: #f0f2f5; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    
-    .upload-zone {
-      border: 3px dashed #adb5bd;
-      border-radius: 14px;
-      padding: 30px 20px;
-      text-align: center;
-      cursor: pointer;
-      background: #ffffff;
-      transition: all 0.3s ease;
-      min-height: 180px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-    }
-    .upload-zone:hover { border-color: #0d6efd; background: #f8f9ff; }
-    .upload-zone.dragover { border-color: #0d6efd; background: #e7edff; }
-    .upload-zone.loaded { border-color: #198754; background: #f0fff4; border-style: solid; }
-    .upload-zone .icon { font-size: 40px; margin-bottom: 6px; }
-    .upload-zone .hint { font-size: 12px; color: #6c757d; margin-top: 4px; }
-    .upload-zone .upload-text { font-weight: 500; font-size: 14px; }
-    .upload-zone .loaded-info { display: none; text-align: center; width: 100%; }
-    .upload-zone.loaded .icon { display: none; }
-    .upload-zone.loaded .upload-text { display: none; }
-    .upload-zone.loaded .hint { display: none; }
-    .upload-zone.loaded .loaded-info { display: block; }
-    .upload-zone .loaded-info .file-icon { font-size: 30px; display: block; }
-    .upload-zone .loaded-info .file-name { font-weight: 600; font-size: 13px; color: #1a1a2e; word-break: break-all; }
-    .upload-zone .loaded-info .file-stats { font-size: 12px; color: #6c757d; }
-    .upload-zone .status-badge { position: absolute; top: 6px; right: 10px; padding: 2px 12px; border-radius: 20px; font-size: 10px; font-weight: 600; background: #e9ecef; color: #6c757d; }
-    .upload-zone.loaded .status-badge { background: #d1e7dd; color: #0f5132; }
-    
-    .summary-box { background: #fff; border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 100%; }
-    .compare-btn { height: 100%; min-height: 60px; font-size: 16px; font-weight: 600; border-radius: 12px; }
-    .compare-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .compare-btn:not(:disabled):hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(13,110,253,0.3); }
-    
-    .result-container { margin-top: 20px; display: none; }
-    .result-container.show { display: block; }
-    .result-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
-    
-    .table-wrap { max-height: 600px; overflow-y: auto; border-radius: 8px; border: 1px solid #dee2e6; }
-    .table-wrap table { font-size: 12px; margin-bottom: 0; width: 100%; table-layout: fixed; }
-    .table-wrap th { position: sticky; top: 0; background: #1a1a2e; color: #fff; z-index: 10; padding: 8px 10px; font-size: 11px; white-space: nowrap; text-align: center; }
-    .table-wrap td { padding: 6px 10px; vertical-align: middle; font-size: 11px; word-wrap: break-word; white-space: normal; }
-    .table-wrap td:nth-child(2) { max-width: 130px; }
-    .table-wrap td:nth-child(3) { max-width: 180px; background: #f8f9fa; }
-    .table-wrap td:nth-child(4) { max-width: 100px; }
-    .table-wrap td:nth-child(5) { max-width: 100px; }
-    .table-wrap td:nth-child(6) { max-width: 90px; }
-    .table-wrap td:nth-child(7) { max-width: 170px; }
-    .table-wrap tr:hover td { background: #f8f9ff; }
-    .table-wrap td:nth-child(3):hover { background: #e7edff; }
-    
-    .badge-status { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
-    .badge-ok { background: #d1e7dd; color: #0f5132; }
-    .badge-error { background: #f8d7da; color: #842029; }
-    
-    .stats-badge { font-size: 12px; padding: 4px 14px; border-radius: 20px; }
-    
-    .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
-    .loading-overlay.active { display: flex; }
-    .loading-box { background: #fff; padding: 25px 40px; border-radius: 14px; text-align: center; min-width: 250px; }
-    .spinner { width: 35px; height: 35px; border: 4px solid #e9ecef; border-top: 4px solid #0d6efd; border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 10px; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .loading-box .loading-title { font-size: 16px; font-weight: 600; }
-    .loading-box .loading-sub { color: #6c757d; font-size: 13px; }
-    
-    .btn-download { border-radius: 8px; padding: 5px 16px; font-weight: 600; font-size: 12px; }
-    .ready-hint { text-align: center; font-size: 11px; color: #6c757d; margin-top: 6px; }
-    .ready-hint.ready { color: #198754; font-weight: 600; }
-    
-    .found-cols { font-size: 11px; color: #495057; margin-top: 6px; padding: 6px 10px; background: #f8f9fa; border-radius: 6px; display: none; }
-    .found-cols.show { display: block; }
-    .found-cols .col-item { display: inline-block; background: #e9ecef; padding: 1px 8px; border-radius: 10px; margin: 1px 3px 1px 0; font-size: 10px; }
-    .found-cols .col-item strong { color: #0d6efd; }
-    .found-cols .warning-text { color: #dc3545; font-weight: 600; }
-    
-    .filter-btn-group { margin-bottom: 12px; }
-    .filter-btn-group .btn { font-size: 12px; padding: 4px 16px; }
-    .filter-btn-group .btn.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
-    
-    .btn-detail { font-size: 11px; padding: 2px 10px; border-radius: 12px; }
-    
-    .detail-modal .modal-content { border-radius: 14px; }
-    .detail-modal .modal-header { background: #1a1a2e; color: #fff; border-radius: 14px 14px 0 0; }
-    .detail-modal .modal-header .btn-close { filter: invert(1); }
-    .detail-table td { padding: 8px 12px; vertical-align: middle; font-size: 13px; }
-    .detail-table .field-name { font-weight: 600; color: #495057; width: 20%; }
-    .detail-table .left-val { background: #f8f9fa; }
-    .detail-table .right-val { background: #f0fff4; }
-    .detail-table .match-ok { color: #198754; font-weight: 600; }
-    .detail-table .match-error { color: #dc3545; font-weight: 600; }
-    .detail-variants { font-size: 12px; color: #6c757d; }
-    .detail-variants .variant-item { display: inline-block; background: #e9ecef; padding: 2px 10px; border-radius: 12px; margin: 2px 4px 2px 0; font-size: 12px; }
-    
-    @media (max-width: 768px) {
-      .upload-zone { min-height: 120px; padding: 14px; }
-      .compare-btn { min-height: 50px; font-size: 14px; }
-      .summary-box { padding: 12px; }
-      .table-wrap td { font-size: 10px; padding: 4px 6px; max-width: 80px; }
-      body { padding: 10px; }
-      .detail-table td { font-size: 12px; padding: 6px 8px; }
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Сравнение выгрузки БелГИМ со справочником</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #f0f2f5; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        .upload-zone {
+            border: 3px dashed #adb5bd;
+            border-radius: 14px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            background: #ffffff;
+            transition: all 0.3s ease;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        .upload-zone:hover { border-color: #0d6efd; background: #f8f9ff; }
+        .upload-zone.dragover { border-color: #0d6efd; background: #e7edff; }
+        .upload-zone.loaded { border-color: #198754; background: #f0fff4; border-style: solid; }
+        .upload-zone .icon { font-size: 40px; margin-bottom: 6px; }
+        .upload-zone .hint { font-size: 12px; color: #6c757d; margin-top: 4px; }
+        .upload-zone .upload-text { font-weight: 500; font-size: 14px; }
+        .upload-zone .loaded-info { display: none; text-align: center; width: 100%; }
+        .upload-zone.loaded .icon { display: none; }
+        .upload-zone.loaded .upload-text { display: none; }
+        .upload-zone.loaded .hint { display: none; }
+        .upload-zone.loaded .loaded-info { display: block; }
+        .upload-zone .loaded-info .file-icon { font-size: 30px; display: block; }
+        .upload-zone .loaded-info .file-name { font-weight: 600; font-size: 13px; color: #1a1a2e; word-break: break-all; }
+        .upload-zone .loaded-info .file-stats { font-size: 12px; color: #6c757d; }
+        .upload-zone .status-badge { position: absolute; top: 6px; right: 10px; padding: 2px 12px; border-radius: 20px; font-size: 10px; font-weight: 600; background: #e9ecef; color: #6c757d; }
+        .upload-zone.loaded .status-badge { background: #d1e7dd; color: #0f5132; }
+        
+        .summary-box { background: #fff; border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 100%; }
+        .compare-btn { height: 100%; min-height: 60px; font-size: 16px; font-weight: 600; border-radius: 12px; }
+        .compare-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .compare-btn:not(:disabled):hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(13,110,253,0.3); }
+        
+        .result-container { margin-top: 20px; display: none; }
+        .result-container.show { display: block; }
+        .result-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+        
+        .table-wrap { 
+            max-height: 600px; 
+            overflow-y: auto; 
+            border-radius: 8px; 
+            border: 1px solid #dee2e6; 
+        }
+        .table-wrap table { 
+            font-size: 12px; 
+            margin-bottom: 0; 
+            width: 100%;
+            table-layout: fixed;
+        }
+        .table-wrap th { 
+            position: sticky; 
+            top: 0; 
+            background: #1a1a2e; 
+            color: #fff; 
+            z-index: 10; 
+            padding: 8px 10px; 
+            font-size: 11px; 
+            white-space: nowrap; 
+            text-align: center; 
+        }
+        .table-wrap td { 
+            padding: 6px 10px; 
+            vertical-align: middle; 
+            font-size: 11px; 
+            word-wrap: break-word;
+            white-space: normal;
+        }
+        .table-wrap td:nth-child(2) { max-width: 130px; }
+        .table-wrap td:nth-child(3) { max-width: 180px; background: #f8f9fa; }
+        .table-wrap td:nth-child(4) { max-width: 100px; }
+        .table-wrap td:nth-child(5) { max-width: 100px; }
+        .table-wrap td:nth-child(6) { max-width: 90px; }
+        .table-wrap td:nth-child(7) { max-width: 170px; }
+        .table-wrap tr:hover td { background: #f8f9ff; }
+        .table-wrap td:nth-child(3):hover { background: #e7edff; }
+        
+        .badge-status { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+        .badge-ok { background: #d1e7dd; color: #0f5132; }
+        .badge-error { background: #f8d7da; color: #842029; }
+        
+        .stats-badge { font-size: 12px; padding: 4px 14px; border-radius: 20px; }
+        
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .loading-overlay.active { display: flex; }
+        .loading-box { background: #fff; padding: 25px 40px; border-radius: 14px; text-align: center; min-width: 250px; }
+        .spinner { width: 35px; height: 35px; border: 4px solid #e9ecef; border-top: 4px solid #0d6efd; border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-box .loading-title { font-size: 16px; font-weight: 600; }
+        .loading-box .loading-sub { color: #6c757d; font-size: 13px; }
+        
+        .btn-download { border-radius: 8px; padding: 5px 16px; font-weight: 600; font-size: 12px; }
+        .ready-hint { text-align: center; font-size: 11px; color: #6c757d; margin-top: 6px; }
+        .ready-hint.ready { color: #198754; font-weight: 600; }
+        
+        .found-cols { font-size: 11px; color: #495057; margin-top: 6px; padding: 6px 10px; background: #f8f9fa; border-radius: 6px; display: none; }
+        .found-cols.show { display: block; }
+        .found-cols .col-item { display: inline-block; background: #e9ecef; padding: 1px 8px; border-radius: 10px; margin: 1px 3px 1px 0; font-size: 10px; }
+        .found-cols .col-item strong { color: #0d6efd; }
+        .found-cols .warning-text { color: #dc3545; font-weight: 600; }
+        
+        .filter-btn-group { margin-bottom: 12px; }
+        .filter-btn-group .btn { font-size: 12px; padding: 4px 16px; }
+        .filter-btn-group .btn.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+        
+        .btn-detail { font-size: 11px; padding: 2px 10px; border-radius: 12px; }
+        
+        .detail-modal .modal-content { border-radius: 14px; }
+        .detail-modal .modal-header { background: #1a1a2e; color: #fff; border-radius: 14px 14px 0 0; }
+        .detail-modal .modal-header .btn-close { filter: invert(1); }
+        .detail-table td { padding: 8px 12px; vertical-align: middle; font-size: 13px; }
+        .detail-table .field-name { font-weight: 600; color: #495057; width: 20%; }
+        .detail-table .left-val { background: #f8f9fa; }
+        .detail-table .right-val { background: #f0fff4; }
+        .detail-table .match-ok { color: #198754; font-weight: 600; }
+        .detail-table .match-error { color: #dc3545; font-weight: 600; }
+        .detail-variants { font-size: 12px; color: #6c757d; }
+        .detail-variants .variant-item { display: inline-block; background: #e9ecef; padding: 2px 10px; border-radius: 12px; margin: 2px 4px 2px 0; font-size: 12px; }
+        
+        @media (max-width: 768px) {
+            .upload-zone { min-height: 120px; padding: 14px; }
+            .compare-btn { min-height: 50px; font-size: 14px; }
+            .summary-box { padding: 12px; }
+            .table-wrap td { font-size: 10px; padding: 4px 6px; max-width: 80px; }
+            body { padding: 10px; }
+            .detail-table td { font-size: 12px; padding: 6px 8px; }
+        }
+    </style>
 </head>
 <body>
 
 <!-- Лоадер -->
 <div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-box">
-    <div class="spinner"></div>
-    <div class="loading-title">⏳ Идёт сравнение...</div>
-    <div class="loading-sub" id="loadingText">Обработка данных</div>
-  </div>
+    <div class="loading-box">
+        <div class="spinner"></div>
+        <div class="loading-title">⏳ Идет сравнение...</div>
+        <div class="loading-sub" id="loadingText">Обработка данных</div>
+    </div>
 </div>
 
 <div class="container-fluid">
-  <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-    <div>
-      <h1 style="font-weight:700; color:#1a1a2e;">🧠 Сравнение выгрузки БелГИМ со справочником</h1>
-      <p style="color:#6c757d;">Загрузите выгрузку свидетельств (слева) и единый справочник БелГИМ (справа)</p>
-    </div>
-    <div class="ms-auto">
-      <span class="badge bg-danger" style="font-size: 12px;">⬅️ Выгрузка БелГИМ</span>
-      <span class="badge bg-success" style="font-size: 12px;">➡️ Справочник БелГИМ</span>
-    </div>
-  </div>
-
-  <div class="row g-3">
-    <!-- ЛЕВАЯ ПАНЕЛЬ: выгрузка -->
-    <div class="col-md-5">
-      <div class="summary-box">
-        <h5 style="font-weight:600; font-size: 14px;">📌 Выгрузка свидетельств <span class="badge bg-danger" style="font-size: 10px;">1 файл</span></h5>
-        <div id="leftZone" class="upload-zone">
-          <span class="status-badge" id="leftStatus">Ожидание</span>
-          <div class="icon">📄</div>
-          <div class="upload-text">Загрузите выгрузку из БелГИМ</div>
-          <div class="hint">.xlsx, .xls или .csv</div>
-          <div class="loaded-info">
-            <span class="file-icon">✅</span>
-            <div class="file-name" id="leftLoadedName">файл</div>
-            <div class="file-stats" id="leftLoadedStats">0 строк</div>
-          </div>
+    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+        <div>
+            <h1 style="font-weight:700; color:#1a1a2e;">🧠 Сравнение выгрузки БелГИМ со справочником</h1>
+            <p style="color:#6c757d;">Загрузите выгрузку свидетельств (слева) и единый справочник БелГИМ (справа)</p>
         </div>
-        <div id="leftColsInfo" class="found-cols"></div>
-        <button id="leftPreviewBtn" class="btn btn-outline-primary btn-sm mt-2" disabled>👁️ Просмотр</button>
-        <input type="file" id="leftInput" accept=".xlsx,.xls,.csv" style="display:none;" />
-      </div>
-    </div>
-
-    <!-- ПРАВАЯ ПАНЕЛЬ: справочник -->
-    <div class="col-md-5">
-      <div class="summary-box">
-        <h5 style="font-weight:600; font-size: 14px;">📂 Единый справочник БелГИМ <span class="badge bg-success" style="font-size: 10px;">несколько файлов</span></h5>
-        <div id="rightZone" class="upload-zone">
-          <span class="status-badge" id="rightStatus">Ожидание</span>
-          <div class="icon">📦</div>
-          <div class="upload-text">Загрузите справочник БелГИМ</div>
-          <div class="hint">.xlsx, .xls или .csv</div>
-          <div class="loaded-info">
-            <span class="file-icon">✅</span>
-            <div class="file-name" id="rightLoadedName">файлы</div>
-            <div class="file-stats" id="rightLoadedStats">0 строк</div>
-          </div>
+        <div class="ms-auto">
+            <span class="badge bg-danger" style="font-size: 12px;">⬅️ Выгрузка БелГИМ</span>
+            <span class="badge bg-success" style="font-size: 12px;">➡️ Справочник БелГИМ</span>
         </div>
-        <div id="rightColsInfo" class="found-cols"></div>
-        <button id="rightPreviewBtn" class="btn btn-outline-primary btn-sm mt-2" disabled>👁️ Просмотр</button>
-        <input type="file" id="rightInput" accept=".xlsx,.xls,.csv" multiple style="display:none;" />
-      </div>
     </div>
 
-    <!-- КНОПКА -->
-    <div class="col-md-2">
-      <button id="compareBtn" class="btn btn-primary compare-btn w-100" disabled>
-        🔍 Сравнить
-      </button>
-      <div class="ready-hint" id="readyHint">⏳ Загрузите файлы с обеих сторон</div>
-      <div style="font-size:11px; color:#6c757d; text-align:center; margin-top:8px;">
-        <span class="badge bg-success" style="font-size:10px;">✅</span> Совпадает
-        <span class="badge bg-danger ms-2" style="font-size:10px;">❌</span> Расхождение
-      </div>
-    </div>
-  </div>
-
-  <!-- РЕЗУЛЬТАТЫ -->
-  <div class="result-container" id="resultContainer">
-    <div class="summary-box">
-      <div class="result-header">
-        <h5 style="font-weight:600; margin:0; font-size: 15px;">📋 Результат сравнения</h5>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-          <span id="statsText"></span>
-          <button id="downloadBtn" class="btn btn-success btn-download btn-sm">⬇ Скачать .xlsx</button>
+    <div class="row g-3">
+        <!-- ЛЕВАЯ ПАНЕЛЬ: выгрузка -->
+        <div class="col-md-5">
+            <div class="summary-box">
+                <h5 style="font-weight:600; font-size: 14px;">📌 Выгрузка свидетельств <span class="badge bg-danger" style="font-size: 10px;">1 файл</span></h5>
+                <div id="leftZone" class="upload-zone">
+                    <span class="status-badge" id="leftStatus">Ожидание</span>
+                    <div class="icon">📄</div>
+                    <div class="upload-text">Загрузите выгрузку из БелГИМ</div>
+                    <div class="hint">.xlsx, .xls или .csv</div>
+                    <div class="loaded-info">
+                        <span class="file-icon">✅</span>
+                        <div class="file-name" id="leftLoadedName">файл</div>
+                        <div class="file-stats" id="leftLoadedStats">0 строк</div>
+                    </div>
+                </div>
+                <div id="leftColsInfo" class="found-cols"></div>
+                <button id="leftPreviewBtn" class="btn btn-outline-primary btn-sm mt-2" disabled>👁️ Просмотр</button>
+                <input type="file" id="leftInput" accept=".xlsx,.xls,.csv" style="display:none;" />
+            </div>
         </div>
-      </div>
-      
-      <!-- ФИЛЬТРЫ -->
-      <div class="filter-btn-group d-flex gap-2 flex-wrap">
-        <button class="btn btn-outline-secondary btn-sm active" data-filter="errors" id="filterErrorsBtn">
-          ⚠️ Только расхождения
-        </button>
-        <button class="btn btn-outline-secondary btn-sm" data-filter="all" id="filterAllBtn">
-          📋 Показать все
-        </button>
-        <span style="font-size:12px; color:#6c757d; align-self:center; margin-left:8px;" id="filterInfo">
-          Показано: <span id="shownCount">0</span> из <span id="totalCount">0</span>
-        </span>
-      </div>
-      
-      <div class="table-wrap">
-        <table class="table table-bordered table-striped" id="resultTable">
-          <thead>
-            <tr>
-              <th style="min-width:30px; width:3%;">№</th>
-              <th style="width:12%;">📌 Выгрузка</th>
-              <th style="width:15%;">📂 Справочник</th>
-              <th style="width:10%;">📄 Номер документа</th>
-              <th style="width:10%;">🏷️ № наклейки</th>
-              <th style="min-width:80px; width:8%;">Статус</th>
-              <th style="min-width:120px; width:12%;">Причина</th>
-              <th style="min-width:60px; width:5%;">Детали</th>
-            </tr>
-          </thead>
-          <tbody id="resultBody"></tbody>
-        </table>
-      </div>
+
+        <!-- ПРАВАЯ ПАНЕЛЬ: справочник -->
+        <div class="col-md-5">
+            <div class="summary-box">
+                <h5 style="font-weight:600; font-size: 14px;">📂 Единый справочник БелГИМ <span class="badge bg-success" style="font-size: 10px;">несколько файлов</span></h5>
+                <div id="rightZone" class="upload-zone">
+                    <span class="status-badge" id="rightStatus">Ожидание</span>
+                    <div class="icon">📦</div>
+                    <div class="upload-text">Загрузите справочник БелГИМ</div>
+                    <div class="hint">.xlsx, .xls или .csv</div>
+                    <div class="loaded-info">
+                        <span class="file-icon">✅</span>
+                        <div class="file-name" id="rightLoadedName">файлы</div>
+                        <div class="file-stats" id="rightLoadedStats">0 строк</div>
+                    </div>
+                </div>
+                <div id="rightColsInfo" class="found-cols"></div>
+                <button id="rightPreviewBtn" class="btn btn-outline-primary btn-sm mt-2" disabled>👁️ Просмотр</button>
+                <input type="file" id="rightInput" accept=".xlsx,.xls,.csv" multiple style="display:none;" />
+            </div>
+        </div>
+
+        <!-- КНОПКА -->
+        <div class="col-md-2">
+            <button id="compareBtn" class="btn btn-primary compare-btn w-100" disabled>
+                🔍 Сравнить
+            </button>
+            <div class="ready-hint" id="readyHint">⏳ Загрузите файлы с обеих сторон</div>
+            <div style="font-size:11px; color:#6c757d; text-align:center; margin-top:8px;">
+                <span class="badge bg-success" style="font-size:10px;">✅</span> Совпадает
+                <span class="badge bg-danger ms-2" style="font-size:10px;">❌</span> Расхождение
+            </div>
+        </div>
     </div>
-  </div>
+
+    <!-- РЕЗУЛЬТАТЫ -->
+    <div class="result-container" id="resultContainer">
+        <div class="summary-box">
+            <div class="result-header">
+                <h5 style="font-weight:600; margin:0; font-size: 15px;">📋 Результат сравнения</h5>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span id="statsText"></span>
+                    <button id="downloadBtn" class="btn btn-success btn-download btn-sm">⬇ Скачать .xlsx</button>
+                </div>
+            </div>
+            
+            <!-- ФИЛЬТРЫ -->
+            <div class="filter-btn-group d-flex gap-2 flex-wrap">
+                <button class="btn btn-outline-secondary btn-sm active" data-filter="errors" id="filterErrorsBtn">
+                    ⚠️ Только расхождения
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" data-filter="all" id="filterAllBtn">
+                    📋 Показать все
+                </button>
+                <span style="font-size:12px; color:#6c757d; align-self:center; margin-left:8px;" id="filterInfo">
+                    Показано: <span id="shownCount">0</span> из <span id="totalCount">0</span>
+                </span>
+            </div>
+            
+            <div class="table-wrap">
+                <table class="table table-bordered table-striped" id="resultTable">
+                    <thead>
+                        <tr>
+                            <th style="min-width:30px; width:3%;">№</th>
+                            <th style="width:12%;">📌 Выгрузка</th>
+                            <th style="width:15%;">📂 Справочник</th>
+                            <th style="width:10%;">📄 Номер документа</th>
+                            <th style="width:10%;">🏷️ № наклейки</th>
+                            <th style="min-width:80px; width:8%;">Статус</th>
+                            <th style="min-width:120px; width:12%;">Причина</th>
+                            <th style="min-width:60px; width:5%;">Детали</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- Модалка предпросмотра -->
+<!-- Модальное окно для просмотра таблицы -->
 <div class="modal fade" id="previewModal" tabindex="-1">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="previewModalTitle">📊 Данные</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div style="margin-bottom: 12px; font-size:14px; color:#6c757d;">
-          <span id="modalColsNames"></span>
-          <span class="badge bg-secondary ms-2" id="modalRowCount">0 строк</span>
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalTitle">📊 Данные</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 12px; font-size:14px; color:#6c757d;">
+                    <span id="modalColsNames"></span>
+                    <span class="badge bg-secondary ms-2" id="modalRowCount">0 строк</span>
+                </div>
+                <div class="modal-table-wrap">
+                    <table class="table table-bordered table-striped" id="previewTable">
+                        <thead id="previewHead"></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
         </div>
-        <div class="modal-table-wrap">
-          <table class="table table-bordered table-striped" id="previewTable">
-            <thead id="previewHead"></thead>
-            <tbody id="previewBody"></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-      </div>
     </div>
-  </div>
 </div>
 
-<!-- Модалка деталей -->
+<!-- Модальное окно для деталей ошибки -->
 <div class="modal fade detail-modal" id="detailModal" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">📋 Детали расхождения</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body" id="detailModalBody"></div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-      </div>
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">📋 Детали расхождения</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailModalBody">
+                <!-- Заполняется динамически -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 <script>
@@ -288,38 +316,38 @@
 //  НАСТРОЙКА ПОИСКА КОЛОНОК
 // ============================================================
 const SEARCH_RULES = {
-  'type': {
-    keywords: ['тип си', 'тип си', 'наименование си', 'тип', 'наименование'],
-    displayName: 'тип СИ',
-    exclude: ['дата', 'внесения']
-  },
-  'modification': {
-    keywords: ['модификация', 'исполнение', 'модификаци', 'модель', 'версия'],
-    displayName: 'Модификация',
-    exclude: []
-  },
-  'registry': {
-    keywords: ['номер грси', 'грси', 'номер госреестра', 'рег. номер', 'регистрационный номер'],
-    displayName: 'номер ГРСИ',
-    exclude: ['дата', 'внесения']
-  },
-  'sut': {
-    keywords: ['номер сут', 'сут', 'идентификационный номер', 'идентификатор', 'заводской номер', 'серийный номер'],
-    displayName: 'номер СУТ',
-    exclude: ['срок', 'действие', 'годен', 'годности', 'действителен']
-  },
-  'document': {
-    keywords: ['номер документа', 'документ', '№ документа', 'номер док'],
-    displayName: 'Номер документа',
-    exclude: [],
-    isExtra: true
-  },
-  'sticker': {
-    keywords: ['наклейка', '№ наклейки', 'номер наклейки', 'стикер'],
-    displayName: '№ наклейки',
-    exclude: [],
-    isExtra: true
-  }
+    'type': {
+        keywords: ['тип си', 'тип си', 'наименование си', 'тип', 'наименование'],
+        displayName: 'тип СИ',
+        exclude: ['дата', 'внесения']
+    },
+    'modification': {
+        keywords: ['модификация', 'исполнение', 'модификаци', 'модель', 'версия'],
+        displayName: 'Модификация',
+        exclude: []
+    },
+    'registry': {
+        keywords: ['номер грси', 'грси', 'номер госреестра', 'рег. номер', 'регистрационный номер'],
+        displayName: 'номер ГРСИ',
+        exclude: ['дата', 'внесения']
+    },
+    'sut': {
+        keywords: ['номер сут', 'сут', 'идентификационный номер', 'идентификатор', 'заводской номер', 'серийный номер'],
+        displayName: 'номер СУТ',
+        exclude: ['срок', 'действие', 'годен', 'годности', 'действителен']
+    },
+    'document': {
+        keywords: ['номер документа', 'документ', '№ документа', 'номер док'],
+        displayName: 'Номер документа',
+        exclude: [],
+        isExtra: true
+    },
+    'sticker': {
+        keywords: ['наклейка', '№ наклейки', 'номер наклейки', 'стикер'],
+        displayName: '№ наклейки',
+        exclude: [],
+        isExtra: true
+    }
 };
 
 // ============================================================
@@ -333,672 +361,721 @@ let leftFileName = '';
 let rightFileNames = [];
 let allResults = [];
 let currentFilter = 'errors';
-let detailData = {};
 
 // ============================================================
-//  ОЧИСТКА ДАННЫХ (ПРОЧЕРК = ПУСТОТА)
+//  ⭐ ОЧИСТКА ДАННЫХ (ПРОЧЕРК = ПУСТОТА)
 // ============================================================
 function normalize(val) {
-  if (val === null || val === undefined) return '';
-  let result = String(val).trim();
-  if (result === '-' || result === '–' || result === '—') return '';
-  return result.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (val === null || val === undefined) return '';
+    let result = String(val).trim();
+    
+    if (result === '-' || result === '–' || result === '—') {
+        return '';
+    }
+    
+    return result.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 function getFileFormat(filename) {
-  const ext = filename.split('.').pop().toLowerCase();
-  if (ext === 'csv') return 'csv';
-  if (ext === 'xlsx' || ext === 'xls') return 'excel';
-  return 'unknown';
+    const ext = filename.split('.').pop().toLowerCase();
+    if (ext === 'csv') return 'csv';
+    if (ext === 'xlsx' || ext === 'xls') return 'excel';
+    return 'unknown';
 }
 
 // ============================================================
 //  ПОИСК КОЛОНОК
 // ============================================================
 function findColumns(headers) {
-  const detected = {};
-  const usedColumns = new Set();
-  for (let [key, rule] of Object.entries(SEARCH_RULES)) {
-    let found = null;
-    let bestScore = 0;
-    for (let h of headers) {
-      if (usedColumns.has(h)) continue;
-      const lower = h.toLowerCase().trim();
-      if (rule.exclude) {
-        let skip = false;
-        for (let ex of rule.exclude) {
-          if (lower.includes(ex)) { skip = true; break; }
+    const detected = {};
+    const usedColumns = new Set();
+
+    for (let [key, rule] of Object.entries(SEARCH_RULES)) {
+        let found = null;
+        let bestScore = 0;
+        
+        for (let h of headers) {
+            if (usedColumns.has(h)) continue;
+            const lower = h.toLowerCase().trim();
+            
+            if (rule.exclude) {
+                let skip = false;
+                for (let ex of rule.exclude) {
+                    if (lower.includes(ex)) { skip = true; break; }
+                }
+                if (skip) continue;
+            }
+            
+            for (let kw of rule.keywords) {
+                if (lower.includes(kw) || kw.includes(lower)) {
+                    const score = Math.max(kw.length, lower.length);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        found = h;
+                    }
+                }
+            }
         }
-        if (skip) continue;
-      }
-      for (let kw of rule.keywords) {
-        if (lower.includes(kw) || kw.includes(lower)) {
-          const score = Math.max(kw.length, lower.length);
-          if (score > bestScore) {
-            bestScore = score;
-            found = h;
-          }
+        
+        if (found) {
+            detected[key] = found;
+            usedColumns.add(found);
         }
-      }
     }
-    if (found) {
-      detected[key] = found;
-      usedColumns.add(found);
-    }
-  }
-  return detected;
+    
+    return detected;
 }
 
 // ============================================================
 //  ЧТЕНИЕ ФАЙЛОВ
 // ============================================================
 function readFiles(files) {
-  return new Promise((resolve) => {
-    const allData = [];
-    let headers = [];
-    let completed = 0;
-    if (!files || files.length === 0) {
-      resolve({ data: [], headers: [] });
-      return;
-    }
-    for (let file of files) {
-      const reader = new FileReader();
-      const format = getFileFormat(file.name);
-      reader.onload = function(e) {
-        try {
-          let json = [];
-          if (format === 'csv') {
-            const text = e.target.result;
-            const workbook = XLSX.read(text, { type: 'string', raw: true, codepage: 65001 });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
-          } else {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
-          }
-          if (json.length > 0) {
-            if (headers.length === 0) headers = Object.keys(json[0]);
-            allData.push(...json);
-          }
-        } catch (err) {
-          console.error('Ошибка чтения:', file.name, err);
+    return new Promise((resolve) => {
+        const allData = [];
+        let headers = [];
+        let completed = 0;
+        
+        if (!files || files.length === 0) {
+            resolve({ data: [], headers: [] });
+            return;
         }
-        completed++;
-        if (completed === files.length) {
-          resolve({ data: allData, headers: headers });
+
+        for (let file of files) {
+            const reader = new FileReader();
+            const format = getFileFormat(file.name);
+            
+            reader.onload = function(e) {
+                try {
+                    let json = [];
+                    if (format === 'csv') {
+                        const text = e.target.result;
+                        const workbook = XLSX.read(text, { type: 'string', raw: true, codepage: 65001 });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+                    } else {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+                    }
+                    
+                    if (json.length > 0) {
+                        if (headers.length === 0) {
+                            headers = Object.keys(json[0]);
+                        }
+                        allData.push(...json);
+                    }
+                } catch (err) {
+                    console.error('Ошибка чтения:', file.name, err);
+                }
+                completed++;
+                if (completed === files.length) {
+                    resolve({ data: allData, headers: headers });
+                }
+            };
+            
+            if (format === 'csv') {
+                reader.readAsText(file, 'UTF-8');
+            } else {
+                reader.readAsArrayBuffer(file);
+            }
         }
-      };
-      if (format === 'csv') {
-        reader.readAsText(file, 'UTF-8');
-      } else {
-        reader.readAsArrayBuffer(file);
-      }
-    }
-  });
+    });
 }
 
 // ============================================================
 //  UI ОБНОВЛЕНИЯ
 // ============================================================
 function updateLeftUI(files, data, colMap) {
-  const zone = document.getElementById('leftZone');
-  const status = document.getElementById('leftStatus');
-  const loadedName = document.getElementById('leftLoadedName');
-  const loadedStats = document.getElementById('leftLoadedStats');
-  const previewBtn = document.getElementById('leftPreviewBtn');
-  if (data && data.length > 0) {
-    zone.classList.add('loaded');
-    status.textContent = '✅ Загружено';
-    loadedName.textContent = files[0].name;
-    loadedStats.textContent = `${data.length} строк`;
-    previewBtn.disabled = false;
-  }
+    const zone = document.getElementById('leftZone');
+    const status = document.getElementById('leftStatus');
+    const loadedName = document.getElementById('leftLoadedName');
+    const loadedStats = document.getElementById('leftLoadedStats');
+    const previewBtn = document.getElementById('leftPreviewBtn');
+    
+    if (data && data.length > 0) {
+        zone.classList.add('loaded');
+        status.textContent = '✅ Загружено';
+        loadedName.textContent = files[0].name;
+        loadedStats.textContent = `${data.length} строк`;
+        previewBtn.disabled = false;
+    }
 }
 
 function updateRightUI(files, data, colMap) {
-  const zone = document.getElementById('rightZone');
-  const status = document.getElementById('rightStatus');
-  const loadedName = document.getElementById('rightLoadedName');
-  const loadedStats = document.getElementById('rightLoadedStats');
-  const previewBtn = document.getElementById('rightPreviewBtn');
-  if (data && data.length > 0) {
-    zone.classList.add('loaded');
-    status.textContent = '✅ Загружено';
-    const names = Array.from(files).map(f => f.name);
-    loadedName.textContent = names.length === 1 ? names[0] : `${names.length} файлов`;
-    loadedStats.textContent = `${data.length} строк`;
-    previewBtn.disabled = false;
-  }
+    const zone = document.getElementById('rightZone');
+    const status = document.getElementById('rightStatus');
+    const loadedName = document.getElementById('rightLoadedName');
+    const loadedStats = document.getElementById('rightLoadedStats');
+    const previewBtn = document.getElementById('rightPreviewBtn');
+    
+    if (data && data.length > 0) {
+        zone.classList.add('loaded');
+        status.textContent = '✅ Загружено';
+        const names = Array.from(files).map(f => f.name);
+        loadedName.textContent = names.length === 1 ? names[0] : `${names.length} файлов`;
+        loadedStats.textContent = `${data.length} строк`;
+        previewBtn.disabled = false;
+    }
 }
 
 function showColsInfo(divId, colMap) {
-  const div = document.getElementById(divId);
-  const mainKeys = ['type', 'modification', 'registry', 'sut'];
-  const extraKeys = ['document', 'sticker'];
-  const foundMain = mainKeys.filter(k => colMap[k]);
-  const foundExtra = extraKeys.filter(k => colMap[k]);
-  const found = [...foundMain, ...foundExtra];
-  if (found.length > 0) {
-    div.classList.add('show');
-    let html = '🔍 Найдено: ';
-    html += foundMain.map(key => 
-      `<span class="col-item"><strong>${SEARCH_RULES[key].displayName}</strong> → "${colMap[key]}"</span>`
-    ).join(' ');
-    if (foundExtra.length > 0) {
-      html += ' | Доп.: ' + foundExtra.map(key => 
-        `<span class="col-item" style="background:#d1e7dd;"><strong>${SEARCH_RULES[key].displayName}</strong> → "${colMap[key]}"</span>`
-      ).join(' ');
+    const div = document.getElementById(divId);
+    const mainKeys = ['type', 'modification', 'registry', 'sut'];
+    const extraKeys = ['document', 'sticker'];
+    const foundMain = mainKeys.filter(k => colMap[k]);
+    const foundExtra = extraKeys.filter(k => colMap[k]);
+    const found = [...foundMain, ...foundExtra];
+    
+    if (found.length > 0) {
+        div.classList.add('show');
+        let html = '🔍 Найдено: ';
+        html += foundMain.map(key => 
+            `<span class="col-item"><strong>${SEARCH_RULES[key].displayName}</strong> → "${colMap[key]}"</span>`
+        ).join(' ');
+        if (foundExtra.length > 0) {
+            html += ' | Доп.: ' + foundExtra.map(key => 
+                `<span class="col-item" style="background:#d1e7dd;"><strong>${SEARCH_RULES[key].displayName}</strong> → "${colMap[key]}"</span>`
+            ).join(' ');
+        }
+        if (foundMain.length < 4) {
+            const missing = mainKeys.filter(k => !colMap[k]);
+            html += ' <span class="warning-text">⚠️ Не найдены основные колонки: ' + 
+                missing.map(k => SEARCH_RULES[k].displayName).join(', ') + '</span>';
+        }
+        div.innerHTML = html;
     }
-    if (foundMain.length < 4) {
-      const missing = mainKeys.filter(k => !colMap[k]);
-      html += ' <span class="warning-text">⚠️ Не найдены основные колонки: ' + 
-        missing.map(k => SEARCH_RULES[k].displayName).join(', ') + '</span>';
-    }
-    div.innerHTML = html;
-  }
 }
 
 // ============================================================
 //  ЗАГРУЗКА ФАЙЛОВ
 // ============================================================
 function setupUpload(zoneId, inputId, isMultiple, onLoad) {
-  const zone = document.getElementById(zoneId);
-  const input = document.getElementById(inputId);
-  zone.addEventListener('click', () => input.click());
-  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
-  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-  zone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    zone.classList.remove('dragover');
-    const files = e.dataTransfer.files;
-    if (files.length) {
-      if (!isMultiple && files.length > 1) { alert('Загрузите только 1 файл!'); return; }
-      input.files = files;
-      input.dispatchEvent(new Event('change'));
-    }
-  });
-  input.addEventListener('change', async function() {
-    if (this.files.length === 0) return;
-    await onLoad(this.files);
-    this.value = '';
-  });
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            if (!isMultiple && files.length > 1) { alert('Загрузите только 1 файл!'); return; }
+            input.files = files;
+            input.dispatchEvent(new Event('change'));
+        }
+    });
+    input.addEventListener('change', async function() {
+        if (this.files.length === 0) return;
+        await onLoad(this.files);
+        this.value = '';
+    });
 }
 
 // Загрузка выгрузки (левый)
 setupUpload('leftZone', 'leftInput', false, async function(files) {
-  const result = await readFiles(files);
-  leftData = result.data;
-  leftFileName = files[0].name;
-  if (leftData.length === 0) { alert('Файл пуст или не удалось прочитать.'); return; }
-  leftColMap = findColumns(result.headers);
-  updateLeftUI(files, leftData, leftColMap);
-  showColsInfo('leftColsInfo', leftColMap);
-  checkReady();
+    const result = await readFiles(files);
+    leftData = result.data;
+    leftFileName = files[0].name;
+    if (leftData.length === 0) { alert('Файл пуст или не удалось прочитать.'); return; }
+    leftColMap = findColumns(result.headers);
+    updateLeftUI(files, leftData, leftColMap);
+    showColsInfo('leftColsInfo', leftColMap);
+    checkReady();
 });
 
 // Загрузка справочника (правые файлы)
 setupUpload('rightZone', 'rightInput', true, async function(files) {
-  const result = await readFiles(files);
-  rightData = result.data;
-  rightFileNames = Array.from(files).map(f => f.name);
-  if (rightData.length === 0) { alert('Файлы пусты или не удалось прочитать.'); return; }
-  rightColMap = findColumns(result.headers);
-  updateRightUI(files, rightData, rightColMap);
-  showColsInfo('rightColsInfo', rightColMap);
-  checkReady();
+    const result = await readFiles(files);
+    rightData = result.data;
+    rightFileNames = Array.from(files).map(f => f.name);
+    if (rightData.length === 0) { alert('Файлы пусты или не удалось прочитать.'); return; }
+    rightColMap = findColumns(result.headers);
+    updateRightUI(files, rightData, rightColMap);
+    showColsInfo('rightColsInfo', rightColMap);
+    checkReady();
 });
 
 function checkReady() {
-  const btn = document.getElementById('compareBtn');
-  const hint = document.getElementById('readyHint');
-  const mainKeys = ['type', 'modification', 'registry', 'sut'];
-  const leftOk = leftData && leftData.length > 0 && mainKeys.every(k => leftColMap[k]);
-  const rightOk = rightData && rightData.length > 0 && mainKeys.every(k => rightColMap[k]);
-  if (leftOk && rightOk) {
-    btn.disabled = false;
-    hint.textContent = '✅ Готово к сравнению!';
-    hint.className = 'ready-hint ready';
-  } else {
-    btn.disabled = true;
-    hint.textContent = '⏳ Загрузите файлы с обеих сторон (нужны все 4 основные колонки)';
-    hint.className = 'ready-hint';
-  }
+    const btn = document.getElementById('compareBtn');
+    const hint = document.getElementById('readyHint');
+    const mainKeys = ['type', 'modification', 'registry', 'sut'];
+    const leftOk = leftData && leftData.length > 0 && mainKeys.every(k => leftColMap[k]);
+    const rightOk = rightData && rightData.length > 0 && mainKeys.every(k => rightColMap[k]);
+    
+    if (leftOk && rightOk) {
+        btn.disabled = false;
+        hint.textContent = '✅ Готово к сравнению!';
+        hint.className = 'ready-hint ready';
+    } else {
+        btn.disabled = true;
+        hint.textContent = '⏳ Загрузите файлы с обеих сторон (нужны все 4 основные колонки)';
+        hint.className = 'ready-hint';
+    }
 }
 
 // ============================================================
 //  ПРОСМОТР ТАБЛИЦЫ
 // ============================================================
 function showPreview(data, colMap, title) {
-  if (!data || data.length === 0 || Object.keys(colMap).length === 0) {
-    alert('Нет данных для отображения');
-    return;
-  }
-  const order = ['type', 'modification', 'registry', 'sut', 'document', 'sticker'];
-  const displayCols = order.filter(k => colMap[k]);
-  const displayNames = displayCols.map(k => SEARCH_RULES[k].displayName);
-  document.getElementById('previewModalTitle').textContent = title;
-  const thead = document.getElementById('previewHead');
-  thead.innerHTML = `<tr>${displayNames.map(name => `<th>${name}</th>`).join('')}</tr>`;
-  const tbody = document.getElementById('previewBody');
-  let html = '';
-  for (let row of data) {
-    const cells = displayCols.map(key => {
-      const colName = colMap[key];
-      const value = row[colName] !== undefined ? row[colName] : '';
-      return `<td>${value}</td>`;
-    });
-    html += `<tr>${cells.join('')}</tr>`;
-  }
-  tbody.innerHTML = html;
-  document.getElementById('modalColsNames').innerHTML = displayNames.map(name => 
-    `<span class="badge bg-primary">${name}</span>`
-  ).join(' ');
-  document.getElementById('modalRowCount').textContent = data.length + ' строк';
-  const modal = new bootstrap.Modal(document.getElementById('previewModal'));
-  modal.show();
+    if (!data || data.length === 0 || Object.keys(colMap).length === 0) {
+        alert('Нет данных для отображения');
+        return;
+    }
+    
+    const order = ['type', 'modification', 'registry', 'sut', 'document', 'sticker'];
+    const displayCols = order.filter(k => colMap[k]);
+    const displayNames = displayCols.map(k => SEARCH_RULES[k].displayName);
+    
+    document.getElementById('previewModalTitle').textContent = title;
+    
+    const thead = document.getElementById('previewHead');
+    thead.innerHTML = `<tr>${displayNames.map(name => `<th>${name}</th>`).join('')}</tr>`;
+    
+    const tbody = document.getElementById('previewBody');
+    let html = '';
+    for (let row of data) {
+        const cells = displayCols.map(key => {
+            const colName = colMap[key];
+            const value = row[colName] !== undefined ? row[colName] : '';
+            return `<td>${value}</td>`;
+        });
+        html += `<tr>${cells.join('')}</tr>`;
+    }
+    tbody.innerHTML = html;
+    
+    document.getElementById('modalColsNames').innerHTML = displayNames.map(name => 
+        `<span class="badge bg-primary">${name}</span>`
+    ).join(' ');
+    document.getElementById('modalRowCount').textContent = data.length + ' строк';
+    
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
 }
 
 document.getElementById('leftPreviewBtn').addEventListener('click', function() {
-  showPreview(leftData, leftColMap, '📊 Выгрузка БелГИМ');
+    showPreview(leftData, leftColMap, '📊 Выгрузка БелГИМ');
 });
+
 document.getElementById('rightPreviewBtn').addEventListener('click', function() {
-  showPreview(rightData, rightColMap, '📊 Справочник БелГИМ');
+    showPreview(rightData, rightColMap, '📊 Справочник БелГИМ');
 });
 
 // ============================================================
-//  ФИЛЬТР
+//  ФИЛЬТР РЕЗУЛЬТАТОВ
 // ============================================================
 function applyFilter(filter) {
-  currentFilter = filter;
-  const rows = document.querySelectorAll('#resultBody tr');
-  let shown = 0;
-  rows.forEach(row => {
-    const status = row.querySelector('.badge-status');
-    if (!status) return;
-    const text = status.textContent;
-    const isError = text.includes('Не найдено');
+    currentFilter = filter;
+    const rows = document.querySelectorAll('#resultBody tr');
+    let shown = 0;
+    
+    rows.forEach(row => {
+        const status = row.querySelector('.badge-status');
+        if (!status) return;
+        const text = status.textContent;
+        const isError = text.includes('Не найдено');
+        
+        if (filter === 'errors') {
+            row.style.display = isError ? '' : 'none';
+        } else {
+            row.style.display = '';
+        }
+        if (row.style.display !== 'none') shown++;
+    });
+    
+    document.getElementById('shownCount').textContent = shown;
+    document.getElementById('totalCount').textContent = rows.length;
+    
+    document.querySelectorAll('.filter-btn-group .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
     if (filter === 'errors') {
-      row.style.display = isError ? '' : 'none';
+        document.getElementById('filterErrorsBtn').classList.add('active');
     } else {
-      row.style.display = '';
+        document.getElementById('filterAllBtn').classList.add('active');
     }
-    if (row.style.display !== 'none') shown++;
-  });
-  document.getElementById('shownCount').textContent = shown;
-  document.getElementById('totalCount').textContent = rows.length;
-  document.querySelectorAll('.filter-btn-group .btn').forEach(btn => btn.classList.remove('active'));
-  if (filter === 'errors') {
-    document.getElementById('filterErrorsBtn').classList.add('active');
-  } else {
-    document.getElementById('filterAllBtn').classList.add('active');
-  }
 }
 
-document.getElementById('filterErrorsBtn').addEventListener('click', function() { applyFilter('errors'); });
-document.getElementById('filterAllBtn').addEventListener('click', function() { applyFilter('all'); });
+document.getElementById('filterErrorsBtn').addEventListener('click', function() {
+    applyFilter('errors');
+});
+
+document.getElementById('filterAllBtn').addEventListener('click', function() {
+    applyFilter('all');
+});
 
 // ============================================================
-//  ОСНОВНОЕ СРАВНЕНИЕ (4/4 = НАЙДЕНО, ИНАЧЕ ОШИБКА)
+//  ⭐ ОСНОВНОЕ СРАВНЕНИЕ (КРАТКАЯ ПРИЧИНА БЕЗ ПЕРЕЧИСЛЕНИЙ)
 // ============================================================
 document.getElementById('compareBtn').addEventListener('click', async function() {
-  if (!leftData || !rightData) return;
-  
-  const mainKeys = ['type', 'modification', 'registry', 'sut'];
-  const missingLeft = mainKeys.filter(k => !leftColMap[k]);
-  const missingRight = mainKeys.filter(k => !rightColMap[k]);
-  if (missingLeft.length || missingRight.length) {
-    alert('Не найдены все основные колонки! Проверьте названия.');
-    return;
-  }
-  
-  document.getElementById('loadingOverlay').classList.add('active');
-  document.getElementById('loadingText').textContent = `Сравнение ${leftData.length} строк...`;
-  await new Promise(r => setTimeout(r, 80));
-  
-  const lName = leftColMap['type'];
-  const lMod = leftColMap['modification'];
-  const lReg = leftColMap['registry'];
-  const lSut = leftColMap['sut'];
-  const lDoc = leftColMap['document'] || null;
-  const lSticker = leftColMap['sticker'] || null;
-  
-  const rName = rightColMap['type'];
-  const rMod = rightColMap['modification'];
-  const rReg = rightColMap['registry'];
-  const rSut = rightColMap['sut'];
-  const rDoc = rightColMap['document'] || null;
-  const rSticker = rightColMap['sticker'] || null;
-  
-  const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
-  const results = [];
-  let okCount = 0, errorCount = 0;
-  
-  for (let i = 0; i < leftData.length; i++) {
-    const leftRow = leftData[i];
+    if (!leftData || !rightData) return;
     
-    const leftVals = [
-      normalize(leftRow[lName] || ''),
-      normalize(leftRow[lMod] || ''),
-      normalize(leftRow[lReg] || ''),
-      normalize(leftRow[lSut] || '')
-    ];
-    const leftDisplay = [
-      leftRow[lName] || '',
-      leftRow[lMod] || '',
-      leftRow[lReg] || '',
-      leftRow[lSut] || ''
-    ];
-    
-    const docValue = lDoc ? (leftRow[lDoc] || '') : '';
-    const stickerValue = lSticker ? (leftRow[lSticker] || '') : '';
-    
-    // Ищем полное совпадение (4/4)
-    let found = false;
-    let matchedRightRow = null;
-    let allRightRows = [];
-    
-    for (let idx = 0; idx < rightData.length; idx++) {
-      const rightRow = rightData[idx];
-      const rightVals = [
-        normalize(rightRow[rName] || ''),
-        normalize(rightRow[rMod] || ''),
-        normalize(rightRow[rReg] || ''),
-        normalize(rightRow[rSut] || '')
-      ];
-      
-      allRightRows.push({
-        row: rightRow,
-        vals: rightVals,
-        display: [
-          rightRow[rName] || '',
-          rightRow[rMod] || '',
-          rightRow[rReg] || '',
-          rightRow[rSut] || ''
-        ]
-      });
-      
-      if (leftVals[0] === rightVals[0] &&
-          leftVals[1] === rightVals[1] &&
-          leftVals[2] === rightVals[2] &&
-          leftVals[3] === rightVals[3]) {
-        found = true;
-        matchedRightRow = rightRow;
-        break;
-      }
+    const mainKeys = ['type', 'modification', 'registry', 'sut'];
+    const missingLeft = mainKeys.filter(k => !leftColMap[k]);
+    const missingRight = mainKeys.filter(k => !rightColMap[k]);
+    if (missingLeft.length || missingRight.length) {
+        alert('Не найдены все основные колонки! Проверьте названия.');
+        return;
     }
     
-    if (found && matchedRightRow) {
-      // ✅ Найдено полное совпадение
-      okCount++;
-      const rightDisplay = [
-        matchedRightRow[rName] || '',
-        matchedRightRow[rMod] || '',
-        matchedRightRow[rReg] || '',
-        matchedRightRow[rSut] || ''
-      ];
-      const rDocValue = rDoc ? (matchedRightRow[rDoc] || '') : '';
-      const rStickerValue = rSticker ? (matchedRightRow[rSticker] || '') : '';
-      
-      results.push({
-        rowNum: i + 1,
-        leftDisplay: leftDisplay,
-        rightDisplay: rightDisplay,
-        doc: docValue || rDocValue,
-        sticker: stickerValue || rStickerValue,
-        status: '✅ Совпадает',
-        reason: 'Полное совпадение',
-        isError: false,
-        allRightRows: allRightRows,
-        leftVals: leftVals,
-        leftRaw: leftDisplay
-      });
-    } else {
-      // ❌ Ошибка: нет полного совпадения
-      errorCount++;
-      
-      // Собираем все варианты из справочника для каждого поля
-      let allVariants = {
-        'тип СИ': new Set(),
-        'Модификация': new Set(),
-        'номер ГРСИ': new Set(),
-        'номер СУТ': new Set()
-      };
-      
-      for (let row of rightData) {
-        const vals = [
-          row[rName] || '',
-          row[rMod] || '',
-          row[rReg] || '',
-          row[rSut] || ''
+    document.getElementById('loadingOverlay').classList.add('active');
+    document.getElementById('loadingText').textContent = `Сравнение ${leftData.length} строк...`;
+    await new Promise(r => setTimeout(r, 80));
+    
+    const lName = leftColMap['type'];
+    const lMod = leftColMap['modification'];
+    const lReg = leftColMap['registry'];
+    const lSut = leftColMap['sut'];
+    const lDoc = leftColMap['document'] || null;
+    const lSticker = leftColMap['sticker'] || null;
+    
+    const rName = rightColMap['type'];
+    const rMod = rightColMap['modification'];
+    const rReg = rightColMap['registry'];
+    const rSut = rightColMap['sut'];
+    const rDoc = rightColMap['document'] || null;
+    const rSticker = rightColMap['sticker'] || null;
+    
+    const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
+    const results = [];
+    let okCount = 0, errorCount = 0;
+    
+    for (let i = 0; i < leftData.length; i++) {
+        const leftRow = leftData[i];
+        
+        const leftVals = [
+            normalize(leftRow[lName] || ''),
+            normalize(leftRow[lMod] || ''),
+            normalize(leftRow[lReg] || ''),
+            normalize(leftRow[lSut] || '')
         ];
-        const names = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
-        for (let j = 0; j < 4; j++) {
-          if (vals[j] && vals[j] !== '') {
-            allVariants[names[j]].add(vals[j]);
-          }
+        const leftDisplay = [
+            leftRow[lName] || '',
+            leftRow[lMod] || '',
+            leftRow[lReg] || '',
+            leftRow[lSut] || ''
+        ];
+        
+        const docValue = lDoc ? (leftRow[lDoc] || '') : '';
+        const stickerValue = lSticker ? (leftRow[lSticker] || '') : '';
+        
+        // Ищем полное совпадение (4/4)
+        let found = false;
+        let matchedRightRow = null;
+        let allRightRows = [];
+        let mismatchedFields = [];
+        
+        for (let idx = 0; idx < rightData.length; idx++) {
+            const rightRow = rightData[idx];
+            const rightVals = [
+                normalize(rightRow[rName] || ''),
+                normalize(rightRow[rMod] || ''),
+                normalize(rightRow[rReg] || ''),
+                normalize(rightRow[rSut] || '')
+            ];
+            
+            allRightRows.push({
+                row: rightRow,
+                vals: rightVals,
+                display: [
+                    rightRow[rName] || '',
+                    rightRow[rMod] || '',
+                    rightRow[rReg] || '',
+                    rightRow[rSut] || ''
+                ]
+            });
+            
+            // Проверяем полное совпадение
+            const allMatch = leftVals[0] === rightVals[0] &&
+                            leftVals[1] === rightVals[1] &&
+                            leftVals[2] === rightVals[2] &&
+                            leftVals[3] === rightVals[3];
+            
+            if (allMatch) {
+                found = true;
+                matchedRightRow = rightRow;
+                break;
+            }
         }
-      }
-      
-      let detailStr = [];
-      for (let [field, values] of Object.entries(allVariants)) {
-        const valuesArray = Array.from(values);
-        if (valuesArray.length === 0) {
-          detailStr.push(`${field}: (пусто)`);
-        } else if (valuesArray.length === 1) {
-          detailStr.push(`${field}: доступно "${valuesArray[0]}"`);
+        
+        if (found && matchedRightRow) {
+            // ✅ Найдено полное совпадение
+            okCount++;
+            const rightDisplay = [
+                matchedRightRow[rName] || '',
+                matchedRightRow[rMod] || '',
+                matchedRightRow[rReg] || '',
+                matchedRightRow[rSut] || ''
+            ];
+            const rDocValue = rDoc ? (matchedRightRow[rDoc] || '') : '';
+            const rStickerValue = rSticker ? (matchedRightRow[rSticker] || '') : '';
+            
+            results.push({
+                rowNum: i + 1,
+                leftDisplay: leftDisplay,
+                rightDisplay: rightDisplay,
+                doc: docValue || rDocValue,
+                sticker: stickerValue || rStickerValue,
+                status: '✅ Совпадает',
+                reason: '',
+                isError: false,
+                allRightRows: allRightRows,
+                mismatchedFields: []
+            });
         } else {
-          detailStr.push(`${field}: доступные варианты: "${valuesArray.join('", "')}"`);
+            // ❌ Ошибка: нет полного совпадения
+            errorCount++;
+            
+            // Определяем, какие поля не совпадают (ищем лучшее совпадение)
+            let bestMatch = null;
+            let bestMatchCount = -1;
+            
+            for (let idx = 0; idx < rightData.length; idx++) {
+                const rightRow = rightData[idx];
+                const rightVals = [
+                    normalize(rightRow[rName] || ''),
+                    normalize(rightRow[rMod] || ''),
+                    normalize(rightRow[rReg] || ''),
+                    normalize(rightRow[rSut] || '')
+                ];
+                
+                let matchCount = 0;
+                const mismatches = [];
+                
+                for (let j = 0; j < 4; j++) {
+                    if (leftVals[j] === rightVals[j]) {
+                        matchCount++;
+                    } else {
+                        mismatches.push(fieldNames[j]);
+                    }
+                }
+                
+                if (matchCount > bestMatchCount) {
+                    bestMatchCount = matchCount;
+                    bestMatch = {
+                        rightRow: rightRow,
+                        rightDisplay: [
+                            rightRow[rName] || '',
+                            rightRow[rMod] || '',
+                            rightRow[rReg] || '',
+                            rightRow[rSut] || ''
+                        ],
+                        mismatches: mismatches
+                    };
+                }
+            }
+            
+            // Короткая причина — только перечисление полей
+            let reason = '';
+            if (bestMatch && bestMatch.mismatches.length > 0) {
+                reason = 'Не совпадает: ' + bestMatch.mismatches.join(', ');
+            } else {
+                reason = 'Ни одно поле не совпало';
+            }
+            
+            results.push({
+                rowNum: i + 1,
+                leftDisplay: leftDisplay,
+                rightDisplay: bestMatch ? bestMatch.rightDisplay : ['', '', '', ''],
+                doc: docValue,
+                sticker: stickerValue,
+                status: '❌ Не найдено',
+                reason: reason,
+                isError: true,
+                allRightRows: allRightRows,
+                mismatchedFields: bestMatch ? bestMatch.mismatches : []
+            });
         }
-      }
-      
-      results.push({
-        rowNum: i + 1,
-        leftDisplay: leftDisplay,
-        rightDisplay: ['', '', '', ''],
-        doc: docValue,
-        sticker: stickerValue,
-        status: '❌ Не найдено',
-        reason: detailStr.join('; '),
-        isError: true,
-        allRightRows: allRightRows,
-        leftVals: leftVals,
-        leftRaw: leftDisplay
-      });
     }
-  }
-  
-  document.getElementById('loadingOverlay').classList.remove('active');
-  allResults = results;
-  showResults(results, okCount, errorCount);
-  applyFilter('errors');
+    
+    document.getElementById('loadingOverlay').classList.remove('active');
+    allResults = results;
+    showResults(results, okCount, errorCount);
+    applyFilter('errors');
 });
 
 // ============================================================
 //  ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ
 // ============================================================
 function showResults(results, okCount, errorCount) {
-  const container = document.getElementById('resultContainer');
-  container.classList.add('show');
-  
-  document.getElementById('statsText').innerHTML = `
-    <span class="badge bg-success stats-badge">✅ Совпадает: ${okCount}</span>
-    <span class="badge bg-danger stats-badge">❌ Расхождений: ${errorCount}</span>
-    <span class="badge bg-secondary stats-badge">📊 Всего: ${results.length}</span>
-  `;
-  
-  const tbody = document.getElementById('resultBody');
-  const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
-  
-  let html = '';
-  for (let i = 0; i < results.length; i++) {
-    const res = results[i];
+    const container = document.getElementById('resultContainer');
+    container.classList.add('show');
     
-    const leftStr = fieldNames.map((name, j) => 
-      `${name}: ${res.leftDisplay[j] || '(пусто)'}`
-    ).join(' | ');
+    document.getElementById('statsText').innerHTML = `
+        <span class="badge bg-success stats-badge">✅ Совпадает: ${okCount}</span>
+        <span class="badge bg-danger stats-badge">❌ Расхождений: ${errorCount}</span>
+        <span class="badge bg-secondary stats-badge">📊 Всего: ${results.length}</span>
+    `;
     
-    let rightStr = '';
-    if (res.status === '✅ Совпадает') {
-      rightStr = fieldNames.map((name, j) => 
-        `${name}: ${res.rightDisplay[j] || '(пусто)'}`
-      ).join(' | ');
-    } else {
-      rightStr = fieldNames.map((name, j) => {
-        const leftVal = res.leftDisplay[j] || '';
-        const rightVal = res.rightDisplay[j] || '';
-        const match = leftVal === rightVal;
-        return `${name}: ${match ? '✅' : '❌'} "${rightVal || '(пусто)'}"`;
-      }).join(' | ');
+    const tbody = document.getElementById('resultBody');
+    const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
+    
+    let html = '';
+    for (let i = 0; i < results.length; i++) {
+        const res = results[i];
+        
+        const leftStr = fieldNames.map((name, j) => 
+            `${name}: ${res.leftDisplay[j] || '(пусто)'}`
+        ).join(' | ');
+        
+        let rightStr = '';
+        if (res.status === '✅ Совпадает') {
+            rightStr = fieldNames.map((name, j) => 
+                `${name}: ${res.rightDisplay[j] || '(пусто)'}`
+            ).join(' | ');
+        } else {
+            rightStr = fieldNames.map((name, j) => {
+                const leftVal = res.leftDisplay[j] || '';
+                const rightVal = res.rightDisplay[j] || '';
+                const match = leftVal === rightVal;
+                return `${name}: ${match ? '✅' : '❌'} "${rightVal || '(пусто)'}"`;
+            }).join(' | ');
+        }
+        
+        const badgeClass = res.isError ? 'badge-error' : 'badge-ok';
+        
+        html += `<tr>
+            <td>${res.rowNum}</td>
+            <td style="font-size:11px;">${leftStr}</td>
+            <td style="font-size:11px;">${rightStr}</td>
+            <td style="font-size:11px;">${res.doc || '-'}</td>
+            <td style="font-size:11px;">${res.sticker || '-'}</td>
+            <td><span class="badge-status ${badgeClass}">${res.status}</span></td>
+            <td style="font-size:11px;">${res.reason}</td>
+            <td>
+                ${res.isError ? `<button class="btn btn-outline-primary btn-detail" data-index="${i}">Подробнее</button>` : ''}
+            </td>
+        </tr>`;
     }
+    tbody.innerHTML = html;
     
-    const badgeClass = res.isError ? 'badge-error' : 'badge-ok';
+    document.getElementById('totalCount').textContent = results.length;
     
-    html += `<tr>
-      <td>${res.rowNum}</td>
-      <td style="font-size:11px;">${leftStr}</td>
-      <td style="font-size:11px;">${rightStr}</td>
-      <td style="font-size:11px;">${res.doc || '-'}</td>
-      <td style="font-size:11px;">${res.sticker || '-'}</td>
-      <td><span class="badge-status ${badgeClass}">${res.status}</span></td>
-      <td style="font-size:11px;">${res.reason}</td>
-      <td>
-        ${res.isError ? `<button class="btn btn-outline-primary btn-detail" data-index="${i}">Подробнее</button>` : ''}
-      </td>
-    </tr>`;
-  }
-  tbody.innerHTML = html;
-  
-  document.getElementById('totalCount').textContent = results.length;
-  
-  // Обработчики для кнопок "Подробнее"
-  document.querySelectorAll('.btn-detail').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const index = parseInt(this.dataset.index);
-      showDetail(index);
+    // Обработчики для кнопок "Подробнее"
+    document.querySelectorAll('.btn-detail').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const index = parseInt(this.dataset.index);
+            showDetail(index);
+        });
     });
-  });
-  
-  window._reportData = { results, fieldNames };
+    
+    window._reportData = { results, fieldNames };
 }
 
 // ============================================================
 //  ПОКАЗ ДЕТАЛЕЙ В МОДАЛКЕ
 // ============================================================
 function showDetail(index) {
-  const res = allResults[index];
-  if (!res) return;
-  
-  const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
-  const body = document.getElementById('detailModalBody');
-  
-  let html = `
-    <div class="table-responsive">
-      <table class="table table-bordered detail-table">
-        <thead>
-          <tr>
-            <th style="width:20%;">Поле</th>
-            <th style="width:30%;">📌 В выгрузке</th>
-            <th style="width:30%;">📂 В справочнике</th>
-            <th style="width:20%;">Статус</th>
-          </tr>
-        </thead>
-        <tbody>
-  `;
-  
-  for (let i = 0; i < 4; i++) {
-    const leftVal = res.leftDisplay[i] || '(пусто)';
-    // Ищем, есть ли такое значение в справочнике
-    let foundInRight = false;
-    let rightVariants = [];
-    for (let row of res.allRightRows || []) {
-      const rVal = row.display[i] || '';
-      if (rVal) rightVariants.push(rVal);
-      if (rVal === leftVal) foundInRight = true;
-    }
-    // Уникальные варианты
-    rightVariants = [...new Set(rightVariants)];
+    const res = allResults[index];
+    if (!res) return;
     
-    const isMatch = foundInRight;
-    const statusText = isMatch ? '✅ Совпадает' : '❌ Не найдено';
-    const statusClass = isMatch ? 'match-ok' : 'match-error';
+    const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
+    const body = document.getElementById('detailModalBody');
+    
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-bordered detail-table">
+                <thead>
+                    <tr>
+                        <th style="width:20%;">Поле</th>
+                        <th style="width:30%;">📌 В выгрузке</th>
+                        <th style="width:30%;">📂 В справочнике</th>
+                        <th style="width:20%;">Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    for (let i = 0; i < 4; i++) {
+        const leftVal = res.leftDisplay[i] || '(пусто)';
+        // Ищем, есть ли такое значение в справочнике
+        let foundInRight = false;
+        let rightVariants = [];
+        for (let row of res.allRightRows || []) {
+            const rVal = row.display[i] || '';
+            if (rVal) rightVariants.push(rVal);
+            if (rVal === leftVal) foundInRight = true;
+        }
+        // Уникальные варианты
+        rightVariants = [...new Set(rightVariants)];
+        
+        const isMatch = foundInRight;
+        const statusText = isMatch ? '✅ Совпадает' : '❌ Не найдено';
+        const statusClass = isMatch ? 'match-ok' : 'match-error';
+        
+        html += `
+            <tr>
+                <td class="field-name">${fieldNames[i]}</td>
+                <td class="left-val">${leftVal}</td>
+                <td class="right-val">
+                    ${rightVariants.length > 0 ? rightVariants.map(v => `<span class="variant-item">${v}</span>`).join('') : '(пусто)'}
+                </td>
+                <td class="${statusClass}">${statusText}</td>
+            </tr>
+        `;
+    }
     
     html += `
-      <tr>
-        <td class="field-name">${fieldNames[i]}</td>
-        <td class="left-val">${leftVal}</td>
-        <td class="right-val">
-          ${rightVariants.length > 0 ? rightVariants.map(v => `<span class="variant-item">${v}</span>`).join('') : '(пусто)'}
-        </td>
-        <td class="${statusClass}">${statusText}</td>
-      </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-3">
+            <hr>
+            <div style="font-size:13px; color:#6c757d;">
+                <strong>📄 Номер документа:</strong> ${res.doc || '-'}<br>
+                <strong>🏷️ № наклейки:</strong> ${res.sticker || '-'}
+            </div>
+        </div>
     `;
-  }
-  
-  // Дополнительная информация
-  html += `
-        </tbody>
-      </table>
-    </div>
-    <div class="mt-3">
-      <hr>
-      <div style="font-size:13px; color:#6c757d;">
-        <strong>📄 Номер документа:</strong> ${res.doc || '-'}<br>
-        <strong>🏷️ № наклейки:</strong> ${res.sticker || '-'}
-      </div>
-    </div>
-  `;
-  
-  body.innerHTML = html;
-  const modal = new bootstrap.Modal(document.getElementById('detailModal'));
-  modal.show();
+    
+    body.innerHTML = html;
+    const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+    modal.show();
 }
 
 // ============================================================
 //  СКАЧИВАНИЕ ОТЧЕТА
 // ============================================================
 document.getElementById('downloadBtn').addEventListener('click', function() {
-  const { results, fieldNames } = window._reportData || {};
-  if (!results || !results.length) {
-    alert('Нет данных для скачивания');
-    return;
-  }
-  
-  const headers = [
-    '№',
-    ...fieldNames.map(n => `Выгрузка: ${n}`),
-    ...fieldNames.map(n => `Справочник: ${n}`),
-    'Номер документа',
-    '№ наклейки',
-    'Статус',
-    'Причина'
-  ];
-  
-  const rows = [headers];
-  for (let res of results) {
-    const row = [
-      res.rowNum,
-      ...res.leftDisplay,
-      ...res.rightDisplay,
-      res.doc || '',
-      res.sticker || '',
-      res.status,
-      res.reason
+    const { results, fieldNames } = window._reportData || {};
+    if (!results || !results.length) {
+        alert('Нет данных для скачивания');
+        return;
+    }
+    
+    const headers = [
+        '№',
+        ...fieldNames.map(n => `Выгрузка: ${n}`),
+        ...fieldNames.map(n => `Справочник: ${n}`),
+        'Номер документа',
+        '№ наклейки',
+        'Статус',
+        'Причина'
     ];
-    rows.push(row);
-  }
-  
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  XLSX.utils.book_append_sheet(wb, ws, 'Результат');
-  XLSX.writeFile(wb, 'comparison_result.xlsx');
+    
+    const rows = [headers];
+    for (let res of results) {
+        const row = [
+            res.rowNum,
+            ...res.leftDisplay,
+            ...res.rightDisplay,
+            res.doc || '',
+            res.sticker || '',
+            res.status,
+            res.reason
+        ];
+        rows.push(row);
+    }
+    
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Результат');
+    XLSX.writeFile(wb, 'comparison_result.xlsx');
 });
 
-console.log('✅ Сайт готов! Сравнивает выгрузку БелГИМ со справочником.');
-console.log('📄 Добавлены колонки: Номер документа и № наклейки');
-console.log('🔽 По умолчанию показываются только расхождения');
-console.log('🔍 Кнопка "Подробнее" показывает детали по каждому полю');
+console.log('✅ Сайт готов! В причине кратко: "Не совпадает: Модификация, СУТ"');
+console.log('🔍 Кнопка "Подробнее" показывает все варианты в модалке');
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
