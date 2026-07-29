@@ -81,8 +81,8 @@
             word-wrap: break-word;
             white-space: normal;
         }
-        .table-wrap td:nth-child(2) { max-width: 130px; }
-        .table-wrap td:nth-child(3) { max-width: 180px; background: #f8f9fa; }
+        .table-wrap td:nth-child(2) { max-width: 150px; }
+        .table-wrap td:nth-child(3) { max-width: 200px; background: #f8f9fa; }
         .table-wrap td:nth-child(4) { max-width: 100px; }
         .table-wrap td:nth-child(5) { max-width: 100px; }
         .table-wrap td:nth-child(6) { max-width: 90px; }
@@ -235,8 +235,8 @@
                     <thead>
                         <tr>
                             <th style="min-width:30px; width:3%;">№</th>
-                            <th style="width:15%;">📌 Выгрузка</th>
-                            <th style="width:20%;">📂 Справочник</th>
+                            <th style="width:20%;">📌 Выгрузка</th>
+                            <th style="width:25%;">📂 Справочник</th>
                             <th style="width:10%;">📄 Номер документа</th>
                             <th style="width:10%;">🏷️ № наклейки</th>
                             <th style="min-width:80px; width:8%;">Статус</th>
@@ -279,21 +279,16 @@
 
 <script>
 // ============================================================
-//  НАСТРОЙКА ПОИСКА КОЛОНОК
+//  НАСТРОЙКА ПОИСКА КОЛОНОК (БЕЗ МОДИФИКАЦИИ)
 // ============================================================
 const SEARCH_RULES = {
     'type': {
-        keywords: ['тип си', 'тип си', 'наименование си', 'тип', 'наименование'],
+        keywords: ['тип си', 'тип си', 'наименование си', 'тип', 'наименование', 'название'],
         displayName: 'тип СИ',
         exclude: ['дата', 'внесения']
     },
-    'modification': {
-        keywords: ['модификация', 'исполнение', 'модификаци', 'модель', 'версия'],
-        displayName: 'Модификация',
-        exclude: []
-    },
     'registry': {
-        keywords: ['номер грси', 'грси', 'номер госреестра', 'рег. номер', 'регистрационный номер'],
+        keywords: ['номер грси', 'грси', 'номер госреестра', 'рег. номер', 'регистрационный номер', 'госреестр'],
         displayName: 'номер ГРСИ',
         exclude: ['дата', 'внесения']
     },
@@ -487,7 +482,7 @@ function updateRightUI(files, data, colMap) {
 
 function showColsInfo(divId, colMap) {
     const div = document.getElementById(divId);
-    const mainKeys = ['type', 'modification', 'registry', 'sut'];
+    const mainKeys = ['type', 'registry', 'sut'];
     const extraKeys = ['document', 'sticker'];
     const foundMain = mainKeys.filter(k => colMap[k]);
     const foundExtra = extraKeys.filter(k => colMap[k]);
@@ -504,7 +499,7 @@ function showColsInfo(divId, colMap) {
                 `<span class="col-item" style="background:#d1e7dd;"><strong>${SEARCH_RULES[key].displayName}</strong> → "${colMap[key]}"</span>`
             ).join(' ');
         }
-        if (foundMain.length < 4) {
+        if (foundMain.length < 3) {
             const missing = mainKeys.filter(k => !colMap[k]);
             html += ' <span class="warning-text">⚠️ Не найдены основные колонки: ' + 
                 missing.map(k => SEARCH_RULES[k].displayName).join(', ') + '</span>';
@@ -566,7 +561,7 @@ setupUpload('rightZone', 'rightInput', true, async function(files) {
 function checkReady() {
     const btn = document.getElementById('compareBtn');
     const hint = document.getElementById('readyHint');
-    const mainKeys = ['type', 'modification', 'registry', 'sut'];
+    const mainKeys = ['type', 'registry', 'sut'];
     const leftOk = leftData && leftData.length > 0 && mainKeys.every(k => leftColMap[k]);
     const rightOk = rightData && rightData.length > 0 && mainKeys.every(k => rightColMap[k]);
     
@@ -576,7 +571,7 @@ function checkReady() {
         hint.className = 'ready-hint ready';
     } else {
         btn.disabled = true;
-        hint.textContent = '⏳ Загрузите файлы с обеих сторон (нужны все 4 основные колонки)';
+        hint.textContent = '⏳ Загрузите файлы с обеих сторон (нужны все 3 основные колонки)';
         hint.className = 'ready-hint';
     }
 }
@@ -590,7 +585,7 @@ function showPreview(data, colMap, title) {
         return;
     }
     
-    const order = ['type', 'modification', 'registry', 'sut', 'document', 'sticker'];
+    const order = ['type', 'registry', 'sut', 'document', 'sticker'];
     const displayCols = order.filter(k => colMap[k]);
     const displayNames = displayCols.map(k => SEARCH_RULES[k].displayName);
     
@@ -672,12 +667,12 @@ document.getElementById('filterAllBtn').addEventListener('click', function() {
 });
 
 // ============================================================
-//  ⭐ ОСНОВНОЕ СРАВНЕНИЕ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+//  ⭐ ОСНОВНОЕ СРАВНЕНИЕ (ТОЛЬКО ПО 3 ПОЛЯМ: тип СИ, ГРСИ, СУТ)
 // ============================================================
 document.getElementById('compareBtn').addEventListener('click', async function() {
     if (!leftData || !rightData) return;
     
-    const mainKeys = ['type', 'modification', 'registry', 'sut'];
+    const mainKeys = ['type', 'registry', 'sut'];
     const missingLeft = mainKeys.filter(k => !leftColMap[k]);
     const missingRight = mainKeys.filter(k => !rightColMap[k]);
     if (missingLeft.length || missingRight.length) {
@@ -690,20 +685,18 @@ document.getElementById('compareBtn').addEventListener('click', async function()
     await new Promise(r => setTimeout(r, 80));
     
     const lName = leftColMap['type'];
-    const lMod = leftColMap['modification'];
     const lReg = leftColMap['registry'];
     const lSut = leftColMap['sut'];
     const lDoc = leftColMap['document'] || null;
     const lSticker = leftColMap['sticker'] || null;
     
     const rName = rightColMap['type'];
-    const rMod = rightColMap['modification'];
     const rReg = rightColMap['registry'];
     const rSut = rightColMap['sut'];
     const rDoc = rightColMap['document'] || null;
     const rSticker = rightColMap['sticker'] || null;
     
-    const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
+    const fieldNames = ['тип СИ', 'номер ГРСИ', 'номер СУТ'];
     const results = [];
     let okCount = 0, errorCount = 0;
     
@@ -712,13 +705,11 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         
         const leftVals = [
             normalize(leftRow[lName] || ''),
-            normalize(leftRow[lMod] || ''),
             normalize(leftRow[lReg] || ''),
             normalize(leftRow[lSut] || '')
         ];
         const leftDisplay = [
             leftRow[lName] || '',
-            leftRow[lMod] || '',
             leftRow[lReg] || '',
             leftRow[lSut] || ''
         ];
@@ -727,7 +718,7 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         const stickerValue = lSticker ? (leftRow[lSticker] || '') : '';
         
         // ============================================================
-        //  ИСПРАВЛЕННАЯ ЛОГИКА: всегда проверяем ВСЕ строки справочника
+        //  ПОЛНЫЙ ПЕРЕБОР ВСЕХ СТРОК СПРАВОЧНИКА
         // ============================================================
         let foundFullMatch = false;
         let fullMatchRow = null;
@@ -735,82 +726,56 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         let bestMatch = null;
         let bestMatchCount = -1;
         
-        // ПЕРВЫЙ ПРОХОД: ищем только полное совпадение (4/4)
         for (let idx = 0; idx < rightData.length; idx++) {
             const rightRow = rightData[idx];
             const rightVals = [
                 normalize(rightRow[rName] || ''),
-                normalize(rightRow[rMod] || ''),
                 normalize(rightRow[rReg] || ''),
                 normalize(rightRow[rSut] || '')
             ];
             
             const rightDisplay = [
                 rightRow[rName] || '',
-                rightRow[rMod] || '',
                 rightRow[rReg] || '',
                 rightRow[rSut] || ''
             ];
             
-            // Проверяем полное совпадение (4/4)
+            // Проверяем полное совпадение (3/3)
             const isFullMatch = leftVals[0] === rightVals[0] &&
-                               leftVals[1] === rightVals[1] &&
-                               leftVals[2] === rightVals[2] &&
-                               leftVals[3] === rightVals[3];
+                                leftVals[1] === rightVals[1] &&
+                                leftVals[2] === rightVals[2];
             
             if (isFullMatch) {
                 foundFullMatch = true;
                 fullMatchRow = rightRow;
                 fullMatchDisplay = rightDisplay;
-                break; // Нашли 4/4 — сразу выходим, это идеальный результат
+                break;
             }
-        }
-        
-        // ЕСЛИ ПОЛНОЕ СОВПАДЕНИЕ НЕ НАЙДЕНО, ищем лучшее частичное
-        if (!foundFullMatch) {
-            for (let idx = 0; idx < rightData.length; idx++) {
-                const rightRow = rightData[idx];
-                const rightVals = [
-                    normalize(rightRow[rName] || ''),
-                    normalize(rightRow[rMod] || ''),
-                    normalize(rightRow[rReg] || ''),
-                    normalize(rightRow[rSut] || '')
-                ];
-                
-                const rightDisplay = [
-                    rightRow[rName] || '',
-                    rightRow[rMod] || '',
-                    rightRow[rReg] || '',
-                    rightRow[rSut] || ''
-                ];
-                
-                // Считаем количество совпадений
-                let matchCount = 0;
-                const mismatches = [];
-                
-                for (let j = 0; j < 4; j++) {
-                    if (leftVals[j] === rightVals[j]) {
-                        matchCount++;
-                    } else {
-                        mismatches.push(fieldNames[j]);
-                    }
+            
+            // Считаем частичное совпадение
+            let matchCount = 0;
+            const mismatches = [];
+            
+            for (let j = 0; j < 3; j++) {
+                if (leftVals[j] === rightVals[j]) {
+                    matchCount++;
+                } else {
+                    mismatches.push(fieldNames[j]);
                 }
-                
-                // Сохраняем лучшее совпадение (по количеству совпавших полей)
-                if (matchCount > bestMatchCount) {
-                    bestMatchCount = matchCount;
-                    bestMatch = {
-                        rightRow: rightRow,
-                        rightDisplay: rightDisplay,
-                        mismatches: mismatches,
-                        matchCount: matchCount
-                    };
-                }
+            }
+            
+            if (matchCount > bestMatchCount) {
+                bestMatchCount = matchCount;
+                bestMatch = {
+                    rightRow: rightRow,
+                    rightDisplay: rightDisplay,
+                    mismatches: mismatches,
+                    matchCount: matchCount
+                };
             }
         }
         
         if (foundFullMatch && fullMatchRow) {
-            // ✅ Найдено полное совпадение (4/4)
             okCount++;
             const rDocValue = rDoc ? (fullMatchRow[rDoc] || '') : '';
             const rStickerValue = rSticker ? (fullMatchRow[rSticker] || '') : '';
@@ -825,7 +790,6 @@ document.getElementById('compareBtn').addEventListener('click', async function()
                 reason: ''
             });
         } else {
-            // ❌ Нет полного совпадения — показываем лучшее частичное
             errorCount++;
             
             let reason = '';
@@ -838,7 +802,7 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             results.push({
                 rowNum: i + 1,
                 leftDisplay: leftDisplay,
-                rightDisplay: bestMatch ? bestMatch.rightDisplay : ['', '', '', ''],
+                rightDisplay: bestMatch ? bestMatch.rightDisplay : ['', '', ''],
                 doc: docValue,
                 sticker: stickerValue,
                 status: '❌ Не найдено',
@@ -867,7 +831,7 @@ function showResults(results, okCount, errorCount) {
     `;
     
     const tbody = document.getElementById('resultBody');
-    const fieldNames = ['тип СИ', 'Модификация', 'номер ГРСИ', 'номер СУТ'];
+    const fieldNames = ['тип СИ', 'номер ГРСИ', 'номер СУТ'];
     
     let html = '';
     for (let i = 0; i < results.length; i++) {
@@ -950,8 +914,8 @@ document.getElementById('downloadBtn').addEventListener('click', function() {
     XLSX.writeFile(wb, 'comparison_result.xlsx');
 });
 
-console.log('✅ Сайт готов! Проверяет ВСЕ строки справочника.');
-console.log('📋 В причине кратко: "Не совпадает: Модификация, СУТ"');
+console.log('✅ Сайт готов! Сравнивает по 3 полям: тип СИ, ГРСИ, СУТ.');
+console.log('📋 Модификация полностью удалена из кода.');
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
