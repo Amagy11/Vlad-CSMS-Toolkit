@@ -99,11 +99,13 @@
         
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
         .loading-overlay.active { display: flex; }
-        .loading-box { background: #fff; padding: 25px 40px; border-radius: 14px; text-align: center; min-width: 250px; }
+        .loading-box { background: #fff; padding: 25px 40px; border-radius: 14px; text-align: center; min-width: 280px; }
         .spinner { width: 35px; height: 35px; border: 4px solid #e9ecef; border-top: 4px solid #0d6efd; border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-box .loading-title { font-size: 16px; font-weight: 600; }
         .loading-box .loading-sub { color: #6c757d; font-size: 13px; }
+        .progress { height: 6px; margin-top: 12px; }
+        .progress-bar { background-color: #0d6efd; transition: width 0.3s; }
         
         .btn-download { border-radius: 8px; padding: 5px 16px; font-weight: 600; font-size: 12px; }
         .ready-hint { text-align: center; font-size: 11px; color: #6c757d; margin-top: 6px; }
@@ -136,6 +138,9 @@
         <div class="spinner"></div>
         <div class="loading-title">⏳ Идет сравнение...</div>
         <div class="loading-sub" id="loadingText">Обработка данных</div>
+        <div class="progress">
+            <div class="progress-bar" id="progressBar" role="progressbar" style="width: 0%;"></div>
+        </div>
     </div>
 </div>
 
@@ -330,7 +335,7 @@ let currentFilter = 'errors';
 let skippedCount = 0;
 
 // ============================================================
-//  ⭐ ОЧИСТКА ДАННЫХ (ПРОЧЕРК = ПУСТОТА)
+//  ⭐ ОЧИСТКА ДАННЫХ (ПРОЧЕРК = ПУСТОТА + УБОР ЛИШНИХ СИМВОЛОВ)
 // ============================================================
 function normalize(val) {
     if (val === null || val === undefined) return '';
@@ -340,7 +345,11 @@ function normalize(val) {
         return '';
     }
     
-    return result.toLowerCase().replace(/\s+/g, ' ').trim();
+    return result
+        .toLowerCase()
+        .replace(/[^\w\sа-яё-]/gi, '') // убираем всё, кроме букв, цифр, пробелов и дефисов
+        .replace(/\s+/g, ' ')          // множественные пробелы → один
+        .trim();
 }
 
 function getFileFormat(filename) {
@@ -682,7 +691,7 @@ document.getElementById('filterSkippedBtn').addEventListener('click', function()
 });
 
 // ============================================================
-//  ⭐ ОСНОВНОЕ СРАВНЕНИЕ (С ИНДЕКСАЦИЕЙ + ПРОПУСК СССР)
+//  ⭐ ОСНОВНОЕ СРАВНЕНИЕ (ТОЧНОЕ + ПРОГРЕСС)
 // ============================================================
 document.getElementById('compareBtn').addEventListener('click', async function() {
     if (!leftData || !rightData) return;
@@ -696,8 +705,9 @@ document.getElementById('compareBtn').addEventListener('click', async function()
     }
     
     document.getElementById('loadingOverlay').classList.add('active');
-    document.getElementById('loadingText').textContent = `Сравнение ${leftData.length} строк...`;
-    await new Promise(r => setTimeout(r, 80));
+    document.getElementById('loadingText').textContent = `Построение индекса...`;
+    document.getElementById('progressBar').style.width = '0%';
+    await new Promise(r => setTimeout(r, 100));
     
     const lName = leftColMap['type'];
     const lReg = leftColMap['registry'];
@@ -717,9 +727,11 @@ document.getElementById('compareBtn').addEventListener('click', async function()
     skippedCount = 0;
     
     // ============================================================
-    //  ШАГ 1: ПОСТРОЕНИЕ ИНДЕКСА (ОДИН РАЗ)
+    //  ШАГ 1: ПОСТРОЕНИЕ ИНДЕКСА (ТОЧНЫЙ ПЕРЕБОР)
     // ============================================================
-    console.log('⏳ Построение индекса справочника...');
+    document.getElementById('loadingText').textContent = `Построение индекса (${rightData.length} записей)...`;
+    await new Promise(r => setTimeout(r, 50));
+    
     const index = new Map();
     
     for (let idx = 0; idx < rightData.length; idx++) {
@@ -734,14 +746,33 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             index.set(key, []);
         }
         index.get(key).push(idx);
+        
+        // Обновляем прогресс построения индекса
+        if (idx % 100 === 0) {
+            const pct = Math.round((idx / rightData.length) * 30);
+            document.getElementById('progressBar').style.width = pct + '%';
+        }
     }
-    console.log(`✅ Индекс построен: ${index.size} уникальных ключей`);
+    
+    document.getElementById('progressBar').style.width = '30%';
+    document.getElementById('loadingText').textContent = `Сравнение строк...`;
+    await new Promise(r => setTimeout(r, 50));
     
     // ============================================================
-    //  ШАГ 2: БЫСТРЫЙ ПОИСК ПО ИНДЕКСУ + ПРОПУСК СССР
+    //  ШАГ 2: ПОИСК С ПРОГРЕССОМ
     // ============================================================
-    for (let i = 0; i < leftData.length; i++) {
+    const total = leftData.length;
+    
+    for (let i = 0; i < total; i++) {
         const leftRow = leftData[i];
+        
+        // Обновляем прогресс каждые 10 строк
+        if (i % 5 === 0) {
+            const pct = 30 + Math.round((i / total) * 60);
+            document.getElementById('progressBar').style.width = Math.min(pct, 90) + '%';
+            document.getElementById('loadingText').textContent = `Сравнение строк: ${i + 1} из ${total}`;
+            await new Promise(r => setTimeout(r, 0)); // даём браузеру отрисовать
+        }
         
         // Проверяем, является ли СУТ = СССР
         const sutValue = normalize(leftRow[lSut] || '');
@@ -757,7 +788,6 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         const stickerValue = lSticker ? (leftRow[lSticker] || '') : '';
         
         if (isSoviet) {
-            // ⚠️ Пропускаем проверку (СССР)
             skippedCount++;
             results.push({
                 rowNum: i + 1,
@@ -781,7 +811,6 @@ document.getElementById('compareBtn').addEventListener('click', async function()
         const matches = index.get(leftKey);
         
         if (matches && matches.length > 0) {
-            // ✅ Найдено полное совпадение
             okCount++;
             const rightRow = rightData[matches[0]];
             const rightDisplay = [
@@ -802,7 +831,6 @@ document.getElementById('compareBtn').addEventListener('click', async function()
                 reason: ''
             });
         } else {
-            // ❌ Не найдено
             errorCount++;
             results.push({
                 rowNum: i + 1,
@@ -815,6 +843,10 @@ document.getElementById('compareBtn').addEventListener('click', async function()
             });
         }
     }
+    
+    document.getElementById('progressBar').style.width = '100%';
+    document.getElementById('loadingText').textContent = `Готово!`;
+    await new Promise(r => setTimeout(r, 300));
     
     document.getElementById('loadingOverlay').classList.remove('active');
     allResults = results;
@@ -924,7 +956,7 @@ document.getElementById('downloadBtn').addEventListener('click', function() {
     XLSX.writeFile(wb, 'comparison_result.xlsx');
 });
 
-console.log('✅ Сайт готов! 3 фильтра: ошибки, все, СССР');
+console.log('✅ Сайт готов! Точный поиск с прогрессом.');
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
