@@ -1,963 +1,192 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Сравнение выгрузки БелГИМ со справочником</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <meta charset="UTF-8">
+    <title>Проверка свидетельств</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { background: #f0f2f5; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
-        .upload-zone {
-            border: 3px dashed #adb5bd;
-            border-radius: 14px;
-            padding: 30px 20px;
-            text-align: center;
-            cursor: pointer;
-            background: #ffffff;
-            transition: all 0.3s ease;
-            min-height: 180px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-        }
-        .upload-zone:hover { border-color: #0d6efd; background: #f8f9ff; }
-        .upload-zone.dragover { border-color: #0d6efd; background: #e7edff; }
-        .upload-zone.loaded { border-color: #198754; background: #f0fff4; border-style: solid; }
-        .upload-zone .icon { font-size: 40px; margin-bottom: 6px; }
-        .upload-zone .hint { font-size: 12px; color: #6c757d; margin-top: 4px; }
-        .upload-zone .upload-text { font-weight: 500; font-size: 14px; }
-        .upload-zone .loaded-info { display: none; text-align: center; width: 100%; }
-        .upload-zone.loaded .icon { display: none; }
-        .upload-zone.loaded .upload-text { display: none; }
-        .upload-zone.loaded .hint { display: none; }
-        .upload-zone.loaded .loaded-info { display: block; }
-        .upload-zone .loaded-info .file-icon { font-size: 30px; display: block; }
-        .upload-zone .loaded-info .file-name { font-weight: 600; font-size: 13px; color: #1a1a2e; word-break: break-all; }
-        .upload-zone .loaded-info .file-stats { font-size: 12px; color: #6c757d; }
-        .upload-zone .status-badge { position: absolute; top: 6px; right: 10px; padding: 2px 12px; border-radius: 20px; font-size: 10px; font-weight: 600; background: #e9ecef; color: #6c757d; }
-        .upload-zone.loaded .status-badge { background: #d1e7dd; color: #0f5132; }
-        
-        .summary-box { background: #fff; border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 100%; }
-        .compare-btn { height: 100%; min-height: 60px; font-size: 16px; font-weight: 600; border-radius: 12px; }
-        .compare-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .compare-btn:not(:disabled):hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(13,110,253,0.3); }
-        
-        .result-container { margin-top: 20px; display: none; }
-        .result-container.show { display: block; }
-        .result-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
-        
-        .table-wrap { 
-            max-height: 600px; 
-            overflow-y: auto; 
-            border-radius: 8px; 
-            border: 1px solid #dee2e6; 
-        }
-        .table-wrap table { 
-            font-size: 12px; 
-            margin-bottom: 0; 
-            width: 100%;
-            table-layout: fixed;
-        }
-        .table-wrap th { 
-            position: sticky; 
-            top: 0; 
-            background: #1a1a2e; 
-            color: #fff; 
-            z-index: 10; 
-            padding: 8px 10px; 
-            font-size: 11px; 
-            white-space: nowrap; 
-            text-align: center; 
-        }
-        .table-wrap td { 
-            padding: 6px 10px; 
-            vertical-align: middle; 
-            font-size: 11px; 
-            word-wrap: break-word;
-            white-space: normal;
-        }
-        .table-wrap td:nth-child(2) { max-width: 150px; }
-        .table-wrap td:nth-child(3) { max-width: 200px; background: #f8f9fa; }
-        .table-wrap td:nth-child(4) { max-width: 100px; }
-        .table-wrap td:nth-child(5) { max-width: 100px; }
-        .table-wrap td:nth-child(6) { max-width: 90px; }
-        .table-wrap td:nth-child(7) { max-width: 170px; }
-        .table-wrap tr:hover td { background: #f8f9ff; }
-        .table-wrap td:nth-child(3):hover { background: #e7edff; }
-        
-        .badge-status { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
-        .badge-ok { background: #d1e7dd; color: #0f5132; }
-        .badge-error { background: #f8d7da; color: #842029; }
-        .badge-warning { background: #fff3cd; color: #856404; }
-        
-        .stats-badge { font-size: 12px; padding: 4px 14px; border-radius: 20px; }
-        
-        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
-        .loading-overlay.active { display: flex; }
-        .loading-box { background: #fff; padding: 25px 40px; border-radius: 14px; text-align: center; min-width: 280px; }
-        .spinner { width: 35px; height: 35px; border: 4px solid #e9ecef; border-top: 4px solid #0d6efd; border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .loading-box .loading-title { font-size: 16px; font-weight: 600; }
-        .loading-box .loading-sub { color: #6c757d; font-size: 13px; }
-        .progress { height: 6px; margin-top: 12px; }
-        .progress-bar { background-color: #0d6efd; transition: width 0.3s; }
-        
-        .btn-download { border-radius: 8px; padding: 5px 16px; font-weight: 600; font-size: 12px; }
-        .ready-hint { text-align: center; font-size: 11px; color: #6c757d; margin-top: 6px; }
-        .ready-hint.ready { color: #198754; font-weight: 600; }
-        
-        .found-cols { font-size: 11px; color: #495057; margin-top: 6px; padding: 6px 10px; background: #f8f9fa; border-radius: 6px; display: none; }
-        .found-cols.show { display: block; }
-        .found-cols .col-item { display: inline-block; background: #e9ecef; padding: 1px 8px; border-radius: 10px; margin: 1px 3px 1px 0; font-size: 10px; }
-        .found-cols .col-item strong { color: #0d6efd; }
-        .found-cols .warning-text { color: #dc3545; font-weight: 600; }
-        
-        .filter-btn-group { margin-bottom: 12px; }
-        .filter-btn-group .btn { font-size: 12px; padding: 4px 16px; }
-        .filter-btn-group .btn.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
-        
-        @media (max-width: 768px) {
-            .upload-zone { min-height: 120px; padding: 14px; }
-            .compare-btn { min-height: 50px; font-size: 14px; }
-            .summary-box { padding: 12px; }
-            .table-wrap td { font-size: 10px; padding: 4px 6px; max-width: 80px; }
-            body { padding: 10px; }
-        }
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; }
+        th { background: #333; color: #fff; }
+        .ok { background: #d4edda; }
+        .err { background: #f8d7da; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin-left: 10px; }
+        #status { margin-left: 10px; color: #666; }
     </style>
 </head>
 <body>
 
-<!-- Лоадер -->
-<div class="loading-overlay" id="loadingOverlay">
-    <div class="loading-box">
-        <div class="spinner"></div>
-        <div class="loading-title">⏳ Идет сравнение...</div>
-        <div class="loading-sub" id="loadingText">Обработка данных</div>
-        <div class="progress">
-            <div class="progress-bar" id="progressBar" role="progressbar" style="width: 0%;"></div>
-        </div>
-    </div>
-</div>
-
-<div class="container-fluid">
-    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-        <div>
-            <h1 style="font-weight:700; color:#1a1a2e;">🧠 Сравнение выгрузки БелГИМ со справочником</h1>
-            <p style="color:#6c757d;">Загрузите выгрузку свидетельств (слева) и единый справочник БелГИМ (справа)</p>
-        </div>
-        <div class="ms-auto">
-            <span class="badge bg-danger" style="font-size: 12px;">⬅️ Выгрузка БелГИМ</span>
-            <span class="badge bg-success" style="font-size: 12px;">➡️ Справочник БелГИМ</span>
-        </div>
-    </div>
-
-    <div class="row g-3">
-        <!-- ЛЕВАЯ ПАНЕЛЬ: выгрузка -->
-        <div class="col-md-5">
-            <div class="summary-box">
-                <h5 style="font-weight:600; font-size: 14px;">📌 Выгрузка свидетельств <span class="badge bg-danger" style="font-size: 10px;">1 файл</span></h5>
-                <div id="leftZone" class="upload-zone">
-                    <span class="status-badge" id="leftStatus">Ожидание</span>
-                    <div class="icon">📄</div>
-                    <div class="upload-text">Загрузите выгрузку из БелГИМ</div>
-                    <div class="hint">.xlsx, .xls или .csv</div>
-                    <div class="loaded-info">
-                        <span class="file-icon">✅</span>
-                        <div class="file-name" id="leftLoadedName">файл</div>
-                        <div class="file-stats" id="leftLoadedStats">0 строк</div>
-                    </div>
-                </div>
-                <div id="leftColsInfo" class="found-cols"></div>
-                <button id="leftPreviewBtn" class="btn btn-outline-primary btn-sm mt-2" disabled>👁️ Просмотр</button>
-                <input type="file" id="leftInput" accept=".xlsx,.xls,.csv" style="display:none;" />
-            </div>
-        </div>
-
-        <!-- ПРАВАЯ ПАНЕЛЬ: справочник -->
-        <div class="col-md-5">
-            <div class="summary-box">
-                <h5 style="font-weight:600; font-size: 14px;">📂 Единый справочник БелГИМ <span class="badge bg-success" style="font-size: 10px;">несколько файлов</span></h5>
-                <div id="rightZone" class="upload-zone">
-                    <span class="status-badge" id="rightStatus">Ожидание</span>
-                    <div class="icon">📦</div>
-                    <div class="upload-text">Загрузите справочник БелГИМ</div>
-                    <div class="hint">.xlsx, .xls или .csv</div>
-                    <div class="loaded-info">
-                        <span class="file-icon">✅</span>
-                        <div class="file-name" id="rightLoadedName">файлы</div>
-                        <div class="file-stats" id="rightLoadedStats">0 строк</div>
-                    </div>
-                </div>
-                <div id="rightColsInfo" class="found-cols"></div>
-                <button id="rightPreviewBtn" class="btn btn-outline-primary btn-sm mt-2" disabled>👁️ Просмотр</button>
-                <input type="file" id="rightInput" accept=".xlsx,.xls,.csv" multiple style="display:none;" />
-            </div>
-        </div>
-
-        <!-- КНОПКА -->
-        <div class="col-md-2">
-            <button id="compareBtn" class="btn btn-primary compare-btn w-100" disabled>
-                🔍 Сравнить
-            </button>
-            <div class="ready-hint" id="readyHint">⏳ Загрузите файлы с обеих сторон</div>
-            <div style="font-size:11px; color:#6c757d; text-align:center; margin-top:8px;">
-                <span class="badge bg-success" style="font-size:10px;">✅</span> Совпадает
-                <span class="badge bg-danger ms-2" style="font-size:10px;">❌</span> Расхождение
-                <span class="badge bg-warning ms-2" style="font-size:10px; color:#000;">⚠️</span> Не проверено (СССР)
-            </div>
-        </div>
-    </div>
-
-    <!-- РЕЗУЛЬТАТЫ -->
-    <div class="result-container" id="resultContainer">
-        <div class="summary-box">
-            <div class="result-header">
-                <h5 style="font-weight:600; margin:0; font-size: 15px;">📋 Результат сравнения</h5>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span id="statsText"></span>
-                    <button id="downloadBtn" class="btn btn-success btn-download btn-sm">⬇ Скачать .xlsx</button>
-                </div>
-            </div>
-            
-            <!-- ФИЛЬТРЫ -->
-            <div class="filter-btn-group d-flex gap-2 flex-wrap">
-                <button class="btn btn-outline-secondary btn-sm active" data-filter="errors" id="filterErrorsBtn">
-                    ❌ Только расхождения
-                </button>
-                <button class="btn btn-outline-secondary btn-sm" data-filter="all" id="filterAllBtn">
-                    📋 Показать все
-                </button>
-                <button class="btn btn-outline-secondary btn-sm" data-filter="skipped" id="filterSkippedBtn">
-                    ⚠️ Только СССР
-                </button>
-                <span style="font-size:12px; color:#6c757d; align-self:center; margin-left:8px;" id="filterInfo">
-                    Показано: <span id="shownCount">0</span> из <span id="totalCount">0</span>
-                </span>
-            </div>
-            
-            <div class="table-wrap">
-                <table class="table table-bordered table-striped" id="resultTable">
-                    <thead>
-                        <tr>
-                            <th style="min-width:30px; width:3%;">№</th>
-                            <th style="width:20%;">📌 Выгрузка</th>
-                            <th style="width:25%;">📂 Справочник</th>
-                            <th style="width:10%;">📄 Номер документа</th>
-                            <th style="width:10%;">🏷️ № наклейки</th>
-                            <th style="min-width:80px; width:8%;">Статус</th>
-                            <th style="min-width:150px; width:15%;">Причина</th>
-                        </tr>
-                    </thead>
-                    <tbody id="resultBody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Модальное окно для просмотра таблицы -->
-<div class="modal fade" id="previewModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="previewModalTitle">📊 Данные</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div style="margin-bottom: 12px; font-size:14px; color:#6c757d;">
-                    <span id="modalColsNames"></span>
-                    <span class="badge bg-secondary ms-2" id="modalRowCount">0 строк</span>
-                </div>
-                <div class="modal-table-wrap">
-                    <table class="table table-bordered table-striped" id="previewTable">
-                        <thead id="previewHead"></thead>
-                        <tbody id="previewBody"></tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-            </div>
-        </div>
-    </div>
-</div>
+    <h2>Проверка свидетельств через реестры БелГИМ</h2>
+    <p>Сверяет данные с <a href="https://www.oei.by/grsi" target="_blank">ГРСИ</a> и <a href="https://www.oei.by/sssr/index" target="_blank">СССР/СНГ</a></p>
+    
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+    <button id="checkBtn" disabled>Проверить</button>
+    <span id="status"></span>
+    
+    <div id="results"></div>
 
 <script>
-// ============================================================
-//  НАСТРОЙКА ПОИСКА КОЛОНОК (БЕЗ МОДИФИКАЦИИ)
-// ============================================================
-const SEARCH_RULES = {
-    'type': {
-        keywords: ['тип си', 'тип си', 'наименование си', 'тип', 'наименование', 'название'],
-        displayName: 'тип СИ',
-        exclude: ['дата', 'внесения']
-    },
-    'registry': {
-        keywords: ['номер грси', 'грси', 'номер госреестра', 'рег. номер', 'регистрационный номер', 'госреестр'],
-        displayName: 'номер ГРСИ',
-        exclude: ['дата', 'внесения']
-    },
-    'sut': {
-        keywords: ['номер сут', 'сут', 'идентификационный номер', 'идентификатор', 'заводской номер', 'серийный номер'],
-        displayName: 'номер СУТ',
-        exclude: ['срок', 'действие', 'годен', 'годности', 'действителен']
-    },
-    'document': {
-        keywords: ['номер документа', 'документ', '№ документа', 'номер док'],
-        displayName: 'Номер документа',
-        exclude: [],
-        isExtra: true
-    },
-    'sticker': {
-        keywords: ['наклейка', '№ наклейки', 'номер наклейки', 'стикер'],
-        displayName: '№ наклейки',
-        exclude: [],
-        isExtra: true
-    }
-};
+const PROXY = 'https://api.allorigins.win/raw?url=';
 
-// ============================================================
-//  ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
-// ============================================================
-let leftData = null;
-let rightData = null;
-let leftColMap = {};
-let rightColMap = {};
-let leftFileName = '';
-let rightFileNames = [];
-let allResults = [];
-let currentFilter = 'errors';
-let skippedCount = 0;
+let data = [];
+let cols = {};
 
-// ============================================================
-//  ⭐ СТРОГОЕ СРАВНЕНИЕ (БЕЗ УДАЛЕНИЯ СИМВОЛОВ, БЕЗ СМЕНЫ РЕГИСТРА)
-// ============================================================
-function normalize(val) {
-    if (val === null || val === undefined) return '';
-    let result = String(val).trim();
+// Загрузка Excel
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
     
-    // Прочерк = пустота (как договаривались)
-    if (result === '-' || result === '–' || result === '—') {
-        return '';
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        
+        if (data.length === 0) return alert('Файл пуст');
+        
+        const headers = Object.keys(data[0]);
+        cols.name = headers.find(h => /наименование|тип си|название/i.test(h));
+        cols.registry = headers.find(h => /грси|госреестр|рег.*номер|номер.*гос/i.test(h));
+        cols.sut = headers.find(h => /сут|идентифика|тип/i.test(h));
+        
+        if (!cols.name || !cols.registry || !cols.sut) {
+            alert('Не найдены колонки. Заголовки: ' + headers.join(', '));
+            return;
+        }
+        
+        document.getElementById('checkBtn').disabled = false;
+        document.getElementById('status').textContent = `✅ Загружено: ${data.length} строк`;
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+// Парсинг ГРСИ
+async function loadGrsi() {
+    const html = await fetch(PROXY + encodeURIComponent('https://www.oei.by/grsi')).then(r => r.text());
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const table = doc.querySelector('table');
+    const result = {};
+    
+    if (table) {
+        const rows = table.querySelectorAll('tr');
+        for (let i = 1; i < rows.length; i++) {
+            const cells = rows[i].querySelectorAll('td');
+            if (cells.length >= 4) {
+                result[cells[3].textContent.trim()] = {
+                    name: cells[0].textContent.trim(),
+                    type: cells[2].textContent.trim()
+                };
+            }
+        }
     }
-    
-    // НЕ меняем регистр
-    // НЕ удаляем точки, запятые и другие символы
-    // НЕ убираем лишние пробелы внутри
-    // Только обрезаем пробелы по краям
     return result;
 }
 
-function getFileFormat(filename) {
-    const ext = filename.split('.').pop().toLowerCase();
-    if (ext === 'csv') return 'csv';
-    if (ext === 'xlsx' || ext === 'xls') return 'excel';
-    return 'unknown';
-}
-
-// ============================================================
-//  ПОИСК КОЛОНОК
-// ============================================================
-function findColumns(headers) {
-    const detected = {};
-    const usedColumns = new Set();
-
-    for (let [key, rule] of Object.entries(SEARCH_RULES)) {
-        let found = null;
-        let bestScore = 0;
+// Поиск в СССР/СНГ
+async function searchSssr(name, registry) {
+    try {
+        // Пробуем через форму поиска
+        const formData = new URLSearchParams();
+        formData.append('name', name);
+        formData.append('number', registry);
         
-        for (let h of headers) {
-            if (usedColumns.has(h)) continue;
-            const lower = h.toLowerCase().trim();
-            
-            if (rule.exclude) {
-                let skip = false;
-                for (let ex of rule.exclude) {
-                    if (lower.includes(ex)) { skip = true; break; }
-                }
-                if (skip) continue;
-            }
-            
-            for (let kw of rule.keywords) {
-                if (lower.includes(kw) || kw.includes(lower)) {
-                    const score = Math.max(kw.length, lower.length);
-                    if (score > bestScore) {
-                        bestScore = score;
-                        found = h;
-                    }
-                }
+        const html = await fetch(PROXY + encodeURIComponent('https://www.oei.by/sssr/index'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        }).then(r => r.text());
+        
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const table = doc.querySelector('table');
+        
+        if (!table) return { found: false };
+        
+        const rows = table.querySelectorAll('tr');
+        const results = [];
+        for (let i = 1; i < rows.length; i++) {
+            const cells = rows[i].querySelectorAll('td');
+            if (cells.length >= 2) {
+                results.push({
+                    name: cells[0].textContent.trim(),
+                    info: cells[1].textContent.trim()
+                });
             }
         }
         
-        if (found) {
-            detected[key] = found;
-            usedColumns.add(found);
-        }
+        return { found: results.length > 0, results };
+    } catch(e) {
+        return { found: false, error: e.message };
     }
-    
-    return detected;
 }
 
-// ============================================================
-//  ЧТЕНИЕ ФАЙЛОВ
-// ============================================================
-function readFiles(files) {
-    return new Promise((resolve) => {
-        const allData = [];
-        let headers = [];
-        let completed = 0;
+// Проверка
+document.getElementById('checkBtn').addEventListener('click', async function() {
+    const status = document.getElementById('status');
+    const resultsDiv = document.getElementById('results');
+    const btn = document.getElementById('checkBtn');
+    
+    btn.disabled = true;
+    resultsDiv.innerHTML = '';
+    
+    // Загружаем ГРСИ один раз
+    status.textContent = '⏳ Загружаем ГРСИ...';
+    const grsiData = await loadGrsi();
+    
+    let html = '<table><tr><th>№</th><th>Наименование</th><th>ГРСИ</th><th>СУТ</th><th>ГРСИ</th><th>СССР/СНГ</th></tr>';
+    
+    for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        const rowName = String(row[cols.name] || '').trim();
+        const rowReg = String(row[cols.registry] || '').trim();
+        const rowSut = String(row[cols.sut] || '').trim();
         
-        if (!files || files.length === 0) {
-            resolve({ data: [], headers: [] });
-            return;
-        }
-
-        for (let file of files) {
-            const reader = new FileReader();
-            const format = getFileFormat(file.name);
+        status.textContent = `⏳ Проверяем ${i + 1} из ${data.length}...`;
+        
+        let grsiResult = '';
+        let sssrResult = '';
+        let rowClass = '';
+        
+        // 1. Проверяем ГРСИ
+        if (grsiData[rowReg]) {
+            const gr = grsiData[rowReg];
+            grsiResult = `✅ ${gr.name} / ${gr.type}`;
+            rowClass = 'ok';
+        } else {
+            grsiResult = '❌ Не найден';
             
-            reader.onload = function(e) {
-                try {
-                    let json = [];
-                    if (format === 'csv') {
-                        const text = e.target.result;
-                        const workbook = XLSX.read(text, { type: 'string', raw: true, codepage: 65001 });
-                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                        json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
-                    } else {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                        json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
-                    }
-                    
-                    if (json.length > 0) {
-                        if (headers.length === 0) {
-                            headers = Object.keys(json[0]);
-                        }
-                        allData.push(...json);
-                    }
-                } catch (err) {
-                    console.error('Ошибка чтения:', file.name, err);
-                }
-                completed++;
-                if (completed === files.length) {
-                    resolve({ data: allData, headers: headers });
-                }
-            };
+            // 2. Если в ГРСИ нет — ищем в СССР
+            const sssr = await searchSssr(rowName, rowReg);
+            await new Promise(r => setTimeout(r, 300)); // Задержка между запросами
             
-            if (format === 'csv') {
-                reader.readAsText(file, 'UTF-8');
+            if (sssr.found) {
+                sssrResult = `✅ Найдено: ${sssr.results.length} зап.`;
+                rowClass = 'ok';
+            } else if (sssr.error) {
+                sssrResult = `⚠️ ${sssr.error}`;
+                rowClass = 'err';
             } else {
-                reader.readAsArrayBuffer(file);
+                sssrResult = '❌ Не найден';
+                rowClass = 'err';
             }
         }
-    });
-}
-
-// ============================================================
-//  UI ОБНОВЛЕНИЯ
-// ============================================================
-function updateLeftUI(files, data, colMap) {
-    const zone = document.getElementById('leftZone');
-    const status = document.getElementById('leftStatus');
-    const loadedName = document.getElementById('leftLoadedName');
-    const loadedStats = document.getElementById('leftLoadedStats');
-    const previewBtn = document.getElementById('leftPreviewBtn');
-    
-    if (data && data.length > 0) {
-        zone.classList.add('loaded');
-        status.textContent = '✅ Загружено';
-        loadedName.textContent = files[0].name;
-        loadedStats.textContent = `${data.length} строк`;
-        previewBtn.disabled = false;
-    }
-}
-
-function updateRightUI(files, data, colMap) {
-    const zone = document.getElementById('rightZone');
-    const status = document.getElementById('rightStatus');
-    const loadedName = document.getElementById('rightLoadedName');
-    const loadedStats = document.getElementById('rightLoadedStats');
-    const previewBtn = document.getElementById('rightPreviewBtn');
-    
-    if (data && data.length > 0) {
-        zone.classList.add('loaded');
-        status.textContent = '✅ Загружено';
-        const names = Array.from(files).map(f => f.name);
-        loadedName.textContent = names.length === 1 ? names[0] : `${names.length} файлов`;
-        loadedStats.textContent = `${data.length} строк`;
-        previewBtn.disabled = false;
-    }
-}
-
-function showColsInfo(divId, colMap) {
-    const div = document.getElementById(divId);
-    const mainKeys = ['type', 'registry', 'sut'];
-    const extraKeys = ['document', 'sticker'];
-    const foundMain = mainKeys.filter(k => colMap[k]);
-    const foundExtra = extraKeys.filter(k => colMap[k]);
-    const found = [...foundMain, ...foundExtra];
-    
-    if (found.length > 0) {
-        div.classList.add('show');
-        let html = '🔍 Найдено: ';
-        html += foundMain.map(key => 
-            `<span class="col-item"><strong>${SEARCH_RULES[key].displayName}</strong> → "${colMap[key]}"</span>`
-        ).join(' ');
-        if (foundExtra.length > 0) {
-            html += ' | Доп.: ' + foundExtra.map(key => 
-                `<span class="col-item" style="background:#d1e7dd;"><strong>${SEARCH_RULES[key].displayName}</strong> → "${colMap[key]}"</span>`
-            ).join(' ');
-        }
-        if (foundMain.length < 3) {
-            const missing = mainKeys.filter(k => !colMap[k]);
-            html += ' <span class="warning-text">⚠️ Не найдены основные колонки: ' + 
-                missing.map(k => SEARCH_RULES[k].displayName).join(', ') + '</span>';
-        }
-        div.innerHTML = html;
-    }
-}
-
-// ============================================================
-//  ЗАГРУЗКА ФАЙЛОВ
-// ============================================================
-function setupUpload(zoneId, inputId, isMultiple, onLoad) {
-    const zone = document.getElementById(zoneId);
-    const input = document.getElementById(inputId);
-    zone.addEventListener('click', () => input.click());
-    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-    zone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        zone.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length) {
-            if (!isMultiple && files.length > 1) { alert('Загрузите только 1 файл!'); return; }
-            input.files = files;
-            input.dispatchEvent(new Event('change'));
-        }
-    });
-    input.addEventListener('change', async function() {
-        if (this.files.length === 0) return;
-        await onLoad(this.files);
-        this.value = '';
-    });
-}
-
-// Загрузка выгрузки (левый)
-setupUpload('leftZone', 'leftInput', false, async function(files) {
-    const result = await readFiles(files);
-    leftData = result.data;
-    leftFileName = files[0].name;
-    if (leftData.length === 0) { alert('Файл пуст или не удалось прочитать.'); return; }
-    leftColMap = findColumns(result.headers);
-    updateLeftUI(files, leftData, leftColMap);
-    showColsInfo('leftColsInfo', leftColMap);
-    checkReady();
-});
-
-// Загрузка справочника (правые файлы)
-setupUpload('rightZone', 'rightInput', true, async function(files) {
-    const result = await readFiles(files);
-    rightData = result.data;
-    rightFileNames = Array.from(files).map(f => f.name);
-    if (rightData.length === 0) { alert('Файлы пусты или не удалось прочитать.'); return; }
-    rightColMap = findColumns(result.headers);
-    updateRightUI(files, rightData, rightColMap);
-    showColsInfo('rightColsInfo', rightColMap);
-    checkReady();
-});
-
-function checkReady() {
-    const btn = document.getElementById('compareBtn');
-    const hint = document.getElementById('readyHint');
-    const mainKeys = ['type', 'registry', 'sut'];
-    const leftOk = leftData && leftData.length > 0 && mainKeys.every(k => leftColMap[k]);
-    const rightOk = rightData && rightData.length > 0 && mainKeys.every(k => rightColMap[k]);
-    
-    if (leftOk && rightOk) {
-        btn.disabled = false;
-        hint.textContent = '✅ Готово к сравнению!';
-        hint.className = 'ready-hint ready';
-    } else {
-        btn.disabled = true;
-        hint.textContent = '⏳ Загрузите файлы с обеих сторон (нужны все 3 основные колонки)';
-        hint.className = 'ready-hint';
-    }
-}
-
-// ============================================================
-//  ПРОСМОТР ТАБЛИЦЫ
-// ============================================================
-function showPreview(data, colMap, title) {
-    if (!data || data.length === 0 || Object.keys(colMap).length === 0) {
-        alert('Нет данных для отображения');
-        return;
-    }
-    
-    const order = ['type', 'registry', 'sut', 'document', 'sticker'];
-    const displayCols = order.filter(k => colMap[k]);
-    const displayNames = displayCols.map(k => SEARCH_RULES[k].displayName);
-    
-    document.getElementById('previewModalTitle').textContent = title;
-    
-    const thead = document.getElementById('previewHead');
-    thead.innerHTML = `<tr>${displayNames.map(name => `<th>${name}</th>`).join('')}</tr>`;
-    
-    const tbody = document.getElementById('previewBody');
-    let html = '';
-    for (let row of data) {
-        const cells = displayCols.map(key => {
-            const colName = colMap[key];
-            const value = row[colName] !== undefined ? row[colName] : '';
-            return `<td>${value}</td>`;
-        });
-        html += `<tr>${cells.join('')}</tr>`;
-    }
-    tbody.innerHTML = html;
-    
-    document.getElementById('modalColsNames').innerHTML = displayNames.map(name => 
-        `<span class="badge bg-primary">${name}</span>`
-    ).join(' ');
-    document.getElementById('modalRowCount').textContent = data.length + ' строк';
-    
-    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
-    modal.show();
-}
-
-document.getElementById('leftPreviewBtn').addEventListener('click', function() {
-    showPreview(leftData, leftColMap, '📊 Выгрузка БелГИМ');
-});
-
-document.getElementById('rightPreviewBtn').addEventListener('click', function() {
-    showPreview(rightData, rightColMap, '📊 Справочник БелГИМ');
-});
-
-// ============================================================
-//  ФИЛЬТРЫ (3 режима)
-// ============================================================
-function applyFilter(filter) {
-    currentFilter = filter;
-    const rows = document.querySelectorAll('#resultBody tr');
-    let shown = 0;
-    
-    rows.forEach(row => {
-        const status = row.querySelector('.badge-status');
-        if (!status) return;
-        const text = status.textContent;
-        const isError = text.includes('Не найдено');
-        const isSkipped = text.includes('Не проверено');
         
-        if (filter === 'errors') {
-            row.style.display = isError ? '' : 'none';
-        } else if (filter === 'skipped') {
-            row.style.display = isSkipped ? '' : 'none';
-        } else {
-            row.style.display = '';
-        }
-        if (row.style.display !== 'none') shown++;
-    });
-    
-    document.getElementById('shownCount').textContent = shown;
-    document.getElementById('totalCount').textContent = rows.length;
-    
-    document.querySelectorAll('.filter-btn-group .btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    if (filter === 'errors') {
-        document.getElementById('filterErrorsBtn').classList.add('active');
-    } else if (filter === 'skipped') {
-        document.getElementById('filterSkippedBtn').classList.add('active');
-    } else {
-        document.getElementById('filterAllBtn').classList.add('active');
-    }
-}
-
-document.getElementById('filterErrorsBtn').addEventListener('click', function() {
-    applyFilter('errors');
-});
-
-document.getElementById('filterAllBtn').addEventListener('click', function() {
-    applyFilter('all');
-});
-
-document.getElementById('filterSkippedBtn').addEventListener('click', function() {
-    applyFilter('skipped');
-});
-
-// ============================================================
-//  ⭐ ОСНОВНОЕ СРАВНЕНИЕ (СТРОГОЕ + ПРОПУСК СССР)
-// ============================================================
-document.getElementById('compareBtn').addEventListener('click', async function() {
-    if (!leftData || !rightData) return;
-    
-    const mainKeys = ['type', 'registry', 'sut'];
-    const missingLeft = mainKeys.filter(k => !leftColMap[k]);
-    const missingRight = mainKeys.filter(k => !rightColMap[k]);
-    if (missingLeft.length || missingRight.length) {
-        alert('Не найдены все основные колонки! Проверьте названия.');
-        return;
-    }
-    
-    document.getElementById('loadingOverlay').classList.add('active');
-    document.getElementById('loadingText').textContent = `Построение индекса...`;
-    document.getElementById('progressBar').style.width = '0%';
-    await new Promise(r => setTimeout(r, 100));
-    
-    const lName = leftColMap['type'];
-    const lReg = leftColMap['registry'];
-    const lSut = leftColMap['sut'];
-    const lDoc = leftColMap['document'] || null;
-    const lSticker = leftColMap['sticker'] || null;
-    
-    const rName = rightColMap['type'];
-    const rReg = rightColMap['registry'];
-    const rSut = rightColMap['sut'];
-    const rDoc = rightColMap['document'] || null;
-    const rSticker = rightColMap['sticker'] || null;
-    
-    const fieldNames = ['тип СИ', 'номер ГРСИ', 'номер СУТ'];
-    const results = [];
-    let okCount = 0, errorCount = 0;
-    skippedCount = 0;
-    
-    // ============================================================
-    //  ШАГ 1: ПОСТРОЕНИЕ ИНДЕКСА
-    // ============================================================
-    document.getElementById('loadingText').textContent = `Построение индекса (${rightData.length} записей)...`;
-    await new Promise(r => setTimeout(r, 50));
-    
-    const index = new Map();
-    
-    for (let idx = 0; idx < rightData.length; idx++) {
-        const row = rightData[idx];
-        const key = [
-            normalize(row[rName] || ''),
-            normalize(row[rReg] || ''),
-            normalize(row[rSut] || '')
-        ].join('|||');
-        
-        if (!index.has(key)) {
-            index.set(key, []);
-        }
-        index.get(key).push(idx);
-        
-        if (idx % 100 === 0) {
-            const pct = Math.round((idx / rightData.length) * 30);
-            document.getElementById('progressBar').style.width = pct + '%';
-        }
-    }
-    
-    document.getElementById('progressBar').style.width = '30%';
-    document.getElementById('loadingText').textContent = `Сравнение строк...`;
-    await new Promise(r => setTimeout(r, 50));
-    
-    // ============================================================
-    //  ШАГ 2: СРАВНЕНИЕ (СТРОГОЕ) + ПРОПУСК СССР
-    // ============================================================
-    const total = leftData.length;
-    
-    for (let i = 0; i < total; i++) {
-        const leftRow = leftData[i];
-        
-        if (i % 5 === 0) {
-            const pct = 30 + Math.round((i / total) * 60);
-            document.getElementById('progressBar').style.width = Math.min(pct, 90) + '%';
-            document.getElementById('loadingText').textContent = `Сравнение строк: ${i + 1} из ${total}`;
-            await new Promise(r => setTimeout(r, 0));
-        }
-        
-        // Проверяем, является ли СУТ = СССР
-        const sutValue = normalize(leftRow[lSut] || '');
-        const isSoviet = sutValue.includes('СССР') || sutValue.includes('ссср') || sutValue === 'СССР' || sutValue === 'ссср';
-        
-        const leftDisplay = [
-            leftRow[lName] || '',
-            leftRow[lReg] || '',
-            leftRow[lSut] || ''
-        ];
-        
-        const docValue = lDoc ? (leftRow[lDoc] || '') : '';
-        const stickerValue = lSticker ? (leftRow[lSticker] || '') : '';
-        
-        if (isSoviet) {
-            // ⚠️ Пропускаем проверку (СССР)
-            skippedCount++;
-            results.push({
-                rowNum: i + 1,
-                leftDisplay: leftDisplay,
-                rightDisplay: ['', '', ''],
-                doc: docValue,
-                sticker: stickerValue,
-                status: '⚠️ Не проверено (СССР)',
-                reason: 'В СУТ указано "СССР" — проверка не выполняется'
-            });
-            continue;
-        }
-        
-        const leftKey = [
-            normalize(leftRow[lName] || ''),
-            normalize(leftRow[lReg] || ''),
-            normalize(leftRow[lSut] || '')
-        ].join('|||');
-        
-        const matches = index.get(leftKey);
-        
-        if (matches && matches.length > 0) {
-            okCount++;
-            const rightRow = rightData[matches[0]];
-            const rightDisplay = [
-                rightRow[rName] || '',
-                rightRow[rReg] || '',
-                rightRow[rSut] || ''
-            ];
-            const rDocValue = rDoc ? (rightRow[rDoc] || '') : '';
-            const rStickerValue = rSticker ? (rightRow[rSticker] || '') : '';
-            
-            results.push({
-                rowNum: i + 1,
-                leftDisplay: leftDisplay,
-                rightDisplay: rightDisplay,
-                doc: docValue || rDocValue,
-                sticker: stickerValue || rStickerValue,
-                status: '✅ Совпадает',
-                reason: ''
-            });
-        } else {
-            errorCount++;
-            results.push({
-                rowNum: i + 1,
-                leftDisplay: leftDisplay,
-                rightDisplay: ['', '', ''],
-                doc: docValue,
-                sticker: stickerValue,
-                status: '❌ Не найдено',
-                reason: 'Нет совпадения в справочнике'
-            });
-        }
-    }
-    
-    document.getElementById('progressBar').style.width = '100%';
-    document.getElementById('loadingText').textContent = `Готово!`;
-    await new Promise(r => setTimeout(r, 300));
-    
-    document.getElementById('loadingOverlay').classList.remove('active');
-    allResults = results;
-    showResults(results, okCount, errorCount);
-    applyFilter('errors');
-});
-
-// ============================================================
-//  ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ
-// ============================================================
-function showResults(results, okCount, errorCount) {
-    const container = document.getElementById('resultContainer');
-    container.classList.add('show');
-    
-    document.getElementById('statsText').innerHTML = `
-        <span class="badge bg-success stats-badge">✅ Совпадает: ${okCount}</span>
-        <span class="badge bg-danger stats-badge">❌ Расхождений: ${errorCount}</span>
-        <span class="badge bg-warning stats-badge" style="color:#000;">⚠️ Не проверено (СССР): ${skippedCount}</span>
-        <span class="badge bg-secondary stats-badge">📊 Всего: ${results.length}</span>
-    `;
-    
-    const tbody = document.getElementById('resultBody');
-    const fieldNames = ['тип СИ', 'номер ГРСИ', 'номер СУТ'];
-    
-    let html = '';
-    for (let i = 0; i < results.length; i++) {
-        const res = results[i];
-        
-        const leftStr = fieldNames.map((name, j) => 
-            `${name}: ${res.leftDisplay[j] || '(пусто)'}`
-        ).join(' | ');
-        
-        let rightStr = '';
-        if (res.status === '✅ Совпадает') {
-            rightStr = fieldNames.map((name, j) => 
-                `${name}: ${res.rightDisplay[j] || '(пусто)'}`
-            ).join(' | ');
-        } else if (res.status.includes('Не проверено')) {
-            rightStr = '— (СССР)';
-        } else {
-            rightStr = fieldNames.map((name, j) => {
-                const leftVal = res.leftDisplay[j] || '';
-                const rightVal = res.rightDisplay[j] || '';
-                const match = leftVal === rightVal;
-                return `${name}: ${match ? '✅' : '❌'} "${rightVal || '(пусто)'}"`;
-            }).join(' | ');
-        }
-        
-        let badgeClass = 'badge-ok';
-        if (res.status.includes('Не найдено')) badgeClass = 'badge-error';
-        else if (res.status.includes('Не проверено')) badgeClass = 'badge-warning';
-        
-        html += `<tr>
-            <td>${res.rowNum}</td>
-            <td style="font-size:11px;">${leftStr}</td>
-            <td style="font-size:11px;">${rightStr}</td>
-            <td style="font-size:11px;">${res.doc || '-'}</td>
-            <td style="font-size:11px;">${res.sticker || '-'}</td>
-            <td><span class="badge-status ${badgeClass}">${res.status}</span></td>
-            <td style="font-size:11px;">${res.reason}</td>
+        html += `<tr class="${rowClass}">
+            <td>${i + 1}</td>
+            <td>${rowName}</td>
+            <td>${rowReg}</td>
+            <td>${rowSut}</td>
+            <td>${grsiResult}</td>
+            <td>${sssrResult || '—'}</td>
         </tr>`;
     }
-    tbody.innerHTML = html;
     
-    document.getElementById('totalCount').textContent = results.length;
-    
-    window._reportData = { results, fieldNames };
-}
-
-// ============================================================
-//  СКАЧИВАНИЕ ОТЧЕТА
-// ============================================================
-document.getElementById('downloadBtn').addEventListener('click', function() {
-    const { results, fieldNames } = window._reportData || {};
-    if (!results || !results.length) {
-        alert('Нет данных для скачивания');
-        return;
-    }
-    
-    const headers = [
-        '№',
-        ...fieldNames.map(n => `Выгрузка: ${n}`),
-        ...fieldNames.map(n => `Справочник: ${n}`),
-        'Номер документа',
-        '№ наклейки',
-        'Статус',
-        'Причина'
-    ];
-    
-    const rows = [headers];
-    for (let res of results) {
-        const row = [
-            res.rowNum,
-            ...res.leftDisplay,
-            ...res.rightDisplay,
-            res.doc || '',
-            res.sticker || '',
-            res.status,
-            res.reason
-        ];
-        rows.push(row);
-    }
-    
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    XLSX.utils.book_append_sheet(wb, ws, 'Результат');
-    XLSX.writeFile(wb, 'comparison_result.xlsx');
+    html += '</table>';
+    resultsDiv.innerHTML = html;
+    status.textContent = '✅ Готово';
+    btn.disabled = false;
 });
-
-console.log('✅ Сайт готов! Строгое сравнение + пропуск СССР');
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
