@@ -1,5 +1,8 @@
 {
   "name": "belgim-checker",
   "version": "1.0.0",
-  "dependencies": {}
+  "dependencies": {
+    "puppeteer-core": "^21.0.0",
+    "@sparticuz/chromium": "^120.0.0"
+  }
 }
