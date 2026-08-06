@@ -12,17 +12,53 @@
         .ok { background: #d4edda; }
         .err { background: #f8d7da; }
         button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin-left: 10px; }
-        #status { margin-left: 10px; color: #666; }
+        
+        .progress-wrap {
+            margin: 15px 0;
+            display: none;
+        }
+        .progress-wrap.active {
+            display: block;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #0d6efd;
+            transition: width 0.3s;
+            border-radius: 10px;
+            text-align: center;
+            color: #fff;
+            font-size: 12px;
+            line-height: 20px;
+        }
+        #progressText {
+            margin-top: 5px;
+            font-size: 13px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
 
     <h2>Проверка свидетельств через реестры БелГИМ</h2>
-    <p>Сверяет данные с <a href="https://www.oei.by/grsi" target="_blank">ГРСИ</a> и <a href="https://www.oei.by/sssr/index" target="_blank">СССР/СНГ</a></p>
+    <p>Сверяет с <a href="https://www.oei.by/grsi" target="_blank">ГРСИ</a> и <a href="https://www.oei.by/sssr/index" target="_blank">СССР/СНГ</a></p>
     
-    <input type="file" id="fileInput" accept=".xlsx,.xls">
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
     <button id="checkBtn" disabled>Проверить</button>
     <span id="status"></span>
+    
+    <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
+        </div>
+        <div id="progressText"></div>
+    </div>
     
     <div id="results"></div>
 
@@ -32,36 +68,62 @@ const PROXY = 'https://api.allorigins.win/raw?url=';
 let data = [];
 let cols = {};
 
-// Загрузка Excel
+// Загрузка файла
 document.getElementById('fileInput').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
     
     const reader = new FileReader();
+    const ext = file.name.split('.').pop().toLowerCase();
+    
     reader.onload = function(ev) {
-        const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-        
-        if (data.length === 0) return alert('Файл пуст');
-        
-        const headers = Object.keys(data[0]);
-        cols.name = headers.find(h => /наименование|тип си|название/i.test(h));
-        cols.registry = headers.find(h => /грси|госреестр|рег.*номер|номер.*гос/i.test(h));
-        cols.sut = headers.find(h => /сут|идентифика|тип/i.test(h));
-        
-        if (!cols.name || !cols.registry || !cols.sut) {
-            alert('Не найдены колонки. Заголовки: ' + headers.join(', '));
-            return;
+        try {
+            let wb;
+            
+            if (ext === 'csv') {
+                wb = XLSX.read(ev.target.result, { type: 'string', raw: true });
+            } else {
+                wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+            }
+            
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            
+            if (data.length === 0) return alert('Файл пуст');
+            
+            const headers = Object.keys(data[0]);
+            cols.name = headers.find(h => /наименование|тип си|название/i.test(h));
+            cols.registry = headers.find(h => /грси|госреестр|рег.*номер|номер.*гос/i.test(h));
+            cols.sut = headers.find(h => /сут|идентифика|тип/i.test(h));
+            
+            if (!cols.name || !cols.registry || !cols.sut) {
+                alert('Не найдены колонки. Заголовки: ' + headers.join(', '));
+                return;
+            }
+            
+            document.getElementById('checkBtn').disabled = false;
+            document.getElementById('status').textContent = `✅ Загружено: ${data.length} строк`;
+        } catch(err) {
+            alert('Ошибка чтения файла: ' + err.message);
         }
-        
-        document.getElementById('checkBtn').disabled = false;
-        document.getElementById('status').textContent = `✅ Загружено: ${data.length} строк`;
     };
-    reader.readAsArrayBuffer(file);
+    
+    if (ext === 'csv') {
+        reader.readAsText(file, 'UTF-8');
+    } else {
+        reader.readAsArrayBuffer(file);
+    }
 });
 
-// Парсинг ГРСИ
+// Обновление прогресса
+function updateProgress(current, total, text) {
+    const pct = Math.round((current / total) * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressFill').textContent = pct + '%';
+    document.getElementById('progressText').textContent = text;
+}
+
+// Загрузка и парсинг ГРСИ
 async function loadGrsi() {
     const html = await fetch(PROXY + encodeURIComponent('https://www.oei.by/grsi')).then(r => r.text());
     const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -86,7 +148,6 @@ async function loadGrsi() {
 // Поиск в СССР/СНГ
 async function searchSssr(name, registry) {
     try {
-        // Пробуем через форму поиска
         const formData = new URLSearchParams();
         formData.append('name', name);
         formData.append('number', registry);
@@ -125,46 +186,45 @@ document.getElementById('checkBtn').addEventListener('click', async function() {
     const status = document.getElementById('status');
     const resultsDiv = document.getElementById('results');
     const btn = document.getElementById('checkBtn');
+    const progressWrap = document.getElementById('progressWrap');
     
     btn.disabled = true;
     resultsDiv.innerHTML = '';
+    progressWrap.classList.add('active');
     
-    // Загружаем ГРСИ один раз
-    status.textContent = '⏳ Загружаем ГРСИ...';
+    updateProgress(0, data.length, 'Загружаем ГРСИ...');
     const grsiData = await loadGrsi();
     
     let html = '<table><tr><th>№</th><th>Наименование</th><th>ГРСИ</th><th>СУТ</th><th>ГРСИ</th><th>СССР/СНГ</th></tr>';
     
-    for (let i = 0; i < data.length; i++) {
+    const total = data.length;
+    
+    for (let i = 0; i < total; i++) {
         const row = data[i];
         const rowName = String(row[cols.name] || '').trim();
         const rowReg = String(row[cols.registry] || '').trim();
         const rowSut = String(row[cols.sut] || '').trim();
         
-        status.textContent = `⏳ Проверяем ${i + 1} из ${data.length}...`;
+        // Прогресс
+        const checked = i + 1;
+        updateProgress(checked, total, `Проверяем ${checked} из ${total} — ${rowName}`);
         
         let grsiResult = '';
         let sssrResult = '';
         let rowClass = '';
         
-        // 1. Проверяем ГРСИ
         if (grsiData[rowReg]) {
-            const gr = grsiData[rowReg];
-            grsiResult = `✅ ${gr.name} / ${gr.type}`;
+            grsiResult = `✅ ${grsiData[rowReg].name}`;
             rowClass = 'ok';
         } else {
             grsiResult = '❌ Не найден';
             
-            // 2. Если в ГРСИ нет — ищем в СССР
             const sssr = await searchSssr(rowName, rowReg);
-            await new Promise(r => setTimeout(r, 300)); // Задержка между запросами
+            await new Promise(r => setTimeout(r, 300));
             
             if (sssr.found) {
                 sssrResult = `✅ Найдено: ${sssr.results.length} зап.`;
                 rowClass = 'ok';
-            } else if (sssr.error) {
-                sssrResult = `⚠️ ${sssr.error}`;
-                rowClass = 'err';
             } else {
                 sssrResult = '❌ Не найден';
                 rowClass = 'err';
@@ -172,7 +232,7 @@ document.getElementById('checkBtn').addEventListener('click', async function() {
         }
         
         html += `<tr class="${rowClass}">
-            <td>${i + 1}</td>
+            <td>${checked}</td>
             <td>${rowName}</td>
             <td>${rowReg}</td>
             <td>${rowSut}</td>
@@ -183,7 +243,9 @@ document.getElementById('checkBtn').addEventListener('click', async function() {
     
     html += '</table>';
     resultsDiv.innerHTML = html;
-    status.textContent = '✅ Готово';
+    
+    updateProgress(total, total, '✅ Готово');
+    status.textContent = '✅ Проверка завершена';
     btn.disabled = false;
 });
 </script>
