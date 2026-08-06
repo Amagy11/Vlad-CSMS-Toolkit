@@ -2,115 +2,83 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Проверка свидетельств БелГИМ</title>
+    <title>Проверка ГРСИ</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 15px; background: #f5f5f5; }
-        
-        .card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-        
-        h2 { margin: 0 0 5px 0; color: #1a1a2e; }
-        .subtitle { color: #666; font-size: 14px; margin-bottom: 20px; }
-        
-        .upload-zone {
-            border: 2px dashed #ccc;
-            border-radius: 12px;
-            padding: 30px;
-            text-align: center;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .upload-zone:hover { border-color: #0d6efd; background: #f8f9ff; }
-        .upload-zone.loaded { border-color: #198754; border-style: solid; background: #f0fff4; }
-        
-        button {
-            padding: 12px 30px;
-            font-size: 16px;
-            font-weight: 600;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .btn-check { background: #0d6efd; color: #fff; }
-        .btn-check:hover:not(:disabled) { background: #0b5ed7; }
-        .btn-check:disabled { background: #ccc; cursor: not-allowed; }
-        .btn-download { background: #198754; color: #fff; font-size: 13px; padding: 8px 16px; }
-        
-        .progress-wrap { margin: 15px 0; display: none; }
-        .progress-wrap.active { display: block; }
-        .progress-bar { width: 100%; height: 22px; background: #e9ecef; border-radius: 11px; overflow: hidden; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #0d6efd, #6610f2); color: #fff; text-align: center; line-height: 22px; font-size: 12px; font-weight: 600; transition: width 0.3s; }
-        
-        table { border-collapse: collapse; width: 100%; font-size: 12px; }
-        th, td { border: 1px solid #dee2e6; padding: 8px 10px; text-align: left; }
-        th { background: #1a1a2e; color: #fff; position: sticky; top: 0; }
-        tr:hover { background: #f8f9fa; }
-        .ok { background: #d4edda; }
-        .err { background: #f8d7da; }
-        
-        .stats { display: flex; gap: 15px; flex-wrap: wrap; margin: 15px 0; }
-        .stat-badge { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-        
-        @media (max-width: 768px) {
-            body { padding: 10px; }
-            th, td { padding: 6px; font-size: 11px; }
-        }
+        body { font-family: Arial; max-width: 900px; margin: 20px auto; }
+        textarea { width: 100%; height: 150px; font-size: 12px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+        td, th { border: 1px solid #ccc; padding: 5px; font-size: 12px; }
+        .ok { background: #d4edda; } .err { background: #f8d7da; }
+        button { padding: 8px 16px; margin: 5px; cursor: pointer; }
+        .step { background: #f8f9fa; padding: 12px; border-radius: 8px; margin: 10px 0; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>🔍 Проверка свидетельств через ГРСИ БелГИМ</h2>
-        <p class="subtitle">Загрузите CSV-файл — система автоматически сверит данные с <a href="https://www.oei.by/grsi" target="_blank">oei.by/grsi</a></p>
-        
-        <div id="uploadZone" class="upload-zone">
-            <div style="font-size: 40px; margin-bottom: 10px;">📄</div>
-            <div style="font-weight: 600;">Загрузите CSV или Excel-файл</div>
-            <div style="font-size: 12px; color: #999; margin-top: 5px;">.csv, .xlsx, .xls</div>
-            <div id="fileInfo" style="display:none; color: #198754; font-weight: 600; margin-top: 10px;"></div>
-        </div>
-        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;">
-        
-        <div style="margin-top: 15px; display: flex; align-items: center; gap: 15px;">
-            <button id="checkBtn" class="btn-check" disabled>🔍 Проверить</button>
-            <span id="status" style="font-size: 14px; color: #666;"></span>
-        </div>
-        
-        <div class="progress-wrap" id="progressWrap">
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
-            </div>
-        </div>
+    <h3>Проверка свидетельств через ГРСИ</h3>
+    
+    <div class="step">
+        <b>Шаг 1.</b> Открой <a href="https://www.oei.by/grsi" target="_blank">oei.by/grsi</a> → выдели ВСЮ таблицу (Ctrl+A) → скопируй (Ctrl+C) → вставь сюда (Ctrl+V):<br>
+        <textarea id="grsiText" placeholder="Вставь таблицу..."></textarea>
+        <button onclick="loadGrsi()">Загрузить ГРСИ</button> <span id="grsiOk"></span>
     </div>
     
-    <div id="results"></div>
+    <div class="step">
+        <b>Шаг 2.</b> Загрузи свой CSV/Excel:<br>
+        <input type="file" id="csvFile" accept=".csv,.xlsx,.xls">
+        <span id="csvOk"></span>
+    </div>
+    
+    <div class="step">
+        <b>Шаг 3.</b> <button onclick="check()" id="checkBtn" disabled>Проверить</button>
+        <span id="checkOk"></span>
+    </div>
+    
+    <div id="result"></div>
 
 <script>
-let csvData = [];
-let cols = {};
+let grsi = {}; // "номер ГРСИ" → "наименование"
+let rows = [];
 
-// Загрузка файла
-const uploadZone = document.getElementById('uploadZone');
-const fileInput = document.getElementById('fileInput');
-const fileInfo = document.getElementById('fileInfo');
-
-uploadZone.addEventListener('click', () => fileInput.click());
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.style.borderColor = '#0d6efd'; });
-uploadZone.addEventListener('dragleave', () => { uploadZone.style.borderColor = '#ccc'; });
-uploadZone.addEventListener('drop', e => {
-    e.preventDefault();
-    uploadZone.style.borderColor = '#ccc';
-    if (e.dataTransfer.files.length) {
-        fileInput.files = e.dataTransfer.files;
-        fileInput.dispatchEvent(new Event('change'));
+function loadGrsi() {
+    const text = document.getElementById('grsiText').value.trim();
+    if (!text) return alert('Вставь таблицу!');
+    
+    const lines = text.split('\n').filter(l => l.trim());
+    
+    // Пробуем табуляцию
+    let delimiter = '\t';
+    if (lines[0].split('\t').length < 4) {
+        // Если табуляция не подошла — пробуем 2+ пробела
+        delimiter = /\s{2,}/;
     }
-});
+    
+    grsi = {};
+    let found = 0;
+    
+    for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(delimiter);
+        if (cols.length >= 4) {
+            const regNum = cols[3].trim();
+            const name = cols[1].trim();
+            if (regNum && regNum.match(/\d/)) {
+                grsi[regNum] = name;
+                found++;
+            }
+        }
+    }
+    
+    document.getElementById('grsiOk').textContent = `✅ ${found} записей`;
+    document.getElementById('checkBtn').disabled = !(found > 0 && rows.length > 0);
+    
+    // Покажем примеры для проверки
+    const keys = Object.keys(grsi).slice(0, 3);
+    console.log('ГРСИ (первые 3):', keys.map(k => `${k} → ${grsi[k]}`));
+}
 
-fileInput.addEventListener('change', function() {
-    const file = this.files[0];
+document.getElementById('csvFile').onchange = function(e) {
+    const file = e.target.files[0];
     if (!file) return;
     
     const reader = new FileReader();
@@ -118,190 +86,56 @@ fileInput.addEventListener('change', function() {
     
     reader.onload = function(ev) {
         try {
-            let wb;
-            if (ext === 'csv') {
-                wb = XLSX.read(ev.target.result, { type: 'string', raw: true });
-            } else {
-                wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
-            }
-            
+            const wb = XLSX.read(
+                ext === 'csv' ? ev.target.result : new Uint8Array(ev.target.result),
+                { type: ext === 'csv' ? 'string' : 'array', raw: true }
+            );
             const sheet = wb.Sheets[wb.SheetNames[0]];
-            csvData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
             
-            if (!csvData.length) return alert('Файл пуст');
+            if (!rows.length) return alert('Файл пуст');
             
-            const headers = Object.keys(csvData[0]);
-            cols.name = headers.find(h => /наименование|тип си|название/i.test(h));
-            cols.registry = headers.find(h => /грси|госреестр|реестр/i.test(h));
-            cols.sut = headers.find(h => /сут|идентифика|заводской|серийный/i.test(h));
-            
-            if (!cols.name || !cols.registry) {
-                alert('Не найдены колонки: Наименование СИ, Номер ГРСИ.\nЗаголовки: ' + headers.join(', '));
-                return;
-            }
-            
-            uploadZone.classList.add('loaded');
-            fileInfo.style.display = 'block';
-            fileInfo.textContent = `✅ ${file.name} — ${csvData.length} строк`;
-            document.getElementById('checkBtn').disabled = false;
-            document.getElementById('status').textContent = 'Готово к проверке';
+            document.getElementById('csvOk').textContent = `✅ ${rows.length} строк`;
+            document.getElementById('checkBtn').disabled = !(Object.keys(grsi).length > 0);
         } catch(err) {
             alert('Ошибка: ' + err.message);
         }
     };
     
-    if (ext === 'csv') {
-        reader.readAsText(file, 'UTF-8');
-    } else {
-        reader.readAsArrayBuffer(file);
-    }
-});
+    if (ext === 'csv') reader.readAsText(file, 'UTF-8');
+    else reader.readAsArrayBuffer(file);
+};
 
-// Проверка
-document.getElementById('checkBtn').addEventListener('click', async function() {
-    const btn = this;
-    const status = document.getElementById('status');
-    const resultsDiv = document.getElementById('results');
-    const progressWrap = document.getElementById('progressWrap');
-    const progressFill = document.getElementById('progressFill');
+function check() {
+    const headers = Object.keys(rows[0]);
+    const nameCol = headers.find(h => /наименование|тип си|название/i.test(h));
+    const regCol = headers.find(h => /грси|госреестр|реестр|рег.*номер/i.test(h));
+    const sutCol = headers.find(h => /сут|идентифика|заводской|серийный/i.test(h));
     
-    btn.disabled = true;
-    resultsDiv.innerHTML = '';
-    progressWrap.classList.add('active');
+    if (!nameCol || !regCol) return alert('Не найдены колонки: Наименование, ГРСИ');
     
-    try {
-        // 1. Загружаем ГРСИ через Vercel API
-        status.textContent = 'Загрузка ГРСИ...';
-        progressFill.style.width = '20%';
-        progressFill.textContent = 'Загрузка ГРСИ...';
+    let html = '<table><tr><th>№</th><th>Наименование</th><th>ГРСИ</th><th>СУТ</th><th>Статус</th><th>В ГРСИ</th></tr>';
+    let ok = 0, err = 0;
+    
+    for (let i = 0; i < rows.length; i++) {
+        const n = String(rows[i][nameCol] || '').trim();
+        const r = String(rows[i][regCol] || '').trim();
+        const s = sutCol ? String(rows[i][sutCol] || '').trim() : '';
+        const found = grsi[r];
         
-        const apiUrl = '/api/proxy?url=' + encodeURIComponent('https://www.oei.by/grsi');
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        
-        if (data.error) throw new Error(data.error);
-        
-        // 2. Парсим HTML
-        progressFill.style.width = '40%';
-        progressFill.textContent = 'Парсинг...';
-        
-        const doc = new DOMParser().parseFromString(data.html, 'text/html');
-        const tables = doc.querySelectorAll('table');
-        
-        const grsiMap = {};
-        for (const table of tables) {
-            const rows = table.querySelectorAll('tr');
-            for (let i = 1; i < rows.length; i++) {
-                const cells = rows[i].querySelectorAll('td');
-                if (cells.length >= 4) {
-                    const regNum = cells[3].textContent.trim();
-                    const name = cells[1].textContent.trim();
-                    if (regNum) grsiMap[regNum] = name;
-                }
-            }
+        if (found) {
+            ok++;
+            html += `<tr class="ok"><td>${i+1}</td><td>${n}</td><td>${r}</td><td>${s}</td><td>✅</td><td>${found}</td></tr>`;
+        } else {
+            err++;
+            html += `<tr class="err"><td>${i+1}</td><td>${n}</td><td>${r}</td><td>${s}</td><td>❌</td><td>—</td></tr>`;
         }
-        
-        // 3. Сравниваем
-        const total = csvData.length;
-        let foundCount = 0, notFoundCount = 0;
-        
-        let html = '<div class="card">';
-        html += '<div class="stats">';
-        
-        // Считаем сначала
-        for (const row of csvData) {
-            const rowReg = String(row[cols.registry] || '').trim();
-            if (grsiMap[rowReg]) foundCount++; else notFoundCount++;
-        }
-        
-        html += `<span class="stat-badge" style="background:#d4edda;color:#0f5132;">✅ Найдено: ${foundCount}</span>`;
-        html += `<span class="stat-badge" style="background:#f8d7da;color:#842029;">❌ Не найдено: ${notFoundCount}</span>`;
-        html += `<span class="stat-badge" style="background:#e9ecef;color:#495057;">📊 Всего: ${total}</span>`;
-        html += `<button class="btn-download" onclick="downloadResults()">⬇ Скачать отчёт</button>`;
-        html += '</div>';
-        
-        html += '<div style="max-height: 70vh; overflow-y: auto;"><table>';
-        html += '<thead><tr><th>№</th><th>Наименование (CSV)</th><th>ГРСИ (CSV)</th><th>СУТ</th><th>Наименование (ГРСИ)</th><th>Статус</th></tr></thead><tbody>';
-        
-        for (let i = 0; i < total; i++) {
-            const row = csvData[i];
-            const rowName = String(row[cols.name] || '').trim();
-            const rowReg = String(row[cols.registry] || '').trim();
-            const rowSut = cols.sut ? String(row[cols.sut] || '').trim() : '';
-            
-            const pct = 40 + Math.round(((i + 1) / total) * 60);
-            progressFill.style.width = pct + '%';
-            progressFill.textContent = `${i + 1}/${total}`;
-            
-            if (i % 50 === 0) await new Promise(r => setTimeout(r, 0));
-            
-            let grsiName, result, rowClass;
-            if (grsiMap[rowReg]) {
-                grsiName = grsiMap[rowReg];
-                result = '✅';
-                rowClass = 'ok';
-            } else {
-                grsiName = '—';
-                result = '❌';
-                rowClass = 'err';
-            }
-            
-            html += `<tr class="${rowClass}">
-                <td>${i + 1}</td>
-                <td>${escapeHtml(rowName)}</td>
-                <td>${escapeHtml(rowReg)}</td>
-                <td>${escapeHtml(rowSut)}</td>
-                <td>${escapeHtml(grsiName)}</td>
-                <td>${result}</td>
-            </tr>`;
-        }
-        
-        html += '</tbody></table></div></div>';
-        resultsDiv.innerHTML = html;
-        
-        progressFill.style.width = '100%';
-        progressFill.textContent = 'Готово';
-        status.textContent = `✅ Готово: ${foundCount} найдено, ${notFoundCount} не найдено`;
-        
-        // Сохраняем для скачивания
-        window._results = { csvData, cols, grsiMap };
-        
-    } catch(e) {
-        status.textContent = '❌ Ошибка: ' + e.message;
-        alert('Ошибка: ' + e.message + '\n\nУбедитесь, что проект задеплоен на Vercel.');
     }
     
-    btn.disabled = false;
-});
-
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-function downloadResults() {
-    const { csvData, cols, grsiMap } = window._results || {};
-    if (!csvData) return;
-    
-    const rows = [['№', 'Наименование (CSV)', 'ГРСИ (CSV)', 'СУТ', 'Наименование (ГРСИ)', 'Статус']];
-    
-    csvData.forEach((row, i) => {
-        const rowReg = String(row[cols.registry] || '').trim();
-        rows.push([
-            i + 1,
-            String(row[cols.name] || '').trim(),
-            rowReg,
-            cols.sut ? String(row[cols.sut] || '').trim() : '',
-            grsiMap[rowReg] || '—',
-            grsiMap[rowReg] ? 'Найдено' : 'Не найдено'
-        ]);
-    });
-    
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Результат');
-    XLSX.writeFile(wb, 'результат_проверки.xlsx');
+    html += '</table>';
+    document.getElementById('result').innerHTML = 
+        `<p><b>✅ Найдено: ${ok} | ❌ Не найдено: ${err}</b></p>` + html;
+    document.getElementById('checkOk').textContent = 'Готово';
 }
 </script>
 
