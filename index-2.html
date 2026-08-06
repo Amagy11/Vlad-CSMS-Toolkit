@@ -170,7 +170,7 @@
         .normative-list {
             list-style: none;
             padding: 0;
-             max-width: 90000px; 
+            max-width: 900px; 
             margin: 20px auto;
         }
 
@@ -207,6 +207,17 @@
 
         .normative-link:hover {
             color: #0066cc;
+        }
+        
+        /* Стили для заголовков категорий */
+        .category-header {
+            width: 100%;
+            font-size: 1.4em;
+            color: #003366;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 5px;
+            margin-top: 30px;
+            margin-bottom: 15px;
         }
 
         /* Адаптивность */
@@ -267,19 +278,14 @@
         <a href="#" onclick="toggleDropdown('certificateList')">Примеры свидетельств и заключений</a>
         <div id="certificateList" class="dropdown" aria-hidden="true">
             <p><a href="Заключение-о-непригодности-в-не-сферы.pdf" target="_blank">Пример заключения об непригодности вне сферы законодательной метрологии</a></p>
-
         </div>
 
         <a href="#" onclick="toggleDropdown('verificationList')">Поверка</a>
         <div id="verificationList" class="dropdown" aria-hidden="true">
            <p><a href="Term-table.html" target="_blank">Поверяемые градусные отметки в зависимости от цены деления шкалы</a></p>
-
-           <a href="index-1.html" class="sidebar-button"> Реестры и межповерочные интервалы</a></p>
-            <div id="index-1" class="sidebar-button" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div>
-
-           <a href="index-2.html" class="sidebar-button"> Инструменты</a></p>
-            <div id="index-2" class="sidebar-button" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div>
-          </div>
+           <p><a href="index-1.html" class="sidebar-button"> Реестры и межповерочные интервалы</a></p>
+           <p><a href="index-2.html" class="sidebar-button"> Инструменты</a></p>
+        </div>
 
         <a href="#" onclick="toggleDropdown('calibrationList')">Калибровка</a>
         <div id="calibrationList" class="dropdown" aria-hidden="true">
@@ -294,22 +300,16 @@
     </nav>
 
     <main>
-        <!-- Вставленный список ГОСТов -->
-         <div style="height: 100px;"></div> 
+        <!-- Исправленная структура списка -->
         <ul class="normative-list">
-                <h2 class="category-header">Основные:</h2>
-            <div class="items-grid">
-                 <div id="registryList" class="dropdown" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div> <li>   
-                <a href="Massive.html" class="normative-link">Массив</a> </li>
-                <div id="registryList" class="dropdown" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div> <li>   
-                <a href="receipt.html" class="normative-link">Проверка отгруженных свидетельств </a> </li>
-                <div id="registryList" class="dropdown" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div> <li>  
-                <a href="Inventory.html" class="normative-link">инвентаризация</a> </li>
-                <div id="registryList" class="dropdown" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div> <li>   
-        <h2 class="category-header">Дополнительные:</h2>
-            <div class="items-grid"> 
-                <a href="verification-VCEM5100.html" class="normative-link">Расчёт погрешности VCEM 5100</a> </li> </ul>
-                          <div id="registryList" class="dropdown" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div> <li>   
+            <h2 class="category-header">Основные:</h2>
+            <li><a href="Massive.html" class="normative-link">Массив</a></li>
+            <li><a href="receipt.html" class="normative-link">Проверка отгруженных свидетельств</a></li>
+            <li><a href="Inventory.html" class="normative-link">Инвентаризация</a></li>
+            
+            <h2 class="category-header">Дополнительные:</h2>
+            <li><a href="verification-VCEM5100.html" class="normative-link">Расчёт погрешности VCEM 5100</a></li>
+        </ul>
     </main>
 
     <script>
