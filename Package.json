@@ -12,3 +12,10 @@
     "mongoose": "^5.10.9"
   }
 }
+{
+  "name": "belgim-checker",
+  "version": "1.0.0",
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  }
+}
