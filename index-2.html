@@ -10,7 +10,7 @@
             box-sizing: border-box;
             transition: all 0.3s ease;
         }
-        
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
@@ -21,7 +21,7 @@
             min-height: 100vh;
             overflow-y: auto;
         }
-        
+
         /* Шапка сайта */
         header {
             background: linear-gradient(135deg, #003366 0%, #002244 100%);
@@ -36,7 +36,7 @@
             z-index: 100;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-        
+
         .logo {
             font-size: 28px;
             font-weight: bold;
@@ -44,13 +44,13 @@
             align-items: center;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
-        
+
         .logo::before {
             content: "📐";
             margin-right: 12px;
             font-size: 32px;
         }
-        
+
         /* Кнопка "Ссылки" */
         .long-button {
             position: fixed;
@@ -72,19 +72,19 @@
             align-items: center;
             justify-content: center;
         }
-        
+
         .long-button::before {
             content: "🔗";
             margin-right: 10px;
             font-size: 20px;
         }
-        
+
         .long-button:hover {
             background: linear-gradient(135deg, #0088ff 0%, #0055aa 100%);
             transform: translateY(-2px);
             box-shadow: 0 6px 12px rgba(0, 85, 170, 0.4);
         }
-        
+
         /* Боковая панель */
         .sidebar {
             width: 300px;
@@ -99,7 +99,7 @@
             border-right: 1px solid #e0e6ed;
             z-index: 99;
         }
-        
+
         .sidebar a {
             display: flex;
             align-items: center;
@@ -113,21 +113,21 @@
             border: 1px solid rgba(0, 102, 204, 0.1);
             box-shadow: 0 2px 4px rgba(0, 51, 102, 0.05);
         }
-        
+
         .sidebar a::before {
             content: "➤";
             margin-right: 10px;
             font-size: 14px;
             color: #0066cc;
         }
-        
+
         .sidebar a:hover {
             background: linear-gradient(135deg, #e6f0ff 0%, #d0e0f0 100%);
             transform: translateX(5px);
             border-color: rgba(0, 102, 204, 0.2);
             box-shadow: 0 4px 8px rgba(0, 51, 102, 0.1);
         }
-        
+
         /* Выпадающие списки */
         .dropdown {
             display: none;
@@ -136,11 +136,11 @@
             border-left: 3px solid #0066cc;
             border-radius: 0 0 0 8px;
         }
-        
+
         .dropdown p {
             margin: 10px 0;
         }
-        
+
         .dropdown a {
             display: block;
             padding: 10px 15px;
@@ -151,13 +151,13 @@
             border: 1px solid rgba(0, 102, 204, 0.1);
             box-shadow: 0 1px 3px rgba(0, 51, 102, 0.05);
         }
-        
+
         .dropdown a:hover {
             background: #f0f7ff;
             transform: none;
             border-color: rgba(0, 102, 204, 0.2);
         }
-        
+
         /* Основное содержимое */
         main {
             margin-left: 320px;
@@ -165,7 +165,7 @@
             min-height: calc(100vh - 70px);
             box-sizing: border-box;
         }
-        
+
         /* Стили для списка ГОСТов */
         .normative-list {
             list-style: none;
@@ -208,7 +208,7 @@
         .normative-link:hover {
             color: #0066cc;
         }
-        
+
         /* Адаптивность */
         @media (max-width: 900px) {
             .sidebar {
@@ -223,7 +223,7 @@
                 width: 260px;
             }
         }
-        
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%;
@@ -247,7 +247,7 @@
                 border-radius: 0;
             }
         }
-        
+
         /* Анимации */
         @keyframes pulse {
             0% { transform: scale(1); }
@@ -260,33 +260,33 @@
     <header>
         <div class="logo">Полезная информация</div>
     </header>
-    
+
     <a href="Reestrs.html" class="long-button">Ссылки на базы реестров РБ/РФ</a>
 
     <nav class="sidebar" role="navigation">
         <a href="#" onclick="toggleDropdown('certificateList')">Примеры свидетельств и заключений</a>
         <div id="certificateList" class="dropdown" aria-hidden="true">
             <p><a href="Заключение-о-непригодности-в-не-сферы.pdf" target="_blank">Пример заключения об непригодности вне сферы законодательной метрологии</a></p>
-         
+
         </div>
-        
+
         <a href="#" onclick="toggleDropdown('verificationList')">Поверка</a>
         <div id="verificationList" class="dropdown" aria-hidden="true">
            <p><a href="Term-table.html" target="_blank">Поверяемые градусные отметки в зависимости от цены деления шкалы</a></p>
-            
+
            <a href="index-1.html" class="sidebar-button"> Реестры и межповерочные интервалы</a></p>
             <div id="index-1" class="sidebar-button" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div>
 
            <a href="index-2.html" class="sidebar-button"> Инструменты</a></p>
             <div id="index-2" class="sidebar-button" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div>
           </div>
-        
+
         <a href="#" onclick="toggleDropdown('calibrationList')">Калибровка</a>
         <div id="calibrationList" class="dropdown" aria-hidden="true">
             <p><a href="calibration.html" target="_blank">Методики калибровки и стандартные неопределенности ИТЭ</a></p>
             <p><a href="Окр-ср.html" target="_blank">Окружающая среда</a></p>
         </div>
-        
+
         <a href="#" onclick="toggleDropdown('referenceList')">Эталоны</a>
         <div id="referenceList" class="dropdown" aria-hidden="true">
             <p><a href="reference.html" target="_blank">Состояние эталонов</a></p>
@@ -303,9 +303,13 @@
                 <a href="Massive.html" class="normative-link">Массив</a> </li>
                 <div id="registryList" class="dropdown" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div> <li>   
                 <a href="receipt.html" class="normative-link">Проверка отгруженных свидетельств </a> </li>
-                <div id="registryList" class="dropdown" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div> <li>     
+                <div id="registryList" class="dropdown" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div> <li>   
+                    <div id="registryList" class="dropdown" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div> <li>   
+                <a href="Check.html" class="normative-link">Проверка правильного оформления свидетельств </a> </li>
+                <div id="registryList" class="dropdown" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div> <li>   
                 <a href="Inventory.html" class="normative-link">инвентаризация</a> </li>
                 <div id="registryList" class="dropdown" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div> <li>   
+                <a href="Sprav.html" class="normative-link">Единый Справочник СИ</a> </li>
              <h2 class="category-header">Дополнительные:</h2>
             <div class="items-grid"> <li>
                 <a href="verification-VCEM5100.html" class="normative-link">Расчёт погрешности VCEM 5100</a> </li> </ul>
@@ -327,7 +331,7 @@
                 }
             });
         }
-        
+
         // Добавляем эффект при наведении на пункты меню
         const sidebarLinks = document.querySelectorAll('.sidebar a');
         sidebarLinks.forEach(link => {
