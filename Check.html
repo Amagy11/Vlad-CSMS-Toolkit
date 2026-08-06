@@ -13,35 +13,12 @@
         .err { background: #f8d7da; }
         button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin-left: 10px; }
         
-        .progress-wrap {
-            margin: 15px 0;
-            display: none;
-        }
-        .progress-wrap.active {
-            display: block;
-        }
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #e9ecef;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%;
-            background: #0d6efd;
-            transition: width 0.3s;
-            border-radius: 10px;
-            text-align: center;
-            color: #fff;
-            font-size: 12px;
-            line-height: 20px;
-        }
-        #progressText {
-            margin-top: 5px;
-            font-size: 13px;
-            color: #666;
-        }
+        .progress-wrap { margin: 15px 0; display: none; }
+        .progress-wrap.active { display: block; }
+        .progress-bar { width: 100%; height: 20px; background: #e9ecef; border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #0d6efd; transition: width 0.3s; border-radius: 10px; text-align: center; color: #fff; font-size: 12px; line-height: 20px; }
+        #progressText { margin-top: 5px; font-size: 13px; color: #666; }
+        #log { margin-top: 10px; font-size: 11px; color: #999; max-height: 100px; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -60,10 +37,47 @@
         <div id="progressText"></div>
     </div>
     
+    <div id="log"></div>
     <div id="results"></div>
 
 <script>
-const PROXY = 'https://api.allorigins.win/raw?url=';
+// Список прокси — пробуем по очереди
+const PROXY_LIST = [
+    'https://api.allorigins.win/raw?url=',
+    'https://corsproxy.io/?',
+    'https://api.codetabs.com/v1/proxy?quest='
+];
+
+let currentProxy = 0;
+
+async function fetchWithProxy(url) {
+    // Пробуем все прокси по очереди
+    for (let i = 0; i < PROXY_LIST.length; i++) {
+        try {
+            const proxyUrl = PROXY_LIST[i] + encodeURIComponent(url);
+            log(`Пробую прокси #${i + 1}: ${PROXY_LIST[i].substring(0, 30)}...`);
+            
+            const response = await fetch(proxyUrl);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const text = await response.text();
+            if (text.length < 100) throw new Error('Пустой ответ');
+            
+            log(`✅ Прокси #${i + 1} работает (получено ${text.length} символов)`);
+            return text;
+        } catch(e) {
+            log(`❌ Прокси #${i + 1}: ${e.message}`);
+        }
+    }
+    throw new Error('Все прокси не сработали');
+}
+
+function log(msg) {
+    const logDiv = document.getElementById('log');
+    logDiv.innerHTML += msg + '<br>';
+    logDiv.scrollTop = logDiv.scrollHeight;
+    console.log(msg);
+}
 
 let data = [];
 let cols = {};
@@ -79,7 +93,6 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
     reader.onload = function(ev) {
         try {
             let wb;
-            
             if (ext === 'csv') {
                 wb = XLSX.read(ev.target.result, { type: 'string', raw: true });
             } else {
@@ -92,6 +105,8 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
             if (data.length === 0) return alert('Файл пуст');
             
             const headers = Object.keys(data[0]);
+            log('📋 Заголовки: ' + headers.join(', '));
+            
             cols.name = headers.find(h => /наименование|тип си|название/i.test(h));
             cols.registry = headers.find(h => /грси|госреестр|рег.*номер|номер.*гос/i.test(h));
             cols.sut = headers.find(h => /сут|идентифика|тип/i.test(h));
@@ -100,6 +115,8 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
                 alert('Не найдены колонки. Заголовки: ' + headers.join(', '));
                 return;
             }
+            
+            log(`✅ Колонки: name="${cols.name}", registry="${cols.registry}", sut="${cols.sut}"`);
             
             document.getElementById('checkBtn').disabled = false;
             document.getElementById('status').textContent = `✅ Загружено: ${data.length} строк`;
@@ -115,7 +132,6 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
     }
 });
 
-// Обновление прогресса
 function updateProgress(current, total, text) {
     const pct = Math.round((current / total) * 100);
     document.getElementById('progressFill').style.width = pct + '%';
@@ -123,129 +139,106 @@ function updateProgress(current, total, text) {
     document.getElementById('progressText').textContent = text;
 }
 
-// Загрузка и парсинг ГРСИ
+// Загрузка ГРСИ
 async function loadGrsi() {
-    const html = await fetch(PROXY + encodeURIComponent('https://www.oei.by/grsi')).then(r => r.text());
+    log('🔄 Загружаем ГРСИ...');
+    const html = await fetchWithProxy('https://www.oei.by/grsi');
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const table = doc.querySelector('table');
+    const tables = doc.querySelectorAll('table');
+    log(`📊 Найдено таблиц: ${tables.length}`);
+    
     const result = {};
     
-    if (table) {
-        const rows = table.querySelectorAll('tr');
+    // Пробуем все таблицы
+    for (let t = 0; t < tables.length; t++) {
+        const rows = tables[t].querySelectorAll('tr');
+        log(`Таблица #${t + 1}: ${rows.length} строк`);
+        
         for (let i = 1; i < rows.length; i++) {
             const cells = rows[i].querySelectorAll('td');
             if (cells.length >= 4) {
-                result[cells[3].textContent.trim()] = {
-                    name: cells[0].textContent.trim(),
-                    type: cells[2].textContent.trim()
-                };
+                const regNum = cells[3].textContent.trim();
+                if (regNum && regNum.length > 0) {
+                    result[regNum] = {
+                        name: cells[0].textContent.trim(),
+                        type: cells[2].textContent.trim()
+                    };
+                }
             }
         }
     }
+    
+    log(`✅ ГРСИ загружен: ${Object.keys(result).length} записей`);
     return result;
-}
-
-// Поиск в СССР/СНГ
-async function searchSssr(name, registry) {
-    try {
-        const formData = new URLSearchParams();
-        formData.append('name', name);
-        formData.append('number', registry);
-        
-        const html = await fetch(PROXY + encodeURIComponent('https://www.oei.by/sssr/index'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData.toString()
-        }).then(r => r.text());
-        
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        const table = doc.querySelector('table');
-        
-        if (!table) return { found: false };
-        
-        const rows = table.querySelectorAll('tr');
-        const results = [];
-        for (let i = 1; i < rows.length; i++) {
-            const cells = rows[i].querySelectorAll('td');
-            if (cells.length >= 2) {
-                results.push({
-                    name: cells[0].textContent.trim(),
-                    info: cells[1].textContent.trim()
-                });
-            }
-        }
-        
-        return { found: results.length > 0, results };
-    } catch(e) {
-        return { found: false, error: e.message };
-    }
 }
 
 // Проверка
 document.getElementById('checkBtn').addEventListener('click', async function() {
+    const btn = document.getElementById('checkBtn');
     const status = document.getElementById('status');
     const resultsDiv = document.getElementById('results');
-    const btn = document.getElementById('checkBtn');
     const progressWrap = document.getElementById('progressWrap');
+    const logDiv = document.getElementById('log');
     
     btn.disabled = true;
     resultsDiv.innerHTML = '';
+    logDiv.innerHTML = '';
     progressWrap.classList.add('active');
     
-    updateProgress(0, data.length, 'Загружаем ГРСИ...');
-    const grsiData = await loadGrsi();
-    
-    let html = '<table><tr><th>№</th><th>Наименование</th><th>ГРСИ</th><th>СУТ</th><th>ГРСИ</th><th>СССР/СНГ</th></tr>';
-    
-    const total = data.length;
-    
-    for (let i = 0; i < total; i++) {
-        const row = data[i];
-        const rowName = String(row[cols.name] || '').trim();
-        const rowReg = String(row[cols.registry] || '').trim();
-        const rowSut = String(row[cols.sut] || '').trim();
+    try {
+        updateProgress(0, data.length, 'Загружаем ГРСИ...');
+        const grsiData = await loadGrsi();
         
-        // Прогресс
-        const checked = i + 1;
-        updateProgress(checked, total, `Проверяем ${checked} из ${total} — ${rowName}`);
+        let html = '<table><tr><th>№</th><th>Наименование</th><th>ГРСИ</th><th>СУТ</th><th>ГРСИ</th></tr>';
         
-        let grsiResult = '';
-        let sssrResult = '';
-        let rowClass = '';
+        const total = data.length;
         
-        if (grsiData[rowReg]) {
-            grsiResult = `✅ ${grsiData[rowReg].name}`;
-            rowClass = 'ok';
-        } else {
-            grsiResult = '❌ Не найден';
+        for (let i = 0; i < total; i++) {
+            const row = data[i];
+            const rowName = String(row[cols.name] || '').trim();
+            const rowReg = String(row[cols.registry] || '').trim();
+            const rowSut = String(row[cols.sut] || '').trim();
             
-            const sssr = await searchSssr(rowName, rowReg);
-            await new Promise(r => setTimeout(r, 300));
+            const checked = i + 1;
+            updateProgress(checked, total, `${checked}/${total} — ${rowName}`);
             
-            if (sssr.found) {
-                sssrResult = `✅ Найдено: ${sssr.results.length} зап.`;
+            let grsiResult = '';
+            let rowClass = '';
+            
+            if (grsiData[rowReg]) {
+                grsiResult = `✅ ${grsiData[rowReg].name} / ${grsiData[rowReg].type}`;
                 rowClass = 'ok';
             } else {
-                sssrResult = '❌ Не найден';
+                grsiResult = '❌ Не найден в ГРСИ';
                 rowClass = 'err';
+            }
+            
+            html += `<tr class="${rowClass}">
+                <td>${checked}</td>
+                <td>${rowName}</td>
+                <td>${rowReg}</td>
+                <td>${rowSut}</td>
+                <td>${grsiResult}</td>
+            </tr>`;
+            
+            // Обновляем таблицу каждые 10 строк, чтобы не подвисало
+            if (checked % 10 === 0) {
+                resultsDiv.innerHTML = html + '</table>';
             }
         }
         
-        html += `<tr class="${rowClass}">
-            <td>${checked}</td>
-            <td>${rowName}</td>
-            <td>${rowReg}</td>
-            <td>${rowSut}</td>
-            <td>${grsiResult}</td>
-            <td>${sssrResult || '—'}</td>
-        </tr>`;
+        html += '</table>';
+        resultsDiv.innerHTML = html;
+        
+        updateProgress(total, total, '✅ Готово');
+        status.textContent = '✅ Проверка завершена';
+        
+    } catch(e) {
+        log(`💥 КРИТИЧЕСКАЯ ОШИБКА: ${e.message}`);
+        status.textContent = '❌ Ошибка: ' + e.message;
+        alert('Ошибка при проверке. Смотри лог на странице.');
     }
     
-    html += '</table>';
-    resultsDiv.innerHTML = html;
-    
-    updateProgress(total, total, '✅ Готово');
-    status.textContent = '✅ Проверка завершена';
     btn.disabled = false;
 });
 </script>
