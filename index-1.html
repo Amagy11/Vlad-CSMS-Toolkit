@@ -127,6 +127,28 @@
             border-color: rgba(0, 102, 204, 0.2);
             box-shadow: 0 4px 8px rgba(0, 51, 102, 0.1);
         }
+
+        /* Зелёный пункт "Инструменты" */
+        .sidebar a.instruments-link {
+            background: linear-gradient(135deg, #3a7d3b 0%, #2d5e2e 100%);
+            color: #ffffff;
+            border: 1px solid rgba(45, 94, 46, 0.3);
+            box-shadow: 0 2px 6px rgba(45, 94, 46, 0.2);
+        }
+
+        .sidebar a.instruments-link::before {
+            content: "⚙️";
+            margin-right: 10px;
+            font-size: 14px;
+            color: #ffffff;
+        }
+
+        .sidebar a.instruments-link:hover {
+            background: linear-gradient(135deg, #4a9e4b 0%, #3a7d3b 100%);
+            border-color: rgba(74, 158, 75, 0.4);
+            box-shadow: 0 4px 10px rgba(45, 94, 46, 0.3);
+            color: #ffffff;
+        }
         
         /* Выпадающие списки */
         .dropdown {
@@ -170,7 +192,7 @@
         .normative-list {
             list-style: none;
             padding: 0;
-             max-width: 90000px; 
+            max-width: 900px; 
             margin: 20px auto;
         }
 
@@ -261,45 +283,43 @@
         <div class="logo">Полезная информация</div>
     </header>
     
-   <a href="Reestrs.html" class="long-button">Ссылки на базы реестров РБ/РФ</a>
+    <a href="Reestrs.html" class="long-button">Ссылки на базы реестров РБ/РФ</a>
 
     <nav class="sidebar" role="navigation">
+        <!-- Примеры свидетельств и заключений -->
         <a href="#" onclick="toggleDropdown('certificateList')">Примеры свидетельств и заключений</a>
         <div id="certificateList" class="dropdown" aria-hidden="true">
             <p><a href="Заключение-о-непригодности-в-не-сферы.pdf" target="_blank">Пример заключения об непригодности вне сферы законодательной метрологии</a></p>
-           
         </div>
         
+        <!-- Поверка -->
         <a href="#" onclick="toggleDropdown('verificationList')">Поверка</a>
         <div id="verificationList" class="dropdown" aria-hidden="true">
-           <p><a href="Term-table.html" target="_blank">Поверяемые градусные отметки в зависимости от цены деления шкалы</a></p>
-            
-           <a href="index-1.html" class="sidebar-button"> Реестры и межповерочные интервалы</a></p>
-            <div id="index-1" class="sidebar-button" style="margin-left: 15px; border-left: 2px solid #0066cc;"> </div>
-           <a href="index-2.html" class="sidebar-button"> Инструменты</a></p>
-            <div id="index-2" class="sidebar-button" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div>
-          </div>
+            <p><a href="Term-table.html" target="_blank">Поверяемые градусные отметки в зависимости от цены деления шкалы</a></p>
+            <p><a href="index-1.html">Реестры и межповерочные интервалы</a></p>
         </div>
         
+        <!-- Калибровка -->
         <a href="#" onclick="toggleDropdown('calibrationList')">Калибровка</a>
         <div id="calibrationList" class="dropdown" aria-hidden="true">
             <p><a href="calibration.html" target="_blank">Методики калибровки и стандартные неопределенности ИТЭ</a></p>
             <p><a href="Окр-ср.html" target="_blank">Окружающая среда</a></p>
         </div>
         
+        <!-- Эталоны -->
         <a href="#" onclick="toggleDropdown('referenceList')">Эталоны</a>
         <div id="referenceList" class="dropdown" aria-hidden="true">
             <p><a href="reference.html" target="_blank">Состояние эталонов</a></p>
         </div>
+
+        <!-- Инструменты (зелёный пункт) -->
+        <a href="index-2.html" class="instruments-link">Инструменты</a>
     </nav>
 
     <main>
-        <!-- Вставленный список ГОСТов -->
-         <div style="height: 100px;"></div> 
+        <div style="height: 100px;"></div> 
         <ul class="normative-list">
-                <h2 class="category-header">Температура:</h2>
-            <div class="items-grid">
-                 <div id="registryList" class="dropdown" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div>
+            <h2 class="category-header">Температура:</h2>
             <li>   
                 <a href="Gigro.html" class="normative-link">гигрометры психометрические Вит</a>
             </li>
@@ -315,9 +335,8 @@
             <li>   
                 <a href="Infra-el-term.html" class="normative-link">Термометры инфракрасные</a>
             </li>
-             <h2 class="category-header">Давление:</h2>
-            <div class="items-grid">
-               <li>
+            <h2 class="category-header">Давление:</h2>
+            <li>
                 <a href="Mano.html" class="normative-link">Манометры</a>
             </li>
         </ul>
@@ -340,7 +359,6 @@
             });
         }
         
-        // Добавляем эффект при наведении на пункты меню
         const sidebarLinks = document.querySelectorAll('.sidebar a');
         sidebarLinks.forEach(link => {
             link.addEventListener('mouseenter', function() {
