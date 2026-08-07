@@ -128,6 +128,27 @@
             box-shadow: 0 4px 8px rgba(0, 51, 102, 0.1);
         }
 
+        /* Зелёный пункт "Инструменты" */
+        .sidebar a.instruments-link {
+            background: rgba(55, 135, 65, 0.12);
+            color: #1f4a25;
+            border: 1px solid rgba(55, 135, 65, 0.22);
+            box-shadow: 0 2px 5px rgba(40, 90, 45, 0.08);
+        }
+
+        .sidebar a.instruments-link::before {
+            content: "⚙️";
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        .sidebar a.instruments-link:hover {
+            background: linear-gradient(135deg, #d9f0db 0%, #c2e5c5 100%);
+            border-color: rgba(55, 135, 65, 0.35);
+            box-shadow: 0 4px 10px rgba(40, 90, 45, 0.12);
+            color: #1f4a25;
+        }
+
         /* Выпадающие списки */
         .dropdown {
             display: none;
@@ -282,9 +303,8 @@
 
         <a href="#" onclick="toggleDropdown('verificationList')">Поверка</a>
         <div id="verificationList" class="dropdown" aria-hidden="true">
-           <p><a href="Term-table.html" target="_blank">Поверяемые градусные отметки в зависимости от цены деления шкалы</a></p>
-           <p><a href="index-1.html" class="sidebar-button"> Реестры и межповерочные интервалы</a></p>
-           <p><a href="index-2.html" class="sidebar-button"> Инструменты</a></p>
+            <p><a href="Term-table.html" target="_blank">Поверяемые градусные отметки в зависимости от цены деления шкалы</a></p>
+            <p><a href="index-1.html">Реестры и межповерочные интервалы</a></p>
         </div>
 
         <a href="#" onclick="toggleDropdown('calibrationList')">Калибровка</a>
@@ -297,10 +317,12 @@
         <div id="referenceList" class="dropdown" aria-hidden="true">
             <p><a href="reference.html" target="_blank">Состояние эталонов</a></p>
         </div>
+
+        <!-- Инструменты (зелёный пункт) -->
+        <a href="index-2.html" class="instruments-link">Инструменты</a>
     </nav>
 
     <main>
-        <!-- Исправленная структура списка -->
         <ul class="normative-list">
             <h2 class="category-header">Основные:</h2>
             <li><a href="Massive.html" class="normative-link">Массив</a></li>
@@ -329,7 +351,6 @@
             });
         }
 
-        // Добавляем эффект при наведении на пункты меню
         const sidebarLinks = document.querySelectorAll('.sidebar a');
         sidebarLinks.forEach(link => {
             link.addEventListener('mouseenter', function() {
