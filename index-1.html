@@ -128,26 +128,25 @@
             box-shadow: 0 4px 8px rgba(0, 51, 102, 0.1);
         }
 
-        /* Зелёный пункт "Инструменты" */
+        /* Бледно-зелёный пункт "Инструменты" — той же насыщенности, что и синие */
         .sidebar a.instruments-link {
-            background: linear-gradient(135deg, #3a7d3b 0%, #2d5e2e 100%);
-            color: #ffffff;
-            border: 1px solid rgba(45, 94, 46, 0.3);
-            box-shadow: 0 2px 6px rgba(45, 94, 46, 0.2);
+            background: rgba(60, 130, 70, 0.08);
+            color: #2d5a32;
+            border: 1px solid rgba(60, 130, 70, 0.15);
+            box-shadow: 0 2px 4px rgba(45, 90, 50, 0.06);
         }
 
         .sidebar a.instruments-link::before {
             content: "⚙️";
             margin-right: 10px;
             font-size: 14px;
-            color: #ffffff;
         }
 
         .sidebar a.instruments-link:hover {
-            background: linear-gradient(135deg, #4a9e4b 0%, #3a7d3b 100%);
-            border-color: rgba(74, 158, 75, 0.4);
-            box-shadow: 0 4px 10px rgba(45, 94, 46, 0.3);
-            color: #ffffff;
+            background: linear-gradient(135deg, #e8f5e9 0%, #d4ebd5 100%);
+            border-color: rgba(60, 130, 70, 0.25);
+            box-shadow: 0 4px 8px rgba(45, 90, 50, 0.1);
+            color: #2d5a32;
         }
         
         /* Выпадающие списки */
@@ -312,7 +311,7 @@
             <p><a href="reference.html" target="_blank">Состояние эталонов</a></p>
         </div>
 
-        <!-- Инструменты (зелёный пункт) -->
+        <!-- Инструменты (бледно-зелёный) -->
         <a href="index-2.html" class="instruments-link">Инструменты</a>
     </nav>
 
