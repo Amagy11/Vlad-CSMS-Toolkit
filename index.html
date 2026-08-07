@@ -86,7 +86,7 @@
         
         /* Боковая панель */
         .sidebar {
-            width: 300px; /* Увеличено с 240px до 300px */
+            width: 300px;
             background: linear-gradient(160deg, #ffffff 0%, #f8f9fb 100%);
             padding: 20px 15px;
             box-shadow: 5px 0 15px rgba(0, 34, 68, 0.1);
@@ -126,6 +126,27 @@
             border-color: rgba(0, 102, 204, 0.2);
             box-shadow: 0 4px 8px rgba(0, 51, 102, 0.1);
         }
+
+        /* Зелёный пункт "Инструменты" */
+        .sidebar a.instruments-link {
+            background: rgba(55, 135, 65, 0.12);
+            color: #1f4a25;
+            border: 1px solid rgba(55, 135, 65, 0.22);
+            box-shadow: 0 2px 5px rgba(40, 90, 45, 0.08);
+        }
+
+        .sidebar a.instruments-link::before {
+            content: "⚙️";
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        .sidebar a.instruments-link:hover {
+            background: linear-gradient(135deg, #d9f0db 0%, #c2e5c5 100%);
+            border-color: rgba(55, 135, 65, 0.35);
+            box-shadow: 0 4px 10px rgba(40, 90, 45, 0.12);
+            color: #1f4a25;
+        }
         
         /* Выпадающие списки */
         .dropdown {
@@ -159,7 +180,7 @@
         
         /* Основное содержимое */
         main {
-            margin-left: 320px; /* Увеличено с 260px до 320px */
+            margin-left: 320px;
             padding: 30px;
             min-height: calc(100vh - 70px);
             box-sizing: border-box;
@@ -223,22 +244,16 @@
     
     <a href="Reestrs.html" class="long-button">Ссылки на базы реестров РБ/РФ</a>
 
- <nav class="sidebar" role="navigation">
+    <nav class="sidebar" role="navigation">
         <a href="#" onclick="toggleDropdown('certificateList')">Примеры свидетельств и заключений</a>
         <div id="certificateList" class="dropdown" aria-hidden="true">
             <p><a href="Заключение-о-непригодности-в-не-сферы.pdf" target="_blank">Пример заключения об непригодности вне сферы законодательной метрологии</a></p>
-         
         </div>
         
         <a href="#" onclick="toggleDropdown('verificationList')">Поверка</a>
         <div id="verificationList" class="dropdown" aria-hidden="true">
-           <p><a href="Term-table.html" target="_blank">Поверяемые градусные отметки в зависимости от цены деления шкалы</a></p>
-            
-           <a href="index-1.html" class="sidebar-button"> Реестры и межповерочные интервалы</a></p>
-            <div id="index-1" class="sidebar-button" style="margin-left: 15px; border-left: 2px solid #0066cc;"> </div>
-           <a href="index-2.html" class="sidebar-button"> Инструменты</a></p>
-            <div id="index-2" class="sidebar-button" style="margin-left: 15px; border-left: 2px solid #0066cc;"></div>
-          </div>
+            <p><a href="Term-table.html" target="_blank">Поверяемые градусные отметки в зависимости от цены деления шкалы</a></p>
+            <p><a href="index-1.html">Реестры и межповерочные интервалы</a></p>
         </div>
         
         <a href="#" onclick="toggleDropdown('calibrationList')">Калибровка</a>
@@ -251,8 +266,10 @@
         <div id="referenceList" class="dropdown" aria-hidden="true">
             <p><a href="reference.html" target="_blank">Состояние эталонов</a></p>
         </div>
-    </nav>
 
+        <!-- Инструменты (зелёный пункт) -->
+        <a href="index-2.html" class="instruments-link">Инструменты</a>
+    </nav>
 
     <main>
         <!-- Здесь было удалено окно "Метрологический ресурс" -->
@@ -275,7 +292,6 @@
             });
         }
         
-        // Добавляем эффект при наведении на пункты меню
         const sidebarLinks = document.querySelectorAll('.sidebar a');
         sidebarLinks.forEach(link => {
             link.addEventListener('mouseenter', function() {
