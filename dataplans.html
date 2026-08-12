@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Планировщик поверителей</title>
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --text: #1a1a1a;
+            --text-secondary: #666;
+            --border: #e0e0e0;
+            --primary: #1a5276;
+            --primary-light: #eaf2f8;
+            --danger: #c0392b;
+            --shadow: 0 1px 4px rgba(0,0,0,0.06);
+            --radius: 8px;
+            --radius-sm: 6px;
+            --transition: 0.15s ease;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; line-height:1.4; }
+        .header { background:var(--card); border-bottom:1px solid var(--border); padding:10px 20px; display:flex; align-items:center; justify-content:space-between; box-shadow:var(--shadow); position:sticky; top:0; z-index:100; }
+        .header .logo { font-size:1.2rem; font-weight:700; color:var(--primary); }
+        .header .sync-status { font-size:0.7rem; color:var(--text-secondary); display:flex; align-items:center; gap:4px; }
+        .header .sync-dot { width:8px; height:8px; border-radius:50%; background:#ccc; }
+        .header .sync-dot.online { background:#2ecc71; }
+        .header .sync-dot.offline { background:#e74c3c; }
+        .header .sync-dot.syncing { background:#f39c12; animation:pulse 0.8s infinite; }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+        .btn { padding:7px 16px; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.85rem; font-weight:500; transition:var(--transition); }
+        .btn-primary { background:var(--primary); color:#fff; }
+        .btn-primary:hover { opacity:0.9; }
+        .btn-outline { background:#fff; border:1px solid var(--border); }
+        .btn-outline:hover { background:#f5f5f5; }
+        .btn-danger { background:var(--danger); color:#fff; }
+        .btn-sm { padding:4px 10px; font-size:0.75rem; }
+        .btn-xs { padding:3px 7px; font-size:0.7rem; }
+        .btn-success { background:#1e8449; color:#fff; }
+        .btn-success:hover { opacity:0.9; }
+
+        .main-container { display:flex; flex-direction:column; gap:16px; padding:16px 20px; max-width:1600px; margin:0 auto; }
+        .top-row { display:grid; grid-template-columns:260px 1fr 380px; gap:16px; }
+        @media(max-width:1200px) { .top-row { grid-template-columns:1fr; max-width:600px; margin:0 auto; } }
+
+        .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); display:flex; flex-direction:column; }
+        .card-header { padding:10px 14px; border-bottom:1px solid var(--border); font-weight:700; font-size:0.9rem; color:var(--primary); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-shrink:0; }
+        .card-header .count { font-size:0.75rem; background:var(--primary-light); color:var(--primary); padding:2px 8px; border-radius:10px; font-weight:600; }
+        .card-body { padding:10px 14px; overflow-y:auto; flex:1; }
+
+        .emp-item { display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:var(--radius-sm); cursor:pointer; transition:var(--transition); font-size:0.85rem; margin-bottom:2px; border:2px solid transparent; }
+        .emp-item:hover { background:#f5f5f5; }
+        .emp-item.selected { background:var(--primary-light); border-color:var(--primary); font-weight:600; }
+        .emp-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+        .emp-item .role { font-size:0.7rem; color:#999; margin-left:auto; }
+        .emp-item .delete-emp { display:none; background:none; border:none; color:#ccc; cursor:pointer; font-size:0.9rem; padding:0 2px; }
+        .emp-item:hover .delete-emp { display:block; }
+        .emp-item .delete-emp:hover { color:var(--danger); }
+        .emp-add-row { display:flex; gap:4px; margin-top:8px; }
+        .emp-add-row input { flex:1; padding:6px 8px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.8rem; }
+        .emp-add-row input:focus { outline:none; border-color:var(--primary); }
+        .emp-add-row button { padding:6px 10px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.8rem; }
+
+        .client-list { display:flex; flex-wrap:wrap; gap:6px; align-content:flex-start; }
+        .client-tag { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border-radius:16px; font-size:0.8rem; font-weight:500; color:#fff; cursor:pointer; transition:var(--transition); opacity:0.85; white-space:nowrap; }
+        .client-tag:hover { opacity:1; }
+        .client-tag.selected { opacity:1; box-shadow:0 0 0 2px #fff, 0 0 0 4px currentColor; }
+        .client-tag .delete-client { margin-left:4px; font-size:0.9rem; line-height:1; cursor:pointer; }
+        .client-add-row { display:flex; gap:4px; margin-top:8px; }
+        .client-add-row input { flex:1; padding:6px 8px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.8rem; }
+        .client-add-row input:focus { outline:none; border-color:var(--primary); }
+        .client-add-row button { padding:6px 10px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.8rem; }
+
+        .cal-back-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+        .cal-back-row .cal-title { font-weight:700; font-size:0.9rem; color:var(--primary); }
+        .months-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+        .month-card { background:#fafafa; border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; transition:var(--transition); text-align:center; padding:8px 6px; }
+        .month-card:hover { background:#f0f4f8; border-color:var(--primary); }
+        .month-card .mc-name { font-size:0.8rem; font-weight:600; color:var(--primary); margin-bottom:2px; }
+        .month-card .mc-mini-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; margin:4px 0; }
+        .month-card .mc-mini-day { font-size:0.5rem; color:#ccc; aspect-ratio:1; display:flex; align-items:center; justify-content:center; }
+        .month-card .mc-mini-day.has-event { border-radius:2px; }
+        .month-card .mc-badge { font-size:0.6rem; color:var(--primary); background:var(--primary-light); padding:1px 6px; border-radius:6px; display:inline-block; }
+        .md-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center; }
+        .md-day-name { font-size:0.65rem; color:#999; font-weight:600; padding:4px 0; }
+        .md-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer; font-size:0.75rem; position:relative; transition:var(--transition); }
+        .md-day:hover { background:#f0f0f0; }
+        .md-day.today { border:2px solid var(--primary); font-weight:700; }
+        .md-day.selected { background:var(--primary); color:#fff; font-weight:700; }
+        .md-day.empty { cursor:default; }
+        .md-day.empty:hover { background:transparent; }
+        .md-day .day-dots { position:absolute; bottom:1px; left:50%; transform:translateX(-50%); display:flex; gap:1px; }
+        .md-day .day-dot { width:4px; height:4px; border-radius:50%; flex-shrink:0; }
+        .md-day.selected .day-dot { background:#fff !important; }
+
+        .filter-info { font-size:0.75rem; color:var(--text-secondary); margin-top:8px; text-align:center; min-height:18px; }
+        .btn-clear { width:100%; margin-top:6px; font-size:0.75rem; }
+        .legend { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; font-size:0.7rem; }
+        .legend-item { display:flex; align-items:center; gap:4px; }
+        .legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+        .events-card { flex:1; }
+        .events-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+        .events-table th { text-align:left; padding:10px 12px; border-bottom:2px solid var(--border); font-size:0.75rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; background:#fafafa; position:sticky; top:0; }
+        .events-table td { padding:10px 12px; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
+        .events-table tbody tr { transition:var(--transition); cursor:pointer; }
+        .events-table tbody tr:hover { background:#fafafa; }
+        .emp-badge { display:inline-flex; align-items:center; gap:6px; font-weight:500; }
+        .client-badge { display:inline-block; padding:4px 10px; border-radius:12px; color:#fff; font-size:0.8rem; font-weight:600; }
+        .date-range { white-space:nowrap; font-size:0.85rem; }
+        .days-badge { font-size:0.7rem; color:#999; margin-left:4px; }
+        .note-cell { color:#888; font-size:0.8rem; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .delete-event { background:none; border:none; color:#ccc; cursor:pointer; font-size:1.1rem; padding:0 4px; line-height:1; }
+        .delete-event:hover { color:var(--danger); }
+        .no-events { text-align:center; padding:40px; color:#999; font-size:0.9rem; }
+        .no-events .icon { font-size:2.5rem; margin-bottom:8px; }
+        .empty-hint { font-size:0.75rem; color:#aaa; text-align:center; padding:10px 0; }
+        .header-actions { display:flex; gap:6px; align-items:center; }
+
+        .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:200; justify-content:center; align-items:center; }
+        .modal-overlay.show { display:flex; }
+        .modal { background:var(--card); border-radius:var(--radius); box-shadow:0 4px 20px rgba(0,0,0,0.15); padding:20px; width:90%; max-width:460px; }
+        .modal h3 { margin-bottom:14px; font-size:1rem; color:var(--primary); }
+        .form-group { margin-bottom:12px; }
+        .form-group label { display:block; font-weight:600; margin-bottom:3px; font-size:0.8rem; color:var(--text-secondary); }
+        .form-group select, .form-group input { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.85rem; }
+        .form-group select:focus, .form-group input:focus { outline:none; border-color:var(--primary); }
+        .form-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+        .modal-cal { border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px; margin-top:4px; }
+        .modal-cal .mc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; font-weight:600; font-size:0.85rem; }
+        .modal-cal .mc-header button { background:none; border:none; cursor:pointer; font-size:1rem; padding:2px 6px; border-radius:4px; color:var(--primary); }
+        .modal-cal .mc-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; text-align:center; }
+        .modal-cal .mc-day-name { font-size:0.6rem; color:#999; font-weight:600; padding:3px 0; }
+        .modal-cal .mc-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer; font-size:0.7rem; transition:var(--transition); }
+        .modal-cal .mc-day:hover { background:#f0f0f0; }
+        .modal-cal .mc-day.today { border:2px solid var(--primary); font-weight:700; }
+        .modal-cal .mc-day.range-start { background:var(--primary); color:#fff; font-weight:700; border-radius:50% 0 0 50%; }
+        .modal-cal .mc-day.range-end { background:var(--primary); color:#fff; font-weight:700; border-radius:0 50% 50% 0; }
+        .modal-cal .mc-day.range-start.range-end { border-radius:50%; }
+        .modal-cal .mc-day.in-range { background:var(--primary-light); }
+        .modal-cal .mc-day.other-month { color:#ccc; }
+        .date-display { background:#f9f9f9; padding:8px 10px; border-radius:var(--radius-sm); font-size:0.85rem; text-align:center; color:var(--primary); font-weight:600; margin-bottom:4px; }
+        .date-hint { font-size:0.7rem; color:#999; text-align:center; margin-bottom:6px; }
+
+        .toast { position:fixed; bottom:20px; right:20px; background:#333; color:#fff; padding:10px 18px; border-radius:var(--radius-sm); z-index:300; opacity:0; transform:translateY(20px); transition:all 0.3s ease; font-size:0.85rem; pointer-events:none; }
+        .toast.show { opacity:1; transform:translateY(0); }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <span class="logo">📐 Планировщик поверителей</span>
+        <div class="header-actions">
+            <span class="sync-status"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Подключение...</span></span>
+            <button class="btn btn-success btn-sm" onclick="downloadExcel()">📥 Скачать Excel</button>
+            <button class="btn btn-primary" onclick="openAddEventModal()">+ Добавить выезд</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="top-row">
+            <div class="card">
+                <div class="card-header">👥 Поверители <span class="count" id="emp-count">0</span></div>
+                <div class="card-body" id="emp-list"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">🏢 Заказчики <span class="count" id="client-count">0</span></div>
+                <div class="card-body" id="client-list"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">📅 Календарь 2026</div>
+                <div class="card-body" id="calendar-body" style="max-height:500px;overflow-y:auto;">
+                    <div id="cal-months-view"></div>
+                    <div id="cal-month-detail" style="display:none;"></div>
+                </div>
+                <div style="padding:0 14px 10px;">
+                    <div class="legend" id="legend"></div>
+                    <div class="filter-info" id="filter-info"></div>
+                    <button class="btn btn-outline btn-clear" onclick="clearFilter()">Сбросить фильтр</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card events-card">
+            <div class="card-header">📋 Заявки / Выезды <span class="count" id="events-count-label">0</span></div>
+            <div class="card-body" id="events-list" style="max-height:50vh;overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-event">
+        <div class="modal">
+            <h3 id="modal-title">Добавить выезд</h3>
+            <div class="form-group"><label>Поверитель</label><select id="event-employee"></select></div>
+            <div class="form-group"><label>Заказчик</label><select id="event-client"></select></div>
+            <div class="form-group">
+                <label>Даты выезда</label>
+                <div class="date-display" id="date-display">Выберите даты в календаре</div>
+                <div class="date-hint" id="date-hint">Нажмите на первую дату, затем на вторую</div>
+                <div class="modal-cal" id="modal-calendar"></div>
+            </div>
+            <div class="form-group"><label>Примечание</label><input type="text" id="event-note" placeholder="Какие СИ, количество..."></div>
+            <input type="hidden" id="event-id">
+            <input type="hidden" id="event-start">
+            <input type="hidden" id="event-end">
+            <div class="form-actions">
+                <button class="btn btn-danger" id="btn-delete-event" style="display:none;margin-right:auto;" onclick="deleteEvent()">🗑 Удалить</button>
+                <button class="btn btn-outline" onclick="closeModal('modal-event')">Отмена</button>
+                <button class="btn btn-primary" onclick="saveEvent()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
+            authDomain: "vlad-csms-af6df.firebaseapp.com",
+            databaseURL: "https://vlad-csms-af6df-default-rtdb.firebaseio.com",
+            projectId: "vlad-csms-af6df",
+            storageBucket: "vlad-csms-af6df.firebasestorage.app",
+            messagingSenderId: "417297799117",
+            appId: "1:417297799117:web:0a93dce429cd37db499684",
+            measurementId: "G-MD79ZVT24Z"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Ссылки на данные
+        const employeesRef = ref(db, 'employees');
+        const clientsRef = ref(db, 'clients');
+        const eventsRef = ref(db, 'events');
+
+        // Состояние
+        let appData = { employees: [], clients: [], events: [] };
+        let dataLoaded = false;
+        let selectedEmpId = null;
+        let selectedClientId = null;
+        let selectedDate = null;
+        let currentView = 'months';
+        let detailMonthIdx = 0;
+        let modalMonth = new Date();
+        let pickStart = null;
+        let pickEnd = null;
+
+        // Статус синхронизации
+        function setSyncStatus(status) {
+            const dot = document.getElementById('sync-dot');
+            const text = document.getElementById('sync-text');
+            dot.className = 'sync-dot ' + status;
+            if (status === 'online') text.textContent = 'Онлайн';
+            else if (status === 'offline') text.textContent = 'Офлайн';
+            else if (status === 'syncing') text.textContent = 'Синхронизация...';
+        }
+
+        // Подписка на данные Firebase
+        function subscribeToData() {
+            setSyncStatus('syncing');
+
+            // Слушаем сотрудников
+            onValue(employeesRef, (snapshot) => {
+                const data = snapshot.val();
+                appData.employees = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
+                if (dataLoaded) renderAll();
+            });
+
+            // Слушаем заказчиков
+            onValue(clientsRef, (snapshot) => {
+                const data = snapshot.val();
+                appData.clients = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
+                if (dataLoaded) renderAll();
+            });
+
+            // Слушаем события
+            onValue(eventsRef, (snapshot) => {
+                const data = snapshot.val();
+                appData.events = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
+                if (dataLoaded) renderAll();
+            });
+
+            // Первичная загрузка завершена
+            setTimeout(() => {
+                if (!dataLoaded) {
+                    dataLoaded = true;
+                    renderAll();
+                }
+            }, 500);
+
+            setSyncStatus('online');
+        }
+
+        // Отслеживание соединения
+        const connectedRef = ref(db, '.info/connected');
+        onValue(connectedRef, (snap) => {
+            if (snap.val() === true) {
+                setSyncStatus('online');
+            } else {
+                setSyncStatus('offline');
+            }
+        });
+
+        // CRUD операции
+        function saveEmployeeToFB(employee) {
+            const newRef = push(employeesRef);
+            const id = newRef.key;
+            const data = { name: employee.name, role: employee.role, color: employee.color };
+            return set(newRef, data).then(() => id);
+        }
+
+        function updateEmployeeInFB(id, data) {
+            return set(ref(db, 'employees/' + id), data);
+        }
+
+        function deleteEmployeeFromFB(id) {
+            return remove(ref(db, 'employees/' + id));
+        }
+
+        function saveClientToFB(client) {
+            const newRef = push(clientsRef);
+            const id = newRef.key;
+            const data = { name: client.name, address: client.address, color: client.color };
+            return set(newRef, data).then(() => id);
+        }
+
+        function updateClientInFB(id, data) {
+            return set(ref(db, 'clients/' + id), data);
+        }
+
+        function deleteClientFromFB(id) {
+            return remove(ref(db, 'clients/' + id));
+        }
+
+        function saveEventToFB(event) {
+            const newRef = push(eventsRef);
+            const id = newRef.key;
+            const data = { employeeId: event.employeeId, clientId: event.clientId, start: event.start, end: event.end,
+                note: event.note };
+            return set(newRef, data).then(() => id);
+        }
+
+        function updateEventInFB(id, data) {
+            return set(ref(db, 'events/' + id), data);
+        }
+
+        function deleteEventFromFB(id) {
+            return remove(ref(db, 'events/' + id));
+        }
+
+        // Вспомогательные функции
+        function fmtDate(d) { return d.toISOString().split('T')[0]; }
+        function generateId() { return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
+        function getEmployee(id) { return appData.employees.find(e => e.id === id); }
+        function getClient(id) { return appData.clients.find(c => c.id === id); }
+
+        function getFilteredEvents() {
+            let events = [...appData.events];
+            if (selectedEmpId) events = events.filter(e => e.employeeId === selectedEmpId);
+            if (selectedClientId) events = events.filter(e => e.clientId === selectedClientId);
+            if (selectedDate) events = events.filter(e => e.start <= selectedDate && e.end >= selectedDate);
+            events.sort((a, b) => a.start.localeCompare(b.start));
+            return events;
+        }
+
+        function getDateColorMap() {
+            const map = {};
+            const src = selectedEmpId ? appData.events.filter(e => e.employeeId === selectedEmpId) : (selectedClientId ? appData
+                .events.filter(e => e.clientId === selectedClientId) : appData.events);
+            src.forEach(ev => {
+                const emp = getEmployee(ev.employeeId);
+                if (!emp) return;
+                const s = new Date(ev.start),
+                    e = new Date(ev.end);
+                for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+                    const ds = fmtDate(d);
+                    if (!map[ds]) map[ds] = [];
+                    if (!map[ds].includes(emp.color)) map[ds].push(emp.color);
+                }
+            });
+            return map;
+        }
+
+        function getEventsCountForMonth(year, month) {
+            const src = selectedEmpId ? appData.events.filter(e => e.employeeId === selectedEmpId) : (selectedClientId ? appData
+                .events.filter(e => e.clientId === selectedClientId) : appData.events);
+            const seen = new Set();
+            src.forEach(ev => {
+                const s = new Date(ev.start),
+                    e = new Date(ev.end);
+                for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) { if (d.getFullYear() === year && d.getMonth() ===
+                        month) { seen.add(ev.id); break; } }
+            });
+            return seen.size;
+        }
+
+        function renderAll() {
+            renderEmployees();
+            renderClients();
+            renderCalendarView();
+            renderEvents();
+            renderLegend();
+            updateCounts();
+            updateFilterInfo();
+        }
+
+        function updateCounts() {
+            document.getElementById('emp-count').textContent = appData.employees.length;
+            document.getElementById('client-count').textContent = appData.clients.length;
+            document.getElementById('events-count-label').textContent = getFilteredEvents().length;
+        }
+
+        function updateFilterInfo() {
+            const info = document.getElementById('filter-info'),
+                parts = [];
+            if (selectedEmpId) { const emp = getEmployee(selectedEmpId);
+                parts.push('👤 ' + emp.name); }
+            if (selectedClientId) { const cli = getClient(selectedClientId);
+                parts.push('🏢 ' + cli.name); }
+            if (selectedDate) { parts.push('📅 ' + new Date(selectedDate).toLocaleDateString('ru-RU', { day: 'numeric',
+                    month: 'short' })); }
+            info.textContent = parts.length ? 'Фильтр: ' + parts.join(' · ') : 'Все заявки';
+        }
+
+        function renderLegend() {
+            const emps = selectedEmpId ? appData.employees.filter(e => e.id === selectedEmpId) : appData.employees;
+            document.getElementById('legend').innerHTML = emps.length ? emps.map(e =>
+                `<span class="legend-item"><span class="legend-dot" style="background:${e.color};"></span>${e.name.split(' ')[0]}</span>`
+                ).join('') : '<span style="font-size:0.7rem;color:#999;">Нет поверителей</span>';
+        }
+
+        function renderEmployees() {
+            const list = document.getElementById('emp-list');
+            if (appData.employees.length === 0) {
+                list.innerHTML =
+                    `<div class="empty-hint">Нет поверителей. Добавьте первого:</div><div class="emp-add-row"><input type="text" id="emp-name-input" placeholder="ФИО поверителя"><input type="text" id="emp-role-input" placeholder="Специализация" style="max-width:100px;"><button onclick="addEmployee()">+</button></div>`;
+                return;
+            }
+            list.innerHTML = appData.employees.map(e =>
+                `<div class="emp-item ${selectedEmpId===e.id?'selected':''}" onclick="selectEmployee('${e.id}')" title="${e.role||''}"><span class="emp-dot" style="background:${e.color};"></span><span>${e.name}</span><span class="role">${e.role||''}</span><button class="delete-emp" onclick="event.stopPropagation();deleteEmployee('${e.id}')">×</button></div>`
+                ).join('') +
+                `<div class="emp-add-row"><input type="text" id="emp-name-input" placeholder="ФИО поверителя"><input type="text" id="emp-role-input" placeholder="Специализация" style="max-width:100px;"><button onclick="addEmployee()">+</button></div>`;
+        }
+
+        function selectEmployee(id) { selectedEmpId = selectedEmpId === id ? null : id;
+            renderAll(); }
+
+        function addEmployee() {
+            const ni = document.getElementById('emp-name-input'),
+                name = ni.value.trim();
+            if (!name) return showToast('Введите ФИО');
+            const role = document.getElementById('emp-role-input').value.trim();
+            const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#e91e63', '#00bcd4',
+                '#ff5722'
+            ];
+            const color = colors[appData.employees.length % colors.length];
+            saveEmployeeToFB({ name, role, color }).then(() => showToast('Поверитель добавлен'));
+            ni.value = '';
+            document.getElementById('emp-role-input').value = '';
+        }
+
+        function deleteEmployee(id) {
+            if (!confirm('Удалить поверителя и все его выезды?')) return;
+            deleteEmployeeFromFB(id);
+            appData.events.filter(ev => ev.employeeId === id).forEach(ev => deleteEventFromFB(ev.id));
+            if (selectedEmpId === id) selectedEmpId = null;
+            showToast('Удалено');
+        }
+
+        function renderClients() {
+            const list = document.getElementById('client-list');
+            if (appData.clients.length === 0) {
+                list.innerHTML =
+                    `<div class="empty-hint">Нет заказчиков. Добавьте первого:</div><div class="client-add-row"><input type="text" id="client-name-input" placeholder="Название организации"><input type="text" id="client-addr-input" placeholder="Адрес" style="max-width:140px;"><button onclick="addClient()">+</button></div>`;
+                return;
+            }
+            list.innerHTML =
+                `<div class="client-list">${appData.clients.map(c=>`<span class="client-tag ${selectedClientId===c.id?'selected':''}" style="background:${c.color};" onclick="selectClient('${c.id}')" title="${c.address||''}">${c.name}<span class="delete-client" onclick="event.stopPropagation();deleteClient('${c.id}')">×</span></span>`).join('')}</div><div class="client-add-row"><input type="text" id="client-name-input" placeholder="Название организации"><input type="text" id="client-addr-input" placeholder="Адрес" style="max-width:140px;"><button onclick="addClient()">+</button></div>`;
+        }
+
+        function selectClient(id) { selectedClientId = selectedClientId === id ? null : id;
+            renderAll(); }
+
+        function addClient() {
+            const ni = document.getElementById('client-name-input'),
+                name = ni.value.trim();
+            if (!name) return showToast('Введите название');
+            const address = document.getElementById('client-addr-input').value.trim();
+            const colors = ['#1e8449', '#6c3483', '#2471a3', '#c0392b', '#d35400', '#1a5276', '#922b21', '#17a589'];
+            const color = colors[appData.clients.length % colors.length];
+            saveClientToFB({ name, address, color }).then(() => showToast('Заказчик добавлен'));
+            ni.value = '';
+            document.getElementById('client-addr-input').value = '';
+        }
+
+        function deleteClient(id) {
+            if (!confirm('Удалить заказчика и все связанные выезды?')) return;
+            deleteClientFromFB(id);
+            appData.events.filter(ev => ev.clientId === id).forEach(ev => deleteEventFromFB(ev.id));
+            if (selectedClientId === id) selectedClientId = null;
+            showToast('Удалено');
+        }
+
+        function renderCalendarView() {
+            document.getElementById('cal-months-view').style.display = currentView === 'months' ? 'block' : 'none';
+            document.getElementById('cal-month-detail').style.display = currentView === 'month-detail' ? 'block' : 'none';
+            if (currentView === 'months') renderMonthsGrid();
+            else renderMonthDetail();
+        }
+
+        function renderMonthsGrid() {
+            const container = document.getElementById('cal-months-view');
+            const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь',
+                'Ноябрь', 'Декабрь'
+            ];
+            const year = new Date().getFullYear();
+            const dateColors = getDateColorMap();
+            let html = '<div class="months-grid">';
+            months.forEach((mName, mIdx) => {
+                const count = getEventsCountForMonth(year, mIdx);
+                const firstDay = new Date(year, mIdx, 1);
+                const startOffset = (firstDay.getDay() + 6) % 7;
+                const lastDay = new Date(year, mIdx + 1, 0);
+                const totalDays = lastDay.getDate();
+                let miniHtml = '';
+                for (let i = 0; i < startOffset; i++) miniHtml += '<div class="mc-mini-day"></div>';
+                for (let d = 1; d <= totalDays; d++) {
+                    const ds = fmtDate(new Date(year, mIdx, d));
+                    const has = dateColors[ds] && dateColors[ds].length > 0;
+                    const bg = has ? dateColors[ds][0] : 'transparent';
+                    miniHtml +=
+                        `<div class="mc-mini-day${has?' has-event':''}" style="background:${bg};"></div>`;
+                }
+                const totalCells = startOffset + totalDays;
+                const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+                for (let i = 0; i < remaining; i++) miniHtml += '<div class="mc-mini-day"></div>';
+                html +=
+                    `<div class="month-card" onclick="openMonth(${mIdx})"><div class="mc-name">${mName}</div><div class="mc-mini-grid">${miniHtml}</div><span class="mc-badge">${count} заявк${count===1?'а':(count>=2&&count<=4?'и':'')}</span></div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function openMonth(mIdx) { detailMonthIdx = mIdx;
+            currentView = 'month-detail';
+            renderCalendarView(); }
+
+        function goBackToMonths() { currentView = 'months';
+            renderCalendarView(); }
+
+        function renderMonthDetail() {
+            const container = document.getElementById('cal-month-detail');
+            const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь',
+                'Ноябрь', 'Декабрь'
+            ];
+            const year = new Date().getFullYear();
+            const mIdx = detailMonthIdx;
+            const dateColors = getDateColorMap();
+            const today = new Date();
+            const todayStr = fmtDate(today);
+            const firstDay = new Date(year, mIdx, 1);
+            const lastDay = new Date(year, mIdx + 1, 0);
+            const startOffset = (firstDay.getDay() + 6) % 7;
+            const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+            let html =
+                `<div class="cal-back-row"><button class="btn btn-outline btn-xs" onclick="goBackToMonths()">← Назад</button><span class="cal-title">${months[mIdx]} ${year}</span></div>`;
+            html += '<div class="month-detail"><div class="md-grid">';
+            dayNames.forEach(d => html += `<div class="md-day-name">${d}</div>`);
+            for (let i = 0; i < startOffset; i++) html += '<div class="md-day empty"></div>';
+            for (let d = 1; d <= lastDay.getDate(); d++) {
+                const date = new Date(year, mIdx, d),
+                    ds = fmtDate(date);
+                let cls = 'md-day';
+                if (ds === todayStr) cls += ' today';
+                if (ds === selectedDate) cls += ' selected';
+                const colors = dateColors[ds] || [];
+                let dotsHtml = '';
+                if (colors.length > 0) { const sc = colors.slice(0, 4);
+                    dotsHtml =
+                        `<span class="day-dots">${sc.map(c=>`<span class="day-dot" style="background:${c};"></span>`).join('')}</span>`; }
+                html +=
+                    `<div class="${cls}" onclick="selectDate('${ds}')">${d}${dotsHtml}</div>`;
+            }
+            html += '</div></div>';
+            container.innerHTML = html;
+        }
+
+        function selectDate(dateStr) { selectedDate = selectedDate === dateStr ? null : dateStr;
+            renderAll(); }
+
+        function clearFilter() { selectedEmpId = null;
+            selectedClientId = null;
+            selectedDate = null;
+            renderAll(); }
+
+        function renderEvents() {
+            const container = document.getElementById('events-list'),
+                events = getFilteredEvents();
+            if (events.length === 0) { container.innerHTML =
+                    '<div class="no-events"><div class="icon">📋</div>Нет заявок по выбранным фильтрам</div>'; return; }
+            container.innerHTML =
+                `<table class="events-table"><thead><tr><th>Поверитель</th><th>Заказчик</th><th>Даты</th><th>Примечание</th><th></th></tr></thead><tbody>${events.map(ev=>{ const emp=getEmployee(ev.employeeId), cli=getClient(ev.clientId); const sd=new Date(ev.start), ed=new Date(ev.end), isMulti=ev.start!==ev.end; const ds=isMulti?`${sd.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})} — ${ed.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}`:sd.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}); const days=Math.round((ed-sd)/86400000)+1; return `<tr onclick="openEditEventModal('${ev.id}')"><td><span class="emp-badge"><span class="emp-dot" style="background:${emp?.color||'#888'};width:10px;height:10px;"></span>${emp?.name||'?'}</span></td><td><span class="client-badge" style="background:${cli?.color||'#888'};">${cli?.name||'?'}</span></td><td class="date-range">${ds} ${isMulti?`<span class="days-badge">(${days} дн.)</span>`:''}</td><td class="note-cell">${ev.note||''}</td><td><button class="delete-event" onclick="event.stopPropagation();deleteEventById('${ev.id}')">×</button></td></tr>`; }).join('')}</tbody></table>`;
+        }
+
+        function deleteEventById(id) {
+            if (!confirm('Удалить этот выезд?')) return;
+            deleteEventFromFB(id);
+            showToast('Выезд удалён');
+        }
+
+        function downloadExcel() {
+            const events = getFilteredEvents();
+            if (events.length === 0) return showToast('Нет заявок для скачивания');
+            let csv = '\uFEFF';
+            csv += 'Поверитель;Заказчик;Дата начала;Дата окончания;Дней;Примечание\n';
+            events.forEach(ev => {
+                const emp = getEmployee(ev.employeeId);
+                const cli = getClient(ev.clientId);
+                const sd = new Date(ev.start),
+                    ed = new Date(ev.end);
+                const days = Math.round((ed - sd) / 86400000) + 1;
+                csv +=
+                    `${emp?emp.name:''};${cli?cli.name:''};${sd.toLocaleDateString('ru-RU')};${ed.toLocaleDateString('ru-RU')};${days};${(ev.note||'').replace(/;/g,',')}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Выезды_поверителей_${new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast('Файл скачан!');
+        }
+
+        function renderModalCalendar() {
+            const container = document.getElementById('modal-calendar');
+            const year = modalMonth.getFullYear();
+            const month = modalMonth.getMonth();
+            const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь',
+                'Ноябрь', 'Декабрь'
+            ];
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startOffset = (firstDay.getDay() + 6) % 7;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayStr = fmtDate(today);
+            const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+            let html =
+                `<div class="mc-header"><button onclick="changeModalMonth(-1)">◀</button>${months[month]} ${year}<button onclick="changeModalMonth(1)">▶</button></div><div class="mc-grid">`;
+            dayNames.forEach(d => html += `<div class="mc-day-name">${d}</div>`);
+            for (let i = 0; i < startOffset; i++) html += '<div class="mc-day other-month"></div>';
+            for (let d = 1; d <= lastDay.getDate(); d++) {
+                const date = new Date(year, month, d);
+                const ds = fmtDate(date);
+                let cls = 'mc-day';
+                if (ds === todayStr) cls += ' today';
+                if (pickStart && ds === pickStart) cls += ' range-start';
+                if (pickEnd && ds === pickEnd) cls += ' range-end';
+                if (pickStart && pickEnd && ds > pickStart && ds < pickEnd) cls += ' in-range';
+                if (pickStart && !pickEnd && ds === pickStart) cls += ' range-start range-end';
+                html += `<div class="${cls}" onclick="pickDate('${ds}')">${d}</div>`;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+            updateDateDisplay();
+        }
+
+        function changeModalMonth(delta) { modalMonth.setMonth(modalMonth.getMonth() + delta);
+            renderModalCalendar(); }
+
+        function pickDate(dateStr) {
+            if (!pickStart || (pickStart && pickEnd)) { pickStart = dateStr;
+                pickEnd = null; } else { if (dateStr < pickStart) { pickEnd = pickStart;
+                    pickStart = dateStr; } else { pickEnd = dateStr; } }
+            document.getElementById('event-start').value = pickStart;
+            document.getElementById('event-end').value = pickEnd || pickStart;
+            renderModalCalendar();
+        }
+
+        function updateDateDisplay() {
+            const display = document.getElementById('date-display');
+            const hint = document.getElementById('date-hint');
+            if (!pickStart) { display.textContent = 'Выберите даты в календаре';
+                hint.textContent = 'Нажмите на первую дату, затем на вторую. Дважды по одной = один день'; } else if (pickStart &&
+                !pickEnd) { display.textContent =
+                    `Начало: ${new Date(pickStart).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})} — выберите конец`;
+                hint.textContent = 'Нажмите на дату окончания (или на ту же дату для одного дня)'; } else { const start = new Date(
+                    pickStart),
+                    end = new Date(pickEnd); const days = Math.round((end - start) / 86400000) + 1;
+                display.textContent =
+                    `${start.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})} — ${end.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})} (${days} дн.)`;
+                hint.textContent = 'Готово. Нажмите на другую дату чтобы начать заново'; }
+        }
+
+        function resetModalPickers() { pickStart = null;
+            pickEnd = null;
+            modalMonth = new Date(); }
+
+        function populateSelects() {
+            document.getElementById('event-employee').innerHTML = appData.employees.map(e =>
+                `<option value="${e.id}">${e.name}</option>`).join('');
+            document.getElementById('event-client').innerHTML = appData.clients.map(c =>
+                `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+
+        function openAddEventModal() {
+            if (appData.employees.length === 0) return showToast('Сначала добавьте поверителей');
+            if (appData.clients.length === 0) return showToast('Сначала добавьте заказчиков');
+            document.getElementById('modal-title').textContent = 'Добавить выезд';
+            document.getElementById('event-id').value = '';
+            document.getElementById('event-note').value = '';
+            document.getElementById('btn-delete-event').style.display = 'none';
+            resetModalPickers();
+            document.getElementById('event-start').value = '';
+            document.getElementById('event-end').value = '';
+            populateSelects();
+            if (selectedEmpId) document.getElementById('event-employee').value = selectedEmpId;
+            if (selectedClientId) document.getElementById('event-client').value = selectedClientId;
+            renderModalCalendar();
+            document.getElementById('modal-event').classList.add('show');
+        }
+
+        function openEditEventModal(eventId) {
+            const ev = appData.events.find(e => e.id === eventId);
+            if (!ev) return;
+            document.getElementById('modal-title').textContent = 'Редактировать выезд';
+            document.getElementById('event-id').value = ev.id;
+            document.getElementById('event-note').value = ev.note || '';
+            document.getElementById('btn-delete-event').style.display = 'inline-block';
+            pickStart = ev.start;
+            pickEnd = ev.end;
+            document.getElementById('event-start').value = ev.start;
+            document.getElementById('event-end').value = ev.end;
+            modalMonth = new Date(ev.start);
+            populateSelects();
+            document.getElementById('event-employee').value = ev.employeeId;
+            document.getElementById('event-client').value = ev.clientId;
+            renderModalCalendar();
+            document.getElementById('modal-event').classList.add('show');
+        }
+
+        function saveEvent() {
+            const id = document.getElementById('event-id').value;
+            const employeeId = document.getElementById('event-employee').value;
+            const clientId = document.getElementById('event-client').value;
+            const start = document.getElementById('event-start').value;
+            const end = document.getElementById('event-end').value;
+            const note = document.getElementById('event-note').value.trim();
+            if (!employeeId || !clientId || !start || !end) return showToast('Заполните обязательные поля');
+            if (end < start) return showToast('Дата окончания раньше начала');
+            const eventData = { employeeId, clientId, start, end, note };
+            if (id) {
+                updateEventInFB(id, eventData).then(() => showToast('Сохранено'));
+            } else {
+                saveEventToFB(eventData).then(() => showToast('Сохранено'));
+            }
+            closeModal('modal-event');
+        }
+
+        function deleteEvent() {
+            const id = document.getElementById('event-id').value;
+            if (!id) return;
+            if (!confirm('Удалить?')) return;
+            deleteEventFromFB(id);
+            closeModal('modal-event');
+            showToast('Удалено');
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+        document.getElementById('modal-event').addEventListener('click', function(e) { if (e.target === this) closeModal(
+                'modal-event'); });
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal('modal-event'); });
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            clearTimeout(t._timeout);
+            t._timeout = setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        // Запуск
+        subscribeToData();
+    </script>
+</body>
+</html>
