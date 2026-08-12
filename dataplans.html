@@ -20,122 +20,124 @@
             --transition: 0.15s ease;
         }
         * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; line-height:1.4; }
+        body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; line-height:1.4; overflow-x:hidden; }
         .header { background:var(--card); border-bottom:1px solid var(--border); padding:10px 20px; display:flex; align-items:center; justify-content:space-between; box-shadow:var(--shadow); position:sticky; top:0; z-index:100; }
-        .header .logo { font-size:1.2rem; font-weight:700; color:var(--primary); }
+        .header .logo { font-size:1.1rem; font-weight:700; color:var(--primary); }
         .header .sync-status { font-size:0.7rem; color:var(--text-secondary); display:flex; align-items:center; gap:4px; }
-        .header .sync-dot { width:8px; height:8px; border-radius:50%; background:#ccc; }
+        .header .sync-dot { width:8px; height:8px; border-radius:50%; background:#ccc; flex-shrink:0; }
         .header .sync-dot.online { background:#2ecc71; }
         .header .sync-dot.offline { background:#e74c3c; }
         .header .sync-dot.syncing { background:#f39c12; animation:pulse 0.8s infinite; }
         @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-        .btn { padding:7px 16px; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.85rem; font-weight:500; transition:var(--transition); }
+        .btn { padding:7px 14px; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.8rem; font-weight:500; transition:var(--transition); white-space:nowrap; }
         .btn-primary { background:var(--primary); color:#fff; }
         .btn-primary:hover { opacity:0.9; }
         .btn-outline { background:#fff; border:1px solid var(--border); }
         .btn-outline:hover { background:#f5f5f5; }
         .btn-danger { background:var(--danger); color:#fff; }
-        .btn-sm { padding:4px 10px; font-size:0.75rem; }
-        .btn-xs { padding:3px 7px; font-size:0.7rem; }
+        .btn-sm { padding:5px 10px; font-size:0.75rem; }
+        .btn-xs { padding:3px 6px; font-size:0.7rem; }
         .btn-success { background:#1e8449; color:#fff; }
         .btn-success:hover { opacity:0.9; }
+        .header-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 
-        .main-container { display:flex; flex-direction:column; gap:16px; padding:16px 20px; max-width:1600px; margin:0 auto; }
-        .top-row { display:grid; grid-template-columns:260px 1fr 380px; gap:16px; }
+        .main-container { display:flex; flex-direction:column; gap:12px; padding:12px 16px; max-width:1600px; margin:0 auto; }
+        .top-row { display:grid; grid-template-columns:250px 1fr 370px; gap:12px; }
         @media(max-width:1200px) { .top-row { grid-template-columns:1fr; max-width:600px; margin:0 auto; } }
 
-        .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); display:flex; flex-direction:column; }
-        .card-header { padding:10px 14px; border-bottom:1px solid var(--border); font-weight:700; font-size:0.9rem; color:var(--primary); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-shrink:0; }
-        .card-header .count { font-size:0.75rem; background:var(--primary-light); color:var(--primary); padding:2px 8px; border-radius:10px; font-weight:600; }
-        .card-body { padding:10px 14px; overflow-y:auto; flex:1; min-height:0; }
+        .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); display:flex; flex-direction:column; min-height:0; }
+        .card-header { padding:8px 12px; border-bottom:1px solid var(--border); font-weight:700; font-size:0.85rem; color:var(--primary); display:flex; align-items:center; justify-content:space-between; gap:6px; flex-shrink:0; }
+        .card-header .count { font-size:0.7rem; background:var(--primary-light); color:var(--primary); padding:2px 7px; border-radius:10px; font-weight:600; }
+        .card-body { padding:8px 12px; overflow-y:auto; flex:1; min-height:0; }
 
-        .emp-list-scroll { max-height:280px; overflow-y:auto; margin-bottom:8px; }
-        .emp-item { display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:var(--radius-sm); cursor:pointer; transition:var(--transition); font-size:0.85rem; margin-bottom:2px; border:2px solid transparent; }
+        .emp-list-scroll { max-height:250px; overflow-y:auto; margin-bottom:6px; }
+        .emp-item { display:flex; align-items:center; gap:6px; padding:6px 7px; border-radius:var(--radius-sm); cursor:pointer; transition:var(--transition); font-size:0.8rem; margin-bottom:1px; border:2px solid transparent; }
         .emp-item:hover { background:#f5f5f5; }
         .emp-item.selected { background:var(--primary-light); border-color:var(--primary); font-weight:600; }
-        .emp-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+        .emp-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
         .emp-item .emp-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .emp-item .delete-emp { display:none; background:none; border:none; color:#ccc; cursor:pointer; font-size:0.9rem; padding:0 2px; flex-shrink:0; }
+        .emp-item .delete-emp { display:none; background:none; border:none; color:#ccc; cursor:pointer; font-size:0.85rem; padding:0 2px; flex-shrink:0; }
         .emp-item:hover .delete-emp { display:block; }
         .emp-item .delete-emp:hover { color:var(--danger); }
         .emp-add-row { display:flex; gap:4px; }
-        .emp-add-row input { flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.85rem; min-width:0; }
+        .emp-add-row input { flex:1; padding:7px 9px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.8rem; min-width:0; }
         .emp-add-row input:focus { outline:none; border-color:var(--primary); }
-        .emp-add-row button { padding:8px 14px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.85rem; white-space:nowrap; }
+        .emp-add-row button { padding:7px 12px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.8rem; white-space:nowrap; }
 
-        .client-list-scroll { max-height:280px; overflow-y:auto; margin-bottom:8px; }
-        .client-list { display:flex; flex-wrap:wrap; gap:8px; align-content:flex-start; }
-        .client-tag { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; transition:var(--transition); border:2px solid transparent; color:#1a1a1a; min-width:0; }
-        .client-tag:hover { opacity:1; transform:translateY(-1px); box-shadow:0 2px 6px rgba(0,0,0,0.15); }
-        .client-tag.selected { border-color:#1a1a1a; box-shadow:0 0 0 2px #fff, 0 0 0 5px #1a1a1a; }
-        .client-tag .delete-client { margin-left:2px; font-size:1.1rem; line-height:1; cursor:pointer; font-weight:700; color:rgba(0,0,0,0.4); padding:0 2px; border-radius:50%; transition:var(--transition); }
-        .client-tag .delete-client:hover { color:#c0392b; background:rgba(255,255,255,0.5); }
+        .client-list-scroll { max-height:250px; overflow-y:auto; margin-bottom:6px; }
+        .client-list { display:flex; flex-wrap:wrap; gap:6px; align-content:flex-start; }
+        .client-tag { display:inline-flex; align-items:center; gap:5px; padding:6px 10px; border-radius:6px; font-size:0.8rem; font-weight:600; cursor:pointer; transition:var(--transition); border:2px solid transparent; color:#1a1a1a; }
+        .client-tag:hover { opacity:1; transform:translateY(-1px); box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+        .client-tag.selected { border-color:#1a1a1a; box-shadow:0 0 0 2px #fff, 0 0 0 4px #1a1a1a; }
+        .client-tag .delete-client { margin-left:2px; font-size:1rem; line-height:1; cursor:pointer; font-weight:700; color:rgba(0,0,0,0.35); padding:0 2px; border-radius:50%; transition:var(--transition); }
+        .client-tag .delete-client:hover { color:#c0392b; background:rgba(255,255,255,0.6); }
         .client-add-row { display:flex; gap:4px; }
-        .client-add-row input { flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.85rem; min-width:0; }
+        .client-add-row input { flex:1; padding:7px 9px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.8rem; min-width:0; }
         .client-add-row input:focus { outline:none; border-color:var(--primary); }
-        .client-add-row button { padding:8px 14px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.85rem; white-space:nowrap; }
+        .client-add-row button { padding:7px 12px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.8rem; white-space:nowrap; }
 
-        .cal-back-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-        .cal-back-row .cal-title { font-weight:700; font-size:0.9rem; color:var(--primary); }
-        .months-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
-        .month-card { background:#fafafa; border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; transition:var(--transition); text-align:center; padding:8px 6px; }
+        .cal-back-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+        .cal-back-row .cal-title { font-weight:700; font-size:0.85rem; color:var(--primary); }
+        .months-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
+        .month-card { background:#fafafa; border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; transition:var(--transition); text-align:center; padding:6px 5px; }
         .month-card:hover { background:#f0f4f8; border-color:var(--primary); }
-        .month-card .mc-name { font-size:0.8rem; font-weight:600; color:var(--primary); margin-bottom:2px; }
-        .month-card .mc-mini-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; margin:4px 0; }
-        .month-card .mc-mini-day { font-size:0.5rem; color:#ccc; aspect-ratio:1; display:flex; align-items:center; justify-content:center; }
+        .month-card .mc-name { font-size:0.75rem; font-weight:600; color:var(--primary); margin-bottom:1px; }
+        .month-card .mc-mini-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:0; margin:3px 0; }
+        .month-card .mc-mini-day { font-size:0.45rem; color:#ccc; aspect-ratio:1; display:flex; align-items:center; justify-content:center; }
         .month-card .mc-mini-day.has-event { border-radius:2px; }
-        .month-card .mc-badge { font-size:0.6rem; color:var(--primary); background:var(--primary-light); padding:1px 6px; border-radius:6px; display:inline-block; }
+        .month-card .mc-badge { font-size:0.6rem; color:var(--primary); background:var(--primary-light); padding:1px 5px; border-radius:6px; display:inline-block; }
         .md-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center; }
-        .md-day-name { font-size:0.65rem; color:#999; font-weight:600; padding:4px 0; }
-        .md-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer; font-size:0.75rem; position:relative; transition:var(--transition); }
+        .md-day-name { font-size:0.6rem; color:#999; font-weight:600; padding:3px 0; }
+        .md-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer; font-size:0.7rem; position:relative; transition:var(--transition); }
         .md-day:hover { background:#f0f0f0; }
         .md-day.today { border:2px solid var(--primary); font-weight:700; }
         .md-day.selected { background:var(--primary); color:#fff; font-weight:700; }
         .md-day.empty { cursor:default; }
         .md-day.empty:hover { background:transparent; }
         .md-day .day-dots { position:absolute; bottom:1px; left:50%; transform:translateX(-50%); display:flex; gap:1px; }
-        .md-day .day-dot { width:4px; height:4px; border-radius:50%; flex-shrink:0; }
+        .md-day .day-dot { width:3px; height:3px; border-radius:50%; flex-shrink:0; }
         .md-day.selected .day-dot { background:#fff !important; }
 
-        .filter-info { font-size:0.75rem; color:var(--text-secondary); margin-top:8px; text-align:center; min-height:18px; }
-        .btn-clear { width:100%; margin-top:6px; font-size:0.75rem; }
-        .legend { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; font-size:0.7rem; }
-        .legend-item { display:flex; align-items:center; gap:4px; }
-        .legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+        .filter-info { font-size:0.7rem; color:var(--text-secondary); margin-top:6px; text-align:center; min-height:16px; }
+        .btn-clear { width:100%; margin-top:5px; font-size:0.7rem; padding:5px; }
+        .legend { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; font-size:0.65rem; }
+        .legend-item { display:flex; align-items:center; gap:3px; }
+        .legend-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 
         .events-card { flex:1; }
-        .events-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
-        .events-table th { text-align:left; padding:10px 12px; border-bottom:2px solid var(--border); font-size:0.75rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; background:#fafafa; position:sticky; top:0; }
-        .events-table td { padding:10px 12px; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
+        .events-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+        .events-table th { text-align:left; padding:8px 10px; border-bottom:2px solid var(--border); font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.3px; background:#fafafa; position:sticky; top:0; }
+        .events-table td { padding:8px 10px; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
         .events-table tbody tr { transition:var(--transition); cursor:pointer; }
         .events-table tbody tr:hover { background:#fafafa; }
-        .emp-badge { display:inline-flex; align-items:center; gap:6px; font-weight:500; }
-        .client-badge { display:inline-block; padding:4px 10px; border-radius:12px; color:#fff; font-size:0.8rem; font-weight:600; }
-        .date-range { white-space:nowrap; font-size:0.85rem; }
-        .days-badge { font-size:0.7rem; color:#999; margin-left:4px; }
-        .note-cell { color:#888; font-size:0.8rem; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .delete-event { background:none; border:none; color:#ccc; cursor:pointer; font-size:1.1rem; padding:0 4px; line-height:1; }
+        .emp-badge { display:inline-flex; align-items:center; gap:5px; font-weight:500; }
+        .client-badge { display:inline-block; padding:3px 8px; border-radius:10px; color:#1a1a1a; font-size:0.75rem; font-weight:600; }
+        .date-range { white-space:nowrap; font-size:0.8rem; }
+        .days-badge { font-size:0.65rem; color:#999; margin-left:3px; }
+        .note-cell { color:#888; font-size:0.75rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .delete-event { background:none; border:none; color:#ccc; cursor:pointer; font-size:1rem; padding:0 3px; line-height:1; }
         .delete-event:hover { color:var(--danger); }
-        .no-events { text-align:center; padding:40px; color:#999; font-size:0.9rem; }
-        .no-events .icon { font-size:2.5rem; margin-bottom:8px; }
-        .empty-hint { font-size:0.75rem; color:#aaa; text-align:center; padding:10px 0; }
-        .header-actions { display:flex; gap:6px; align-items:center; }
+        .no-events { text-align:center; padding:30px; color:#999; font-size:0.85rem; }
+        .no-events .icon { font-size:2rem; margin-bottom:6px; }
+        .empty-hint { font-size:0.7rem; color:#aaa; text-align:center; padding:8px 0; }
 
-        .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:200; justify-content:center; align-items:center; }
+        /* МОДАЛЬНОЕ ОКНО */
+        .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:200; justify-content:center; align-items:center; padding:20px; }
         .modal-overlay.show { display:flex; }
-        .modal { background:var(--card); border-radius:var(--radius); box-shadow:0 4px 20px rgba(0,0,0,0.15); padding:20px; width:90%; max-width:460px; }
-        .modal h3 { margin-bottom:14px; font-size:1rem; color:var(--primary); }
-        .form-group { margin-bottom:12px; }
-        .form-group label { display:block; font-weight:600; margin-bottom:3px; font-size:0.8rem; color:var(--text-secondary); }
-        .form-group select, .form-group input { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.85rem; }
+        .modal { background:var(--card); border-radius:var(--radius); box-shadow:0 4px 20px rgba(0,0,0,0.15); padding:16px; width:100%; max-width:420px; max-height:90vh; display:flex; flex-direction:column; }
+        .modal h3 { margin-bottom:10px; font-size:0.95rem; color:var(--primary); flex-shrink:0; }
+        .modal-scroll { overflow-y:auto; flex:1; min-height:0; padding-right:4px; }
+        .form-group { margin-bottom:10px; }
+        .form-group label { display:block; font-weight:600; margin-bottom:2px; font-size:0.75rem; color:var(--text-secondary); }
+        .form-group select, .form-group input { width:100%; padding:7px 9px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.8rem; }
         .form-group select:focus, .form-group input:focus { outline:none; border-color:var(--primary); }
-        .form-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
-        .modal-cal { border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px; margin-top:4px; }
-        .modal-cal .mc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; font-weight:600; font-size:0.85rem; }
-        .modal-cal .mc-header button { background:none; border:none; cursor:pointer; font-size:1rem; padding:2px 6px; border-radius:4px; color:var(--primary); }
+        .form-actions { display:flex; gap:6px; justify-content:flex-end; padding-top:10px; border-top:1px solid var(--border); flex-shrink:0; margin-top:8px; }
+        .modal-cal { border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px; margin-top:2px; }
+        .modal-cal .mc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; font-weight:600; font-size:0.8rem; }
+        .modal-cal .mc-header button { background:none; border:none; cursor:pointer; font-size:0.9rem; padding:1px 5px; border-radius:4px; color:var(--primary); }
         .modal-cal .mc-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; text-align:center; }
-        .modal-cal .mc-day-name { font-size:0.6rem; color:#999; font-weight:600; padding:3px 0; }
-        .modal-cal .mc-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer; font-size:0.7rem; transition:var(--transition); }
+        .modal-cal .mc-day-name { font-size:0.55rem; color:#999; font-weight:600; padding:2px 0; }
+        .modal-cal .mc-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer; font-size:0.65rem; transition:var(--transition); }
         .modal-cal .mc-day:hover { background:#f0f0f0; }
         .modal-cal .mc-day.today { border:2px solid var(--primary); font-weight:700; }
         .modal-cal .mc-day.range-start { background:var(--primary); color:#fff; font-weight:700; border-radius:50% 0 0 50%; }
@@ -143,10 +145,10 @@
         .modal-cal .mc-day.range-start.range-end { border-radius:50%; }
         .modal-cal .mc-day.in-range { background:var(--primary-light); }
         .modal-cal .mc-day.other-month { color:#ccc; }
-        .date-display { background:#f9f9f9; padding:8px 10px; border-radius:var(--radius-sm); font-size:0.85rem; text-align:center; color:var(--primary); font-weight:600; margin-bottom:4px; }
-        .date-hint { font-size:0.7rem; color:#999; text-align:center; margin-bottom:6px; }
+        .date-display { background:#f9f9f9; padding:6px 8px; border-radius:var(--radius-sm); font-size:0.8rem; text-align:center; color:var(--primary); font-weight:600; margin-bottom:2px; }
+        .date-hint { font-size:0.65rem; color:#999; text-align:center; margin-bottom:4px; }
 
-        .toast { position:fixed; bottom:20px; right:20px; background:#333; color:#fff; padding:10px 18px; border-radius:var(--radius-sm); z-index:300; opacity:0; transform:translateY(20px); transition:all 0.3s ease; font-size:0.85rem; pointer-events:none; }
+        .toast { position:fixed; bottom:20px; right:20px; background:#333; color:#fff; padding:8px 16px; border-radius:var(--radius-sm); z-index:300; opacity:0; transform:translateY(20px); transition:all 0.3s ease; font-size:0.8rem; pointer-events:none; }
         .toast.show { opacity:1; transform:translateY(0); }
     </style>
 </head>
@@ -173,11 +175,11 @@
             </div>
             <div class="card">
                 <div class="card-header">📅 Календарь 2026</div>
-                <div class="card-body" id="calendar-body" style="max-height:500px;overflow-y:auto;">
+                <div class="card-body" id="calendar-body" style="max-height:450px;overflow-y:auto;">
                     <div id="cal-months-view"></div>
                     <div id="cal-month-detail" style="display:none;"></div>
                 </div>
-                <div style="padding:0 14px 10px;">
+                <div style="padding:0 12px 8px;">
                     <div class="legend" id="legend"></div>
                     <div class="filter-info" id="filter-info"></div>
                     <button class="btn btn-outline btn-clear" id="btn-clear-filter">Сбросить фильтр</button>
@@ -186,28 +188,30 @@
         </div>
         <div class="card events-card">
             <div class="card-header">📋 Заявки / Выезды <span class="count" id="events-count-label">0</span></div>
-            <div class="card-body" id="events-list" style="max-height:50vh;overflow-y:auto;"></div>
+            <div class="card-body" id="events-list" style="max-height:45vh;overflow-y:auto;"></div>
         </div>
     </div>
 
     <div class="modal-overlay" id="modal-event">
         <div class="modal">
             <h3 id="modal-title">Добавить выезд</h3>
-            <div class="form-group"><label>Поверитель</label><select id="event-employee"></select></div>
-            <div class="form-group"><label>Заказчик</label><select id="event-client"></select></div>
-            <div class="form-group">
-                <label>Даты выезда</label>
-                <div class="date-display" id="date-display">Выберите даты в календаре</div>
-                <div class="date-hint" id="date-hint">Нажмите на первую дату, затем на вторую</div>
-                <div class="modal-cal" id="modal-calendar"></div>
+            <div class="modal-scroll">
+                <div class="form-group"><label>Поверитель</label><select id="event-employee"></select></div>
+                <div class="form-group"><label>Заказчик</label><select id="event-client"></select></div>
+                <div class="form-group">
+                    <label>Даты выезда</label>
+                    <div class="date-display" id="date-display">Выберите даты в календаре</div>
+                    <div class="date-hint" id="date-hint">Нажмите на первую дату, затем на вторую</div>
+                    <div class="modal-cal" id="modal-calendar"></div>
+                </div>
+                <div class="form-group"><label>Примечание</label><input type="text" id="event-note" placeholder="Какие СИ, количество..."></div>
+                <input type="hidden" id="event-id">
+                <input type="hidden" id="event-start">
+                <input type="hidden" id="event-end">
             </div>
-            <div class="form-group"><label>Примечание</label><input type="text" id="event-note" placeholder="Какие СИ, количество..."></div>
-            <input type="hidden" id="event-id">
-            <input type="hidden" id="event-start">
-            <input type="hidden" id="event-end">
             <div class="form-actions">
-                <button class="btn btn-danger" id="btn-delete-event" style="display:none;margin-right:auto;">🗑 Удалить</button>
-                <button class="btn btn-outline" id="btn-cancel-event">Отмена</button>
+                <button class="btn btn-danger btn-sm" id="btn-delete-event" style="display:none;margin-right:auto;">🗑 Удалить</button>
+                <button class="btn btn-outline btn-sm" id="btn-cancel-event">Отмена</button>
                 <button class="btn btn-primary" id="btn-save-event">Сохранить</button>
             </div>
         </div>
@@ -368,33 +372,24 @@
             const emps = selectedEmpId ? appData.employees.filter(e => e.id === selectedEmpId) : appData.employees;
             document.getElementById('legend').innerHTML = emps.length ? emps.map(e =>
                 `<span class="legend-item"><span class="legend-dot" style="background:${e.color};"></span>${e.name.split(' ')[0]}</span>`
-                ).join('') : '<span style="font-size:0.7rem;color:#999;">Нет поверителей</span>';
+                ).join('') : '<span style="font-size:0.65rem;color:#999;">Нет поверителей</span>';
         }
 
         function renderEmployees() {
-            const container = document.getElementById('emp-list');
-            let html = '';
-            if (appData.employees.length === 0) {
-                html += '<div class="emp-list-scroll"><div class="empty-hint">Нет поверителей</div></div>';
-            } else {
-                html += '<div class="emp-list-scroll">';
-                appData.employees.forEach(e => {
-                    html += `<div class="emp-item ${selectedEmpId===e.id?'selected':''}" data-empid="${e.id}"><span class="emp-dot" style="background:${e.color};"></span><span class="emp-name">${e.name}</span><button class="delete-emp" data-del-emp="${e.id}">×</button></div>`;
-                });
-                html += '</div>';
-            }
-            html +=
+            const c = document.getElementById('emp-list');
+            let h = appData.employees.length === 0 ?
+                '<div class="emp-list-scroll"><div class="empty-hint">Нет поверителей</div></div>' :
+                '<div class="emp-list-scroll">' + appData.employees.map(e =>
+                    `<div class="emp-item ${selectedEmpId===e.id?'selected':''}" data-empid="${e.id}"><span class="emp-dot" style="background:${e.color};"></span><span class="emp-name">${e.name}</span><button class="delete-emp" data-del-emp="${e.id}">×</button></div>`
+                    ).join('') + '</div>';
+            h +=
                 '<div class="emp-add-row"><input type="text" id="emp-name-input" placeholder="ФИО поверителя"><button id="btn-add-employee">Добавить</button></div>';
-            container.innerHTML = html;
-            container.querySelectorAll('.emp-item').forEach(el => el.addEventListener('click', () => selectEmployee(el
-                .dataset.empid)));
-            container.querySelectorAll('.delete-emp').forEach(el => el.addEventListener('click', (e) => { e
-                .stopPropagation();
+            c.innerHTML = h;
+            c.querySelectorAll('.emp-item').forEach(el => el.addEventListener('click', () => selectEmployee(el.dataset.empid)));
+            c.querySelectorAll('.delete-emp').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation();
                 deleteEmployee(el.dataset.delEmp); }));
-            const ab = container.querySelector('#btn-add-employee');
-            const ai = container.querySelector('#emp-name-input');
-            if (ab) ab.addEventListener('click', addEmployee);
-            if (ai) ai.addEventListener('keydown', (e) => { if (e.key === 'Enter') addEmployee(); });
+            c.querySelector('#btn-add-employee')?.addEventListener('click', addEmployee);
+            c.querySelector('#emp-name-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') addEmployee(); });
         }
 
         function selectEmployee(id) { selectedEmpId = selectedEmpId === id ? null : id;
@@ -402,14 +397,12 @@
 
         function addEmployee() {
             const ni = document.getElementById('emp-name-input');
-            if (!ni) return;
-            const name = ni.value.trim();
-            if (!name) return showToast('Введите ФИО');
+            if (!ni || !ni.value.trim()) return showToast('Введите ФИО');
             const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#e91e63', '#00bcd4',
                 '#ff5722'
             ];
-            const color = colors[appData.employees.length % colors.length];
-            saveEmployeeToFB({ name, color }).then(() => showToast('Поверитель добавлен'));
+            saveEmployeeToFB({ name: ni.value.trim(), color: colors[appData.employees.length % colors.length] }).then(() =>
+                showToast('Поверитель добавлен'));
             ni.value = '';
         }
 
@@ -422,30 +415,22 @@
         }
 
         function renderClients() {
-            const container = document.getElementById('client-list');
-            let html = '';
-            if (appData.clients.length === 0) {
-                html += '<div class="client-list-scroll"><div class="empty-hint">Нет заказчиков</div></div>';
-            } else {
-                html += '<div class="client-list-scroll"><div class="client-list">';
-                appData.clients.forEach(c => {
-                    html +=
-                        `<span class="client-tag ${selectedClientId===c.id?'selected':''}" data-clientid="${c.id}" style="background:${c.color};" title="${c.address||''}">${c.name}<span class="delete-client" data-del-client="${c.id}">×</span></span>`;
-                });
-                html += '</div></div>';
-            }
-            html +=
+            const c = document.getElementById('client-list');
+            let h = appData.clients.length === 0 ?
+                '<div class="client-list-scroll"><div class="empty-hint">Нет заказчиков</div></div>' :
+                '<div class="client-list-scroll"><div class="client-list">' + appData.clients.map(c =>
+                    `<span class="client-tag ${selectedClientId===c.id?'selected':''}" data-clientid="${c.id}" style="background:${c.color};" title="${c.address||''}">${c.name}<span class="delete-client" data-del-client="${c.id}">×</span></span>`
+                    ).join('') + '</div></div>';
+            h +=
                 '<div class="client-add-row"><input type="text" id="client-name-input" placeholder="Название организации"><button id="btn-add-client">Добавить</button></div>';
-            container.innerHTML = html;
-            container.querySelectorAll('.client-tag').forEach(el => el.addEventListener('click', () => selectClient(el
-                .dataset.clientid)));
-            container.querySelectorAll('.delete-client').forEach(el => el.addEventListener('click', (e) => { e
-                .stopPropagation();
+            c.innerHTML = h;
+            c.querySelectorAll('.client-tag').forEach(el => el.addEventListener('click', () => selectClient(el.dataset
+            .clientid)));
+            c.querySelectorAll('.delete-client').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation();
                 deleteClient(el.dataset.delClient); }));
-            const ab = container.querySelector('#btn-add-client');
-            const ai = container.querySelector('#client-name-input');
-            if (ab) ab.addEventListener('click', addClient);
-            if (ai) ai.addEventListener('keydown', (e) => { if (e.key === 'Enter') addClient(); });
+            c.querySelector('#btn-add-client')?.addEventListener('click', addClient);
+            c.querySelector('#client-name-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') addClient
+            (); });
         }
 
         function selectClient(id) { selectedClientId = selectedClientId === id ? null : id;
@@ -453,13 +438,10 @@
 
         function addClient() {
             const ni = document.getElementById('client-name-input');
-            if (!ni) return;
-            const name = ni.value.trim();
-            if (!name) return showToast('Введите название');
-            const colors = ['#f8d7da', '#d1ecf1', '#d4edda', '#fff3cd', '#e8daef', '#fadbd8', '#d5f5e3',
-            '#ebdef0'];
-            const color = colors[appData.clients.length % colors.length];
-            saveClientToFB({ name, address: '', color }).then(() => showToast('Заказчик добавлен'));
+            if (!ni || !ni.value.trim()) return showToast('Введите название');
+            const colors = ['#f8d7da', '#d1ecf1', '#d4edda', '#fff3cd', '#e8daef', '#fadbd8', '#d5f5e3', '#ebdef0'];
+            saveClientToFB({ name: ni.value.trim(), address: '', color: colors[appData.clients.length % colors
+                .length] }).then(() => showToast('Заказчик добавлен'));
             ni.value = '';
         }
 
@@ -479,38 +461,33 @@
         }
 
         function renderMonthsGrid() {
-            const container = document.getElementById('cal-months-view');
+            const c = document.getElementById('cal-months-view');
             const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь',
                 'Ноябрь', 'Декабрь'
             ];
-            const year = new Date().getFullYear();
-            const dateColors = getDateColorMap();
-            let html = '<div class="months-grid">';
-            months.forEach((mName, mIdx) => {
-                const count = getEventsCountForMonth(year, mIdx);
-                const firstDay = new Date(year, mIdx, 1);
-                const startOffset = (firstDay.getDay() + 6) % 7;
-                const lastDay = new Date(year, mIdx + 1, 0);
-                const totalDays = lastDay.getDate();
-                let miniHtml = '';
-                for (let i = 0; i < startOffset; i++) miniHtml += '<div class="mc-mini-day"></div>';
-                for (let d = 1; d <= totalDays; d++) {
-                    const ds = fmtDate(new Date(year, mIdx, d));
-                    const has = dateColors[ds] && dateColors[ds].length > 0;
-                    const bg = has ? dateColors[ds][0] : 'transparent';
-                    miniHtml +=
-                        `<div class="mc-mini-day${has?' has-event':''}" style="background:${bg};"></div>`;
+            const y = new Date().getFullYear(),
+                dc = getDateColorMap();
+            c.innerHTML = '<div class="months-grid">' + months.map((m, i) => {
+                const cnt = getEventsCountForMonth(y, i),
+                    fd = new Date(y, i, 1),
+                    so = (fd.getDay() + 6) % 7,
+                    ld = new Date(y, i + 1, 0),
+                    td = ld.getDate();
+                let mh = '';
+                for (let j = 0; j < so; j++) mh += '<div class="mc-mini-day"></div>';
+                for (let d = 1; d <= td; d++) {
+                    const ds = fmtDate(new Date(y, i, d)),
+                        has = dc[ds] && dc[ds].length > 0;
+                    mh +=
+                        `<div class="mc-mini-day${has?' has-event':''}" style="background:${has?dc[ds][0]:'transparent'};"></div>`;
                 }
-                const totalCells = startOffset + totalDays;
-                const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-                for (let i = 0; i < remaining; i++) miniHtml += '<div class="mc-mini-day"></div>';
-                html +=
-                    `<div class="month-card" data-month="${mIdx}"><div class="mc-name">${mName}</div><div class="mc-mini-grid">${miniHtml}</div><span class="mc-badge">${count} заявк${count===1?'а':(count>=2&&count<=4?'и':'')}</span></div>`;
-            });
-            html += '</div>';
-            container.innerHTML = html;
-            container.querySelectorAll('.month-card').forEach(el => el.addEventListener('click', () => openMonth(parseInt(
-                el.dataset.month))));
+                const tc = so + td,
+                    rem = tc % 7 === 0 ? 0 : 7 - (tc % 7);
+                for (let j = 0; j < rem; j++) mh += '<div class="mc-mini-day"></div>';
+                return `<div class="month-card" data-month="${i}"><div class="mc-name">${m}</div><div class="mc-mini-grid">${mh}</div><span class="mc-badge">${cnt} заявк${cnt===1?'а':(cnt>=2&&cnt<=4?'и':'')}</span></div>`;
+            }).join('') + '</div>';
+            c.querySelectorAll('.month-card').forEach(el => el.addEventListener('click', () => openMonth(parseInt(el.dataset
+                .month))));
         }
 
         function openMonth(mIdx) { detailMonthIdx = mIdx;
@@ -521,42 +498,41 @@
             renderCalendarView(); }
 
         function renderMonthDetail() {
-            const container = document.getElementById('cal-month-detail');
+            const c = document.getElementById('cal-month-detail');
             const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь',
-                'Ноябрь', 'Декабрь'
-            ];
-            const year = new Date().getFullYear();
-            const mIdx = detailMonthIdx;
-            const dateColors = getDateColorMap();
-            const today = new Date();
-            const todayStr = fmtDate(today);
-            const firstDay = new Date(year, mIdx, 1);
-            const lastDay = new Date(year, mIdx + 1, 0);
-            const startOffset = (firstDay.getDay() + 6) % 7;
-            const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-            let html =
-                '<div class="cal-back-row"><button class="btn btn-outline btn-xs" id="btn-back-months">← Назад</button><span class="cal-title">' +
-                months[mIdx] + ' ' + year + '</span></div><div class="month-detail"><div class="md-grid">';
-            dayNames.forEach(d => html += `<div class="md-day-name">${d}</div>`);
-            for (let i = 0; i < startOffset; i++) html += '<div class="md-day empty"></div>';
-            for (let d = 1; d <= lastDay.getDate(); d++) {
-                const date = new Date(year, mIdx, d),
+                    'Ноябрь', 'Декабрь'
+                ],
+                y = new Date().getFullYear(),
+                mi = detailMonthIdx,
+                dc = getDateColorMap(),
+                today = new Date(),
+                ts = fmtDate(today),
+                fd = new Date(y, mi, 1),
+                ld = new Date(y, mi + 1, 0),
+                so = (fd.getDay() + 6) % 7,
+                dn = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+            let h =
+                `<div class="cal-back-row"><button class="btn btn-outline btn-xs" id="btn-back-months">← Назад</button><span class="cal-title">${months[mi]} ${y}</span></div><div class="month-detail"><div class="md-grid">`;
+            dn.forEach(d => h += `<div class="md-day-name">${d}</div>`);
+            for (let i = 0; i < so; i++) h += '<div class="md-day empty"></div>';
+            for (let d = 1; d <= ld.getDate(); d++) {
+                const date = new Date(y, mi, d),
                     ds = fmtDate(date);
                 let cls = 'md-day';
-                if (ds === todayStr) cls += ' today';
+                if (ds === ts) cls += ' today';
                 if (ds === selectedDate) cls += ' selected';
-                const colors = dateColors[ds] || [];
-                let dotsHtml = '';
+                const colors = dc[ds] || [];
+                let dots = '';
                 if (colors.length > 0) { const sc = colors.slice(0, 4);
-                    dotsHtml =
+                    dots =
                         `<span class="day-dots">${sc.map(c=>`<span class="day-dot" style="background:${c};"></span>`).join('')}</span>`; }
-                html += `<div class="${cls}" data-date="${ds}">${d}${dotsHtml}</div>`;
+                h += `<div class="${cls}" data-date="${ds}">${d}${dots}</div>`;
             }
-            html += '</div></div>';
-            container.innerHTML = html;
-            document.getElementById('btn-back-months').addEventListener('click', goBackToMonths);
-            container.querySelectorAll('.md-day[data-date]').forEach(el => el.addEventListener('click', () => selectDate(el
-                .dataset.date)));
+            h += '</div></div>';
+            c.innerHTML = h;
+            c.querySelector('#btn-back-months')?.addEventListener('click', goBackToMonths);
+            c.querySelectorAll('.md-day[data-date]').forEach(el => el.addEventListener('click', () => selectDate(el.dataset
+                .date)));
         }
 
         function selectDate(dateStr) { selectedDate = selectedDate === dateStr ? null : dateStr;
@@ -568,16 +544,15 @@
             renderAll(); }
 
         function renderEvents() {
-            const container = document.getElementById('events-list'),
+            const c = document.getElementById('events-list'),
                 events = getFilteredEvents();
-            if (events.length === 0) { container.innerHTML =
+            if (events.length === 0) { c.innerHTML =
                     '<div class="no-events"><div class="icon">📋</div>Нет заявок по выбранным фильтрам</div>'; return; }
-            container.innerHTML =
-                `<table class="events-table"><thead><tr><th>Поверитель</th><th>Заказчик</th><th>Даты</th><th>Примечание</th><th></th></tr></thead><tbody>${events.map(ev=>{ const emp=getEmployee(ev.employeeId), cli=getClient(ev.clientId); const sd=new Date(ev.start), ed=new Date(ev.end), isMulti=ev.start!==ev.end; const ds=isMulti?`${sd.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})} — ${ed.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}`:sd.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}); const days=Math.round((ed-sd)/86400000)+1; return `<tr data-eventid="${ev.id}"><td><span class="emp-badge"><span class="emp-dot" style="background:${emp?.color||'#888'};width:10px;height:10px;"></span>${emp?.name||'?'}</span></td><td><span class="client-badge" style="background:${cli?.color||'#888'};">${cli?.name||'?'}</span></td><td class="date-range">${ds} ${isMulti?`<span class="days-badge">(${days} дн.)</span>`:''}</td><td class="note-cell">${ev.note||''}</td><td><button class="delete-event" data-del-event="${ev.id}">×</button></td></tr>`; }).join('')}</tbody></table>`;
-            container.querySelectorAll('tr[data-eventid]').forEach(el => el.addEventListener('click', () =>
-                openEditEventModal(el.dataset.eventid)));
-            container.querySelectorAll('.delete-event').forEach(el => el.addEventListener('click', (e) => { e
-                .stopPropagation();
+            c.innerHTML =
+                `<table class="events-table"><thead><tr><th>Поверитель</th><th>Заказчик</th><th>Даты</th><th>Примечание</th><th></th></tr></thead><tbody>${events.map(ev=>{ const emp=getEmployee(ev.employeeId), cli=getClient(ev.clientId); const sd=new Date(ev.start), ed=new Date(ev.end), isMulti=ev.start!==ev.end; const ds=isMulti?`${sd.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})} — ${ed.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}`:sd.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}); const days=Math.round((ed-sd)/86400000)+1; return `<tr data-eventid="${ev.id}"><td><span class="emp-badge"><span class="emp-dot" style="background:${emp?.color||'#888'};width:8px;height:8px;"></span>${emp?.name||'?'}</span></td><td><span class="client-badge" style="background:${cli?.color||'#eee'};">${cli?.name||'?'}</span></td><td class="date-range">${ds} ${isMulti?`<span class="days-badge">(${days} дн.)</span>`:''}</td><td class="note-cell">${ev.note||''}</td><td><button class="delete-event" data-del-event="${ev.id}">×</button></td></tr>`; }).join('')}</tbody></table>`;
+            c.querySelectorAll('tr[data-eventid]').forEach(el => el.addEventListener('click', () => openEditEventModal(el
+                .dataset.eventid)));
+            c.querySelectorAll('.delete-event').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation();
                 deleteEventById(el.dataset.delEvent); }));
         }
 
@@ -593,58 +568,54 @@
             events.forEach(ev => {
                 const emp = getEmployee(ev.employeeId),
                     cli = getClient(ev.clientId);
-                const sd = new Date(ev.start),
-                    ed = new Date(ev.end);
                 csv +=
-                    `${emp?emp.name:''};${cli?cli.name:''};${sd.toLocaleDateString('ru-RU')};${ed.toLocaleDateString('ru-RU')};${Math.round((ed-sd)/86400000)+1};${(ev.note||'').replace(/;/g,',')}\n`;
+                    `${emp?emp.name:''};${cli?cli.name:''};${new Date(ev.start).toLocaleDateString('ru-RU')};${new Date(ev.end).toLocaleDateString('ru-RU')};${Math.round((new Date(ev.end)-new Date(ev.start))/86400000)+1};${(ev.note||'').replace(/;/g,',')}\n`;
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `Выезды_поверителей_${new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')}.csv`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Выезды_поверителей_${new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
             showToast('Файл скачан!');
         }
 
         function renderModalCalendar() {
-            const container = document.getElementById('modal-calendar');
-            const year = modalMonth.getFullYear();
-            const month = modalMonth.getMonth();
-            const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь',
-                'Ноябрь', 'Декабрь'
-            ];
-            const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
-            const startOffset = (firstDay.getDay() + 6) % 7;
-            const today = new Date();
+            const c = document.getElementById('modal-calendar');
+            const y = modalMonth.getFullYear(),
+                m = modalMonth.getMonth(),
+                months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь',
+                    'Ноябрь', 'Декабрь'
+                ],
+                fd = new Date(y, m, 1),
+                ld = new Date(y, m + 1, 0),
+                so = (fd.getDay() + 6) % 7,
+                today = new Date(),
+                ts = fmtDate(today),
+                dn = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
             today.setHours(0, 0, 0, 0);
-            const todayStr = fmtDate(today);
-            const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-            let html =
-                `<div class="mc-header"><button class="mc-prev">◀</button>${months[month]} ${year}<button class="mc-next">▶</button></div><div class="mc-grid">`;
-            dayNames.forEach(d => html += `<div class="mc-day-name">${d}</div>`);
-            for (let i = 0; i < startOffset; i++) html += '<div class="mc-day other-month"></div>';
-            for (let d = 1; d <= lastDay.getDate(); d++) {
-                const date = new Date(year, month, d);
-                const ds = fmtDate(date);
+            let h =
+                `<div class="mc-header"><button class="mc-prev">◀</button>${months[m]} ${y}<button class="mc-next">▶</button></div><div class="mc-grid">`;
+            dn.forEach(d => h += `<div class="mc-day-name">${d}</div>`);
+            for (let i = 0; i < so; i++) h += '<div class="mc-day other-month"></div>';
+            for (let d = 1; d <= ld.getDate(); d++) {
+                const ds = fmtDate(new Date(y, m, d));
                 let cls = 'mc-day';
-                if (ds === todayStr) cls += ' today';
+                if (ds === ts) cls += ' today';
                 if (pickStart && ds === pickStart) cls += ' range-start';
                 if (pickEnd && ds === pickEnd) cls += ' range-end';
                 if (pickStart && pickEnd && ds > pickStart && ds < pickEnd) cls += ' in-range';
                 if (pickStart && !pickEnd && ds === pickStart) cls += ' range-start range-end';
-                html += `<div class="${cls}" data-mc-date="${ds}">${d}</div>`;
+                h += `<div class="${cls}" data-mc-date="${ds}">${d}</div>`;
             }
-            html += '</div>';
-            container.innerHTML = html;
-            container.querySelector('.mc-prev').addEventListener('click', () => changeModalMonth(-1));
-            container.querySelector('.mc-next').addEventListener('click', () => changeModalMonth(1));
-            container.querySelectorAll('[data-mc-date]').forEach(el => el.addEventListener('click', () => pickDate(el.dataset
-                .mcDate)));
+            h += '</div>';
+            c.innerHTML = h;
+            c.querySelector('.mc-prev')?.addEventListener('click', () => changeModalMonth(-1));
+            c.querySelector('.mc-next')?.addEventListener('click', () => changeModalMonth(1));
+            c.querySelectorAll('[data-mc-date]').forEach(el => el.addEventListener('click', () => pickDate(el.dataset.mcDate)));
             updateDateDisplay();
         }
 
@@ -661,17 +632,15 @@
         }
 
         function updateDateDisplay() {
-            const display = document.getElementById('date-display');
-            const hint = document.getElementById('date-hint');
-            if (!pickStart) { display.textContent = 'Выберите даты в календаре';
-                hint.textContent = 'Нажмите на первую дату, затем на вторую'; } else if (pickStart && !pickEnd) { display
-                    .textContent =
-                    `Начало: ${new Date(pickStart).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})} — выберите конец`;
-                hint.textContent = 'Нажмите на дату окончания'; } else { const start = new Date(pickStart),
-                    end = new Date(pickEnd); const days = Math.round((end - start) / 86400000) + 1;
-                display.textContent =
-                    `${start.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} — ${end.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} (${days} дн.)`;
-                hint.textContent = 'Нажмите на другую дату чтобы начать заново'; }
+            const d = document.getElementById('date-display'),
+                h = document.getElementById('date-hint');
+            if (!pickStart) { d.textContent = 'Выберите даты в календаре';
+                h.textContent = 'Нажмите на первую дату, затем на вторую'; } else if (pickStart && !pickEnd) { d.textContent =
+                    `Начало: ${new Date(pickStart).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} — выберите конец`;
+                h.textContent = 'Нажмите на дату окончания'; } else { const s = new Date(pickStart),
+                    e = new Date(pickEnd); d.textContent =
+                    `${s.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} — ${e.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} (${Math.round((e-s)/86400000)+1} дн.)`;
+                h.textContent = 'Нажмите на другую дату чтобы начать заново'; }
         }
 
         function resetModalPickers() { pickStart = null;
@@ -730,10 +699,10 @@
             const note = document.getElementById('event-note').value.trim();
             if (!employeeId || !clientId || !start || !end) return showToast('Заполните обязательные поля');
             if (end < start) return showToast('Дата окончания раньше начала');
-            const eventData = { employeeId, clientId, start, end, note };
-            if (id) { updateEventInFB(id, eventData).then(() => { closeModal('modal-event');
-                    showToast('Сохранено'); }); } else { saveEventToFB(eventData).then(() => { closeModal('modal-event');
-                    showToast('Сохранено'); }); }
+            const ed = { employeeId, clientId, start, end, note };
+            const promise = id ? updateEventInFB(id, ed) : saveEventToFB(ed);
+            promise.then(() => { closeModal('modal-event');
+                showToast('Сохранено'); });
         }
 
         function deleteEvent() {
