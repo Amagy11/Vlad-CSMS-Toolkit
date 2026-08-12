@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=2.0">
-  <title>Отсчёт дней от даты | 35% / 30% / по факту / 100% предоплата</title>
+  <title>Отсчёт дней с даты | 35% / 30% / по факту / 100% предоплата</title>
   <style>
     * {
       margin: 0;
@@ -200,6 +200,12 @@
       margin-top: 0.5rem;
       font-weight: 500;
     }
+    .result-info {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 0.3rem;
+      font-style: italic;
+    }
     button {
       width: 100%;
       background: #2563eb;
@@ -244,14 +250,14 @@
 <body>
   <div class="card">
     <h1>
-      📅 Дни до даты
+      📅 Дни с даты
       <span>+</span>
     </h1>
-    <div class="subtitle">Выберите условие и начальную дату</div>
+    <div class="subtitle">Выберите условие и начальную дату (день отсчёта включён)</div>
 
     <!-- Выбор даты -->
     <div class="date-picker-area">
-      <label for="startDate">📌 Исходная дата</label>
+      <label for="startDate">📌 Исходная дата (день 1)</label>
       <input type="date" id="startDate" required>
     </div>
 
@@ -261,7 +267,7 @@
         <input type="radio" name="dayOption" id="opt35" value="35budget" checked>
         <label for="opt35" class="option-text">
           <span class="option-title">💰 35% бюджет</span>
-          <span class="option-desc">5 рабочих дней</span>
+          <span class="option-desc">5 рабочих дней (с учётом начальной даты)</span>
         </label>
       </div>
       
@@ -269,7 +275,7 @@
         <input type="radio" name="dayOption" id="opt30" value="30percent">
         <label for="opt30" class="option-text">
           <span class="option-title">📊 30%</span>
-          <span class="option-desc">10 рабочих дней</span>
+          <span class="option-desc">10 рабочих дней (с учётом начальной даты)</span>
         </label>
       </div>
       
@@ -277,7 +283,7 @@
         <input type="radio" name="dayOption" id="optFact" value="fact">
         <label for="optFact" class="option-text">
           <span class="option-title">📦 Обычные / по факту</span>
-          <span class="option-desc">30 календарных дней</span>
+          <span class="option-desc">30 календарных дней (с учётом начальной даты)</span>
         </label>
       </div>
 
@@ -295,13 +301,15 @@
       <div class="result-label">Итоговая дата</div>
       <div class="result-date" id="resultDateDisplay">—</div>
       <div class="result-hint" id="resultDescription">выберите дату и условие</div>
+      <div class="result-info" id="resultInfo"></div>
     </div>
 
     <button id="calculateBtn">
       <span>⟳</span> Рассчитать дату
     </button>
     <div class="note">
-      * Рабочие дни: Пн–Пт (без учёта праздников)
+      * Рабочие дни: Пн–Пт (без учёта праздников)<br>
+      * Отсчёт начинается с выбранной даты (она считается днём №1)
     </div>
     <hr>
     <div class="note" style="margin-top: 0.8rem;">
@@ -315,6 +323,7 @@
       const startDateInput = document.getElementById('startDate');
       const resultDateDisplay = document.getElementById('resultDateDisplay');
       const resultDescription = document.getElementById('resultDescription');
+      const resultInfo = document.getElementById('resultInfo');
       const calculateBtn = document.getElementById('calculateBtn');
       const optionRows = document.querySelectorAll('.option-row');
       const radioInputs = document.querySelectorAll('input[name="dayOption"]');
@@ -354,24 +363,50 @@
         return day !== 0 && day !== 6; // 0 вс, 6 сб
       }
 
-      // Добавление рабочих дней
-      function addWorkingDays(startDate, workingDays) {
+      // Добавление рабочих дней НАЧИНАЯ С САМОЙ ДАТЫ (она считается первым рабочим днём, если выпадает на будни)
+      function addWorkingDaysFromDate(startDate, totalWorkingDays) {
+        // Если начальная дата — выходной, нужно найти ближайший рабочий день?
+        // По логике "с даты": если дата выпадает на выходной, вероятно, отсчёт начнётся со следующего рабочего дня.
+        // Но чаще всего подразумевается, что дата уже рабочий день. Сделаем так:
+        // Если начальная дата не рабочий день, первым днём считается следующий рабочий день.
         let current = new Date(startDate);
-        let daysAdded = 0;
-        // Чтобы не зацикливаться, шагаем по одному дню
-        while (daysAdded < workingDays) {
-          current.setDate(current.getDate() + 1);
-          if (isWeekday(current)) {
-            daysAdded++;
+        
+        // Если стартовая дата выходная — сдвигаем на следующий рабочий день (это будет день 1)
+        if (!isWeekday(current)) {
+          // Ищем следующий рабочий день
+          while (!isWeekday(current)) {
+            current.setDate(current.getDate() + 1);
           }
         }
+        
+        // Теперь current — первый рабочий день (день №1)
+        let daysCounted = 1; // уже учли первый день
+        
+        // Если нужно всего 1 рабочий день — возвращаем current
+        if (totalWorkingDays === 1) {
+          return new Date(current);
+        }
+        
+        // Добавляем оставшиеся рабочие дни
+        while (daysCounted < totalWorkingDays) {
+          current.setDate(current.getDate() + 1);
+          if (isWeekday(current)) {
+            daysCounted++;
+          }
+        }
+        
         return new Date(current);
       }
 
-      // Добавление календарных дней
-      function addCalendarDays(startDate, calendarDays) {
+      // Добавление календарных дней НАЧИНАЯ С САМОЙ ДАТЫ (она считается днём №1)
+      function addCalendarDaysFromDate(startDate, totalDays) {
+        // Если нужно 1 день — возвращаем саму дату
+        if (totalDays === 1) {
+          return new Date(startDate);
+        }
+        // Иначе: начальная дата + (totalDays - 1) дней
         let result = new Date(startDate);
-        result.setDate(result.getDate() + calendarDays);
+        result.setDate(result.getDate() + (totalDays - 1));
         return result;
       }
 
@@ -400,6 +435,7 @@
         if (!startDateStr) {
           resultDateDisplay.textContent = '—';
           resultDescription.textContent = '⚠️ Укажите начальную дату';
+          resultInfo.textContent = '';
           return;
         }
 
@@ -407,6 +443,7 @@
         if (isNaN(startDate.getTime())) {
           resultDateDisplay.textContent = '—';
           resultDescription.textContent = 'Некорректная дата';
+          resultInfo.textContent = '';
           return;
         }
 
@@ -414,46 +451,55 @@
         if (!option) {
           resultDateDisplay.textContent = '—';
           resultDescription.textContent = 'Выберите условие';
+          resultInfo.textContent = '';
           return;
         }
 
         let resultDate = null;
         let descriptionText = '';
+        let infoText = '';
 
         // Ветвление по условиям
         switch (option) {
           case '35budget':
-            // 35% бюджет: 5 рабочих дней
-            resultDate = addWorkingDays(startDate, 5);
-            descriptionText = '35% бюджет · +5 рабочих дней';
+            // 35% бюджет: 5 рабочих дней (с учётом начальной даты)
+            resultDate = addWorkingDaysFromDate(startDate, 5);
+            descriptionText = '35% бюджет · 5 рабочих дней';
+            infoText = 'Начальная дата — день 1';
             break;
           case '30percent':
-            // 30%: 10 рабочих дней
-            resultDate = addWorkingDays(startDate, 10);
-            descriptionText = '30% · +10 рабочих дней';
+            // 30%: 10 рабочих дней (с учётом начальной даты)
+            resultDate = addWorkingDaysFromDate(startDate, 10);
+            descriptionText = '30% · 10 рабочих дней';
+            infoText = 'Начальная дата — день 1';
             break;
           case 'fact':
-            // Обычные / по факту: 30 календарных дней
-            resultDate = addCalendarDays(startDate, 30);
-            descriptionText = 'По факту · +30 календарных дней';
+            // Обычные / по факту: 30 календарных дней (с учётом начальной даты)
+            resultDate = addCalendarDaysFromDate(startDate, 30);
+            descriptionText = 'По факту · 30 календарных дней';
+            infoText = 'Начальная дата — день 1';
             break;
           case 'prepaid100':
-            // 100% предоплата: 25 календарных дней
-            resultDate = addCalendarDays(startDate, 25);
-            descriptionText = '100% предоплата · +25 календарных дней';
+            // 100% предоплата: 25 календарных дней с момента оплаты
+            resultDate = addCalendarDaysFromDate(startDate, 25);
+            descriptionText = '100% предоплата · 25 календарных дней';
+            infoText = 'Начальная дата — день 1 (момент оплаты)';
             break;
           default:
             resultDateDisplay.textContent = '—';
             resultDescription.textContent = 'Неизвестный режим';
+            resultInfo.textContent = '';
             return;
         }
 
         if (resultDate && !isNaN(resultDate.getTime())) {
           resultDateDisplay.textContent = formatDateRU(resultDate);
           resultDescription.textContent = descriptionText;
+          resultInfo.textContent = infoText;
         } else {
           resultDateDisplay.textContent = '—';
           resultDescription.textContent = 'Ошибка расчёта';
+          resultInfo.textContent = '';
         }
       }
 
@@ -497,8 +543,7 @@
         calculateAndDisplay();
       });
 
-      // Пересчёт при изменении даты (опционально, можно оставить только по кнопке,
-      // но для удобства сделаем автоматический пересчёт при смене даты)
+      // Пересчёт при изменении даты
       startDateInput.addEventListener('change', () => {
         calculateAndDisplay();
       });
