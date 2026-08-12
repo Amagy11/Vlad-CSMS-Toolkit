@@ -47,9 +47,9 @@
         .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); display:flex; flex-direction:column; }
         .card-header { padding:10px 14px; border-bottom:1px solid var(--border); font-weight:700; font-size:0.9rem; color:var(--primary); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-shrink:0; }
         .card-header .count { font-size:0.75rem; background:var(--primary-light); color:var(--primary); padding:2px 8px; border-radius:10px; font-weight:600; }
-        .card-body { padding:10px 14px; overflow-y:auto; flex:1; min-height:0; }
+        .card-body { padding:10px 14px; overflow-y:auto; flex:1; min-height:0; display:flex; flex-direction:column; }
 
-        .emp-list-scroll { max-height:280px; overflow-y:auto; margin-bottom:6px; }
+        .emp-list-scroll { max-height:280px; overflow-y:auto; margin-bottom:6px; flex-shrink:1; }
         .emp-item { display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:var(--radius-sm); cursor:pointer; transition:var(--transition); font-size:0.85rem; margin-bottom:2px; border:2px solid transparent; }
         .emp-item:hover { background:#f5f5f5; }
         .emp-item.selected { background:var(--primary-light); border-color:var(--primary); font-weight:600; }
@@ -58,18 +58,18 @@
         .emp-item .delete-emp { display:none; background:none; border:none; color:#ccc; cursor:pointer; font-size:0.9rem; padding:0 2px; flex-shrink:0; }
         .emp-item:hover .delete-emp { display:block; }
         .emp-item .delete-emp:hover { color:var(--danger); }
-        .emp-add-row { display:flex; gap:4px; flex-shrink:0; }
+        .emp-add-row { display:flex; gap:4px; flex-shrink:0; margin-top:auto; }
         .emp-add-row input { flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.85rem; min-width:0; }
         .emp-add-row input:focus { outline:none; border-color:var(--primary); }
         .emp-add-row button { padding:8px 14px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.85rem; white-space:nowrap; }
 
-        .client-list-scroll { max-height:280px; overflow-y:auto; margin-bottom:6px; }
+        .client-list-scroll { max-height:280px; overflow-y:auto; margin-bottom:6px; flex-shrink:1; }
         .client-list { display:flex; flex-wrap:wrap; gap:6px; align-content:flex-start; }
         .client-tag { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border-radius:16px; font-size:0.8rem; font-weight:500; color:#fff; cursor:pointer; transition:var(--transition); opacity:0.85; white-space:nowrap; }
         .client-tag:hover { opacity:1; }
         .client-tag.selected { opacity:1; box-shadow:0 0 0 2px #fff, 0 0 0 4px currentColor; }
         .client-tag .delete-client { margin-left:4px; font-size:0.9rem; line-height:1; cursor:pointer; }
-        .client-add-row { display:flex; gap:4px; flex-shrink:0; }
+        .client-add-row { display:flex; gap:4px; flex-shrink:0; margin-top:auto; }
         .client-add-row input { flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.85rem; min-width:0; }
         .client-add-row input:focus { outline:none; border-color:var(--primary); }
         .client-add-row button { padding:8px 14px; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.85rem; white-space:nowrap; }
@@ -164,11 +164,11 @@
         <div class="top-row">
             <div class="card">
                 <div class="card-header">👥 Поверители <span class="count" id="emp-count">0</span></div>
-                <div class="card-body" id="emp-list" style="display:flex;flex-direction:column;"></div>
+                <div class="card-body" id="emp-list"></div>
             </div>
             <div class="card">
                 <div class="card-header">🏢 Заказчики <span class="count" id="client-count">0</span></div>
-                <div class="card-body" id="client-list" style="display:flex;flex-direction:column;"></div>
+                <div class="card-body" id="client-list"></div>
             </div>
             <div class="card">
                 <div class="card-header">📅 Календарь 2026</div>
@@ -277,25 +277,18 @@
         const connectedRef = ref(db, '.info/connected');
         onValue(connectedRef, (snap) => setSyncStatus(snap.val() === true ? 'online' : 'offline'));
 
-        function saveEmployeeToFB(emp) {
-            const nr = push(employeesRef);
-            return set(nr, { name: emp.name, color: emp.color });
-        }
+        function saveEmployeeToFB(emp) { const nr = push(employeesRef); return set(nr, { name: emp.name, color: emp
+            .color }); }
 
         function deleteEmployeeFromFB(id) { return remove(ref(db, 'employees/' + id)); }
 
-        function saveClientToFB(cli) {
-            const nr = push(clientsRef);
-            return set(nr, { name: cli.name, address: cli.address, color: cli.color });
-        }
+        function saveClientToFB(cli) { const nr = push(clientsRef); return set(nr, { name: cli.name, address: cli.address,
+                color: cli.color }); }
 
         function deleteClientFromFB(id) { return remove(ref(db, 'clients/' + id)); }
 
-        function saveEventToFB(ev) {
-            const nr = push(eventsRef);
-            return set(nr, { employeeId: ev.employeeId, clientId: ev.clientId, start: ev.start, end: ev.end, note: ev
-                    .note });
-        }
+        function saveEventToFB(ev) { const nr = push(eventsRef); return set(nr, { employeeId: ev.employeeId, clientId: ev
+                .clientId, start: ev.start, end: ev.end, note: ev.note }); }
 
         function updateEventInFB(id, data) { return set(ref(db, 'events/' + id), data); }
 
@@ -381,34 +374,41 @@
         }
 
         function renderEmployees() {
-            const list = document.getElementById('emp-list');
-            list.innerHTML = `
-            <div class="emp-list-scroll">
-              ${appData.employees.length === 0 
-                ? '<div class="empty-hint">Нет поверителей</div>'
-                : appData.employees.map(e => `
-                  <div class="emp-item ${selectedEmpId===e.id?'selected':''}" data-empid="${e.id}">
-                    <span class="emp-dot" style="background:${e.color};"></span>
-                    <span class="emp-name">${e.name}</span>
-                    <button class="delete-emp" data-del-emp="${e.id}">×</button>
-                  </div>`).join('')
-              }
-            </div>
-            <div class="emp-add-row">
-              <input type="text" id="emp-name-input" placeholder="ФИО поверителя">
-              <button id="btn-add-employee">Добавить</button>
-            </div>`;
-            // Вешаем обработчики
-            list.querySelectorAll('.emp-item').forEach(el => {
+            const container = document.getElementById('emp-list');
+            if (appData.employees.length === 0) {
+                container.innerHTML = `
+                <div class="emp-list-scroll"><div class="empty-hint">Нет поверителей</div></div>
+                <div class="emp-add-row">
+                  <input type="text" id="emp-name-input" placeholder="ФИО поверителя">
+                  <button id="btn-add-employee">Добавить</button>
+                </div>`;
+            } else {
+                container.innerHTML = `
+                <div class="emp-list-scroll">
+                  ${appData.employees.map(e => `
+                    <div class="emp-item ${selectedEmpId===e.id?'selected':''}" data-empid="${e.id}">
+                      <span class="emp-dot" style="background:${e.color};"></span>
+                      <span class="emp-name">${e.name}</span>
+                      <button class="delete-emp" data-del-emp="${e.id}">×</button>
+                    </div>`).join('')}
+                </div>
+                <div class="emp-add-row">
+                  <input type="text" id="emp-name-input" placeholder="ФИО поверителя">
+                  <button id="btn-add-employee">Добавить</button>
+                </div>`;
+            }
+            // Обработчики
+            container.querySelectorAll('.emp-item').forEach(el => {
                 el.addEventListener('click', () => selectEmployee(el.dataset.empid));
             });
-            list.querySelectorAll('.delete-emp').forEach(el => {
+            container.querySelectorAll('.delete-emp').forEach(el => {
                 el.addEventListener('click', (e) => { e.stopPropagation();
                     deleteEmployee(el.dataset.delEmp); });
             });
-            document.getElementById('btn-add-employee').addEventListener('click', addEmployee);
-            document.getElementById('emp-name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter')
-                    addEmployee(); });
+            const addBtn = container.querySelector('#btn-add-employee');
+            const addInput = container.querySelector('#emp-name-input');
+            if (addBtn) addBtn.addEventListener('click', addEmployee);
+            if (addInput) addInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addEmployee(); });
         }
 
         function selectEmployee(id) { selectedEmpId = selectedEmpId === id ? null : id;
@@ -416,6 +416,7 @@
 
         function addEmployee() {
             const ni = document.getElementById('emp-name-input');
+            if (!ni) return;
             const name = ni.value.trim();
             if (!name) return showToast('Введите ФИО');
             const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#e91e63', '#00bcd4',
@@ -435,32 +436,42 @@
         }
 
         function renderClients() {
-            const list = document.getElementById('client-list');
-            list.innerHTML = `
-            <div class="client-list-scroll">
-              ${appData.clients.length === 0 
-                ? '<div class="empty-hint">Нет заказчиков</div>'
-                : `<div class="client-list">${appData.clients.map(c => `
-                  <span class="client-tag ${selectedClientId===c.id?'selected':''}" data-clientid="${c.id}" title="${c.address||''}">
-                    ${c.name}
-                    <span class="delete-client" data-del-client="${c.id}">×</span>
-                  </span>`).join('')}</div>`
-              }
-            </div>
-            <div class="client-add-row">
-              <input type="text" id="client-name-input" placeholder="Название организации">
-              <button id="btn-add-client">Добавить</button>
-            </div>`;
-            list.querySelectorAll('.client-tag').forEach(el => {
+            const container = document.getElementById('client-list');
+            if (appData.clients.length === 0) {
+                container.innerHTML = `
+                <div class="client-list-scroll"><div class="empty-hint">Нет заказчиков</div></div>
+                <div class="client-add-row">
+                  <input type="text" id="client-name-input" placeholder="Название организации">
+                  <button id="btn-add-client">Добавить</button>
+                </div>`;
+            } else {
+                container.innerHTML = `
+                <div class="client-list-scroll">
+                  <div class="client-list">
+                    ${appData.clients.map(c => `
+                      <span class="client-tag ${selectedClientId===c.id?'selected':''}" data-clientid="${c.id}" title="${c.address||''}">
+                        ${c.name}
+                        <span class="delete-client" data-del-client="${c.id}">×</span>
+                      </span>`).join('')}
+                  </div>
+                </div>
+                <div class="client-add-row">
+                  <input type="text" id="client-name-input" placeholder="Название организации">
+                  <button id="btn-add-client">Добавить</button>
+                </div>`;
+            }
+            // Обработчики
+            container.querySelectorAll('.client-tag').forEach(el => {
                 el.addEventListener('click', () => selectClient(el.dataset.clientid));
             });
-            list.querySelectorAll('.delete-client').forEach(el => {
+            container.querySelectorAll('.delete-client').forEach(el => {
                 el.addEventListener('click', (e) => { e.stopPropagation();
                     deleteClient(el.dataset.delClient); });
             });
-            document.getElementById('btn-add-client').addEventListener('click', addClient);
-            document.getElementById('client-name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter')
-                    addClient(); });
+            const addBtn = container.querySelector('#btn-add-client');
+            const addInput = container.querySelector('#client-name-input');
+            if (addBtn) addBtn.addEventListener('click', addClient);
+            if (addInput) addInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addClient(); });
         }
 
         function selectClient(id) { selectedClientId = selectedClientId === id ? null : id;
@@ -468,6 +479,7 @@
 
         function addClient() {
             const ni = document.getElementById('client-name-input');
+            if (!ni) return;
             const name = ni.value.trim();
             if (!name) return showToast('Введите название');
             const colors = ['#1e8449', '#6c3483', '#2471a3', '#c0392b', '#d35400', '#1a5276', '#922b21', '#17a589'];
@@ -599,11 +611,9 @@
             });
         }
 
-        function deleteEventById(id) {
-            if (!confirm('Удалить этот выезд?')) return;
+        function deleteEventById(id) { if (!confirm('Удалить этот выезд?')) return;
             deleteEventFromFB(id);
-            showToast('Выезд удалён');
-        }
+            showToast('Выезд удалён'); }
 
         function downloadExcel() {
             const events = getFilteredEvents();
@@ -781,7 +791,7 @@
             t._timeout = setTimeout(() => t.classList.remove('show'), 2000);
         }
 
-        // === ВЕШАЕМ ОБРАБОТЧИКИ НА КНОПКИ ВНЕ МОДУЛЯ ===
+        // Вешаем обработчики
         document.getElementById('btn-add-event').addEventListener('click', openAddEventModal);
         document.getElementById('btn-download-excel').addEventListener('click', downloadExcel);
         document.getElementById('btn-clear-filter').addEventListener('click', clearFilter);
