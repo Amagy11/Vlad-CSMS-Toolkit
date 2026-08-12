@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=2.0">
+  <title>Отсчёт дней от даты | 35% / 30% / по факту / 100% предоплата</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: linear-gradient(145deg, #f5f7fa 0%, #e9edf5 100%);
+      font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      margin: 0;
+    }
+    .card {
+      background: rgba(255,255,255,0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: #ffffff;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.08);
+      border-radius: 2.5rem;
+      padding: 2rem 2rem 2.5rem;
+      width: 100%;
+      max-width: 550px;
+      transition: all 0.2s ease;
+      border: 1px solid rgba(255,255,255,0.6);
+    }
+    h1 {
+      font-size: 1.9rem;
+      font-weight: 600;
+      color: #1e293b;
+      text-align: center;
+      margin-bottom: 0.35rem;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    h1 span {
+      background: #2563eb;
+      color: white;
+      font-size: 1.4rem;
+      padding: 0.2rem 0.7rem;
+      border-radius: 3rem;
+    }
+    .subtitle {
+      text-align: center;
+      color: #475569;
+      margin-bottom: 2rem;
+      font-weight: 500;
+      font-size: 1rem;
+      border-bottom: 1px dashed #cbd5e1;
+      padding-bottom: 1.2rem;
+    }
+    .date-picker-area {
+      margin-bottom: 2rem;
+    }
+    label {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #334155;
+      display: block;
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    input[type="date"] {
+      width: 100%;
+      padding: 1rem 1.2rem;
+      font-size: 1.1rem;
+      background: #f1f5f9;
+      border: 2px solid #e2e8f0;
+      border-radius: 1.5rem;
+      outline: none;
+      transition: all 0.2s;
+      font-weight: 500;
+      color: #0f172a;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+    }
+    input[type="date"]:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37,99,235,0.15);
+    }
+    .options-box {
+      background: #f8fafc;
+      border-radius: 1.8rem;
+      padding: 1.5rem 1.3rem;
+      margin: 1.5rem 0 1.8rem;
+      border: 1px solid #e9eef3;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+    .option-row {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      background: white;
+      padding: 0.8rem 1rem;
+      border-radius: 1.2rem;
+      transition: background 0.15s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+    .option-row:hover {
+      background: #f1f5ff;
+      border-color: #bfdbfe;
+    }
+    .option-row.selected {
+      background: #eff6ff;
+      border-color: #2563eb;
+      box-shadow: 0 6px 14px rgba(37,99,235,0.12);
+    }
+    input[type="radio"] {
+      appearance: none;
+      width: 1.4rem;
+      height: 1.4rem;
+      border: 2px solid #cbd5e1;
+      border-radius: 50%;
+      margin: 0;
+      display: grid;
+      place-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    input[type="radio"]::before {
+      content: "";
+      width: 0.7rem;
+      height: 0.7rem;
+      border-radius: 50%;
+      transform: scale(0);
+      transition: 0.15s transform ease-in-out;
+      background: #2563eb;
+      display: block;
+    }
+    input[type="radio"]:checked {
+      border-color: #2563eb;
+      background: white;
+    }
+    input[type="radio"]:checked::before {
+      transform: scale(1);
+    }
+    .option-text {
+      display: flex;
+      flex-direction: column;
+    }
+    .option-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #0f172a;
+    }
+    .option-desc {
+      font-size: 0.8rem;
+      color: #475569;
+      font-weight: 500;
+    }
+    .result-block {
+      background: #0f172a;
+      border-radius: 1.8rem;
+      padding: 1.5rem 1.5rem;
+      margin: 1.8rem 0 1.5rem;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 18px 30px -10px rgba(15,23,42,0.4);
+    }
+    .result-label {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-weight: 500;
+      color: #94a3b8;
+      margin-bottom: 0.5rem;
+    }
+    .result-date {
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      line-height: 1.2;
+      word-break: break-word;
+      color: #facc15;
+      text-shadow: 0 2px 5px rgba(250,204,21,0.3);
+    }
+    .result-hint {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      margin-top: 0.5rem;
+      font-weight: 500;
+    }
+    button {
+      width: 100%;
+      background: #2563eb;
+      border: none;
+      color: white;
+      font-weight: 700;
+      font-size: 1.2rem;
+      padding: 1rem 1.5rem;
+      border-radius: 2rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      box-shadow: 0 8px 22px rgba(37,99,235,0.35);
+      letter-spacing: 0.4px;
+    }
+    button:hover {
+      background: #1d4ed8;
+      box-shadow: 0 12px 24px rgba(37,99,235,0.45);
+      transform: translateY(-1px);
+    }
+    button:active {
+      transform: translateY(1px);
+      box-shadow: 0 5px 12px rgba(37,99,235,0.4);
+    }
+    .note {
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      color: #64748b;
+      text-align: center;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 1rem 0 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>
+      📅 Дни до даты
+      <span>+</span>
+    </h1>
+    <div class="subtitle">Выберите условие и начальную дату</div>
+
+    <!-- Выбор даты -->
+    <div class="date-picker-area">
+      <label for="startDate">📌 Исходная дата</label>
+      <input type="date" id="startDate" required>
+    </div>
+
+    <!-- Радио-кнопки с условиями -->
+    <div class="options-box" id="optionsContainer">
+      <div class="option-row" data-option="budget35">
+        <input type="radio" name="dayOption" id="opt35" value="35budget" checked>
+        <label for="opt35" class="option-text">
+          <span class="option-title">💰 35% бюджет</span>
+          <span class="option-desc">5 рабочих дней</span>
+        </label>
+      </div>
+      
+      <div class="option-row" data-option="percent30">
+        <input type="radio" name="dayOption" id="opt30" value="30percent">
+        <label for="opt30" class="option-text">
+          <span class="option-title">📊 30%</span>
+          <span class="option-desc">10 рабочих дней</span>
+        </label>
+      </div>
+      
+      <div class="option-row" data-option="fact30">
+        <input type="radio" name="dayOption" id="optFact" value="fact">
+        <label for="optFact" class="option-text">
+          <span class="option-title">📦 Обычные / по факту</span>
+          <span class="option-desc">30 календарных дней</span>
+        </label>
+      </div>
+
+      <div class="option-row" data-option="prepaid100">
+        <input type="radio" name="dayOption" id="optPrepaid" value="prepaid100">
+        <label for="optPrepaid" class="option-text">
+          <span class="option-title">💯 100% предоплата</span>
+          <span class="option-desc">25 календарных дней с момента оплаты</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Результат -->
+    <div class="result-block" id="resultBox">
+      <div class="result-label">Итоговая дата</div>
+      <div class="result-date" id="resultDateDisplay">—</div>
+      <div class="result-hint" id="resultDescription">выберите дату и условие</div>
+    </div>
+
+    <button id="calculateBtn">
+      <span>⟳</span> Рассчитать дату
+    </button>
+    <div class="note">
+      * Рабочие дни: Пн–Пт (без учёта праздников)
+    </div>
+    <hr>
+    <div class="note" style="margin-top: 0.8rem;">
+      Сегодня: <span id="currentDateSpan"></span>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // DOM элементы
+      const startDateInput = document.getElementById('startDate');
+      const resultDateDisplay = document.getElementById('resultDateDisplay');
+      const resultDescription = document.getElementById('resultDescription');
+      const calculateBtn = document.getElementById('calculateBtn');
+      const optionRows = document.querySelectorAll('.option-row');
+      const radioInputs = document.querySelectorAll('input[name="dayOption"]');
+      const currentDateSpan = document.getElementById('currentDateSpan');
+
+      // Функция для форматирования даты в российский локальный формат (ДД.ММ.ГГГГ)
+      function formatDateRU(date) {
+        if (!date || isNaN(date.getTime())) return '—';
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}.${month}.${year}`;
+      }
+
+      // Отображение текущей даты
+      function updateCurrentDateDisplay() {
+        const today = new Date();
+        currentDateSpan.textContent = formatDateRU(today);
+      }
+      updateCurrentDateDisplay();
+
+      // Установить сегодняшнюю дату в поле по умолчанию (если пусто)
+      function setDefaultDate() {
+        if (!startDateInput.value) {
+          const today = new Date();
+          const yyyy = today.getFullYear();
+          const mm = String(today.getMonth() + 1).padStart(2, '0');
+          const dd = String(today.getDate()).padStart(2, '0');
+          startDateInput.value = `${yyyy}-${mm}-${dd}`;
+        }
+      }
+      setDefaultDate();
+
+      // Определение, является ли день рабочим (Пн-Пт)
+      function isWeekday(date) {
+        const day = date.getDay();
+        return day !== 0 && day !== 6; // 0 вс, 6 сб
+      }
+
+      // Добавление рабочих дней
+      function addWorkingDays(startDate, workingDays) {
+        let current = new Date(startDate);
+        let daysAdded = 0;
+        // Чтобы не зацикливаться, шагаем по одному дню
+        while (daysAdded < workingDays) {
+          current.setDate(current.getDate() + 1);
+          if (isWeekday(current)) {
+            daysAdded++;
+          }
+        }
+        return new Date(current);
+      }
+
+      // Добавление календарных дней
+      function addCalendarDays(startDate, calendarDays) {
+        let result = new Date(startDate);
+        result.setDate(result.getDate() + calendarDays);
+        return result;
+      }
+
+      // Получить выбранное значение радио
+      function getSelectedOption() {
+        const checkedRadio = document.querySelector('input[name="dayOption"]:checked');
+        return checkedRadio ? checkedRadio.value : null;
+      }
+
+      // Подсветка выбранной строки (добавляем класс selected к родительскому .option-row)
+      function updateSelectedRowHighlight() {
+        const selectedValue = getSelectedOption();
+        optionRows.forEach(row => {
+          const radio = row.querySelector('input[name="dayOption"]');
+          if (radio && radio.value === selectedValue) {
+            row.classList.add('selected');
+          } else {
+            row.classList.remove('selected');
+          }
+        });
+      }
+
+      // Основная логика расчёта
+      function calculateAndDisplay() {
+        const startDateStr = startDateInput.value;
+        if (!startDateStr) {
+          resultDateDisplay.textContent = '—';
+          resultDescription.textContent = '⚠️ Укажите начальную дату';
+          return;
+        }
+
+        const startDate = new Date(startDateStr + 'T00:00:00'); // чтобы избежать сдвигов временной зоны
+        if (isNaN(startDate.getTime())) {
+          resultDateDisplay.textContent = '—';
+          resultDescription.textContent = 'Некорректная дата';
+          return;
+        }
+
+        const option = getSelectedOption();
+        if (!option) {
+          resultDateDisplay.textContent = '—';
+          resultDescription.textContent = 'Выберите условие';
+          return;
+        }
+
+        let resultDate = null;
+        let descriptionText = '';
+
+        // Ветвление по условиям
+        switch (option) {
+          case '35budget':
+            // 35% бюджет: 5 рабочих дней
+            resultDate = addWorkingDays(startDate, 5);
+            descriptionText = '35% бюджет · +5 рабочих дней';
+            break;
+          case '30percent':
+            // 30%: 10 рабочих дней
+            resultDate = addWorkingDays(startDate, 10);
+            descriptionText = '30% · +10 рабочих дней';
+            break;
+          case 'fact':
+            // Обычные / по факту: 30 календарных дней
+            resultDate = addCalendarDays(startDate, 30);
+            descriptionText = 'По факту · +30 календарных дней';
+            break;
+          case 'prepaid100':
+            // 100% предоплата: 25 календарных дней
+            resultDate = addCalendarDays(startDate, 25);
+            descriptionText = '100% предоплата · +25 календарных дней';
+            break;
+          default:
+            resultDateDisplay.textContent = '—';
+            resultDescription.textContent = 'Неизвестный режим';
+            return;
+        }
+
+        if (resultDate && !isNaN(resultDate.getTime())) {
+          resultDateDisplay.textContent = formatDateRU(resultDate);
+          resultDescription.textContent = descriptionText;
+        } else {
+          resultDateDisplay.textContent = '—';
+          resultDescription.textContent = 'Ошибка расчёта';
+        }
+      }
+
+      // Обработчик клика по строке (для удобства выбора радио)
+      function handleRowClick(e) {
+        const row = e.currentTarget;
+        const radio = row.querySelector('input[name="dayOption"]');
+        if (radio) {
+          radio.checked = true;
+          // Вручную вызываем обновление подсветки и пересчёт
+          updateSelectedRowHighlight();
+          calculateAndDisplay();
+        }
+      }
+
+      // Обработчик изменения радио (на случай клавиатуры или прямого клика по radio)
+      function handleRadioChange() {
+        updateSelectedRowHighlight();
+        calculateAndDisplay();
+      }
+
+      // Привязка событий
+      optionRows.forEach(row => {
+        row.addEventListener('click', handleRowClick);
+      });
+
+      radioInputs.forEach(radio => {
+        radio.addEventListener('change', handleRadioChange);
+        // Также предотвращаем всплытие, чтобы не срабатывал двойной вызов при клике на сам radio
+        radio.addEventListener('click', (e) => {
+          e.stopPropagation();
+          // Но всё равно обновим после изменения
+          updateSelectedRowHighlight();
+          calculateAndDisplay();
+        });
+      });
+
+      // Кнопка "Рассчитать дату"
+      calculateBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        calculateAndDisplay();
+      });
+
+      // Пересчёт при изменении даты (опционально, можно оставить только по кнопке,
+      // но для удобства сделаем автоматический пересчёт при смене даты)
+      startDateInput.addEventListener('change', () => {
+        calculateAndDisplay();
+      });
+
+      // Инициализация: подсветка и первичный расчёт
+      updateSelectedRowHighlight();
+      calculateAndDisplay();
+
+      // Дополнительно: если пользователь вручную вводит дату и нажимает Enter,
+      // предотвратим отправку формы (если бы она была) и пересчитаем
+      startDateInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          calculateAndDisplay();
+        }
+      });
+
+      // Обновление текущей даты раз в минуту (на случай если открыто долго)
+      setInterval(updateCurrentDateDisplay, 60000);
+    })();
+  </script>
+</body>
+</html>
