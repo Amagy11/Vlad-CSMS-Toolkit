@@ -21,25 +21,29 @@
         }
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; line-height:1.4; overflow-x:hidden; }
-        .header { background:var(--card); border-bottom:1px solid var(--border); padding:10px 20px; display:flex; align-items:center; justify-content:space-between; box-shadow:var(--shadow); position:sticky; top:0; z-index:100; }
+        .header { background:var(--card); border-bottom:1px solid var(--border); padding:10px 20px; display:flex; align-items:center; justify-content:space-between; box-shadow:var(--shadow); position:sticky; top:0; z-index:100; flex-wrap:wrap; gap:8px; }
         .header .logo { font-size:1.1rem; font-weight:700; color:var(--primary); }
-        .header .sync-status { font-size:0.7rem; color:var(--text-secondary); display:flex; align-items:center; gap:4px; }
-        .header .sync-dot { width:8px; height:8px; border-radius:50%; background:#ccc; flex-shrink:0; }
-        .header .sync-dot.online { background:#2ecc71; }
-        .header .sync-dot.offline { background:#e74c3c; }
-        .header .sync-dot.syncing { background:#f39c12; animation:pulse 0.8s infinite; }
-        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+        .header-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+        .sync-status { font-size:0.7rem; color:var(--text-secondary); display:flex; align-items:center; gap:4px; }
+        .sync-dot { width:8px; height:8px; border-radius:50%; background:#ccc; flex-shrink:0; }
+        .sync-dot.online { background:#2ecc71; }
+        .sync-dot.offline { background:#e74c3c; }
+        .sync-dot.syncing { background:#f39c12; }
+        .user-badge { font-size:0.7rem; font-weight:600; padding:4px 10px; border-radius:12px; background:var(--primary-light); color:var(--primary); }
+        .user-badge.admin { background:#f8d7da; color:#922b21; }
+
         .btn { padding:7px 14px; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:0.8rem; font-weight:500; transition:var(--transition); white-space:nowrap; }
         .btn-primary { background:var(--primary); color:#fff; }
         .btn-primary:hover { opacity:0.9; }
         .btn-outline { background:#fff; border:1px solid var(--border); }
         .btn-outline:hover { background:#f5f5f5; }
         .btn-danger { background:var(--danger); color:#fff; }
-        .btn-sm { padding:5px 10px; font-size:0.75rem; }
-        .btn-xs { padding:3px 6px; font-size:0.7rem; }
+        .btn-sm { padding:5px 10px; font-size:0.7rem; }
+        .btn-xs { padding:3px 6px; font-size:0.65rem; }
         .btn-success { background:#1e8449; color:#fff; }
-        .btn-success:hover { opacity:0.9; }
-        .header-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+        .btn-warning { background:#b7950b; color:#fff; }
+        .btn-warning:hover { opacity:0.9; }
+        .btn-login { background:#fff; border:1px solid var(--primary); color:var(--primary); }
 
         .main-container { display:flex; flex-direction:column; gap:12px; padding:12px 16px; max-width:1600px; margin:0 auto; }
         .top-row { display:grid; grid-template-columns:250px 1fr 370px; gap:12px; }
@@ -121,7 +125,6 @@
         .no-events .icon { font-size:2rem; margin-bottom:6px; }
         .empty-hint { font-size:0.7rem; color:#aaa; text-align:center; padding:8px 0; }
 
-        /* МОДАЛЬНОЕ ОКНО */
         .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:200; justify-content:center; align-items:center; padding:20px; }
         .modal-overlay.show { display:flex; }
         .modal { background:var(--card); border-radius:var(--radius); box-shadow:0 4px 20px rgba(0,0,0,0.15); padding:16px; width:100%; max-width:420px; max-height:90vh; display:flex; flex-direction:column; }
@@ -148,7 +151,18 @@
         .date-display { background:#f9f9f9; padding:6px 8px; border-radius:var(--radius-sm); font-size:0.8rem; text-align:center; color:var(--primary); font-weight:600; margin-bottom:2px; }
         .date-hint { font-size:0.65rem; color:#999; text-align:center; margin-bottom:4px; }
 
-        .toast { position:fixed; bottom:20px; right:20px; background:#333; color:#fff; padding:8px 16px; border-radius:var(--radius-sm); z-index:300; opacity:0; transform:translateY(20px); transition:all 0.3s ease; font-size:0.8rem; pointer-events:none; }
+        .login-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:400; justify-content:center; align-items:center; padding:20px; }
+        .login-overlay.show { display:flex; }
+        .login-modal { background:var(--card); border-radius:var(--radius); padding:24px; width:100%; max-width:340px; }
+        .login-modal h3 { margin-bottom:16px; font-size:1rem; color:var(--primary); text-align:center; }
+        .login-modal .form-group { margin-bottom:12px; }
+        .login-modal .form-group label { display:block; font-weight:600; margin-bottom:2px; font-size:0.75rem; color:var(--text-secondary); }
+        .login-modal .form-group input { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.85rem; }
+        .login-modal .form-group input:focus { outline:none; border-color:var(--primary); }
+        .login-modal .btn { width:100%; padding:9px; }
+        .login-error { color:var(--danger); font-size:0.75rem; text-align:center; margin-top:8px; min-height:18px; }
+
+        .toast { position:fixed; bottom:20px; right:20px; background:#333; color:#fff; padding:8px 16px; border-radius:var(--radius-sm); z-index:500; opacity:0; transform:translateY(20px); transition:all 0.3s ease; font-size:0.8rem; pointer-events:none; }
         .toast.show { opacity:1; transform:translateY(0); }
     </style>
 </head>
@@ -158,8 +172,10 @@
         <span class="logo">📐 Планировщик поверителей</span>
         <div class="header-actions">
             <span class="sync-status"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Подключение...</span></span>
+            <span class="user-badge" id="user-badge">👁 Просмотр</span>
+            <button class="btn btn-login btn-sm" id="btn-login">🔑 Войти как админ</button>
             <button class="btn btn-success btn-sm" id="btn-download-excel">📥 Excel</button>
-            <button class="btn btn-primary" id="btn-add-event">+ Выезд</button>
+            <button class="btn btn-primary" id="btn-add-event" style="display:none;">+ Выезд</button>
         </div>
     </header>
 
@@ -192,6 +208,19 @@
         </div>
     </div>
 
+    <!-- ЛОГИН -->
+    <div class="login-overlay" id="login-overlay">
+        <div class="login-modal">
+            <h3>🔑 Вход для администратора</h3>
+            <div class="form-group"><label>Логин</label><input type="text" id="login-input" placeholder="admin"></div>
+            <div class="form-group"><label>Пароль</label><input type="password" id="password-input" placeholder="••••"></div>
+            <button class="btn btn-primary" id="btn-do-login">Войти</button>
+            <button class="btn btn-outline" id="btn-cancel-login" style="margin-top:6px;">Отмена</button>
+            <div class="login-error" id="login-error"></div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО ВЫЕЗДА -->
     <div class="modal-overlay" id="modal-event">
         <div class="modal">
             <h3 id="modal-title">Добавить выезд</h3>
@@ -239,8 +268,12 @@
         const clientsRef = ref(db, 'clients');
         const eventsRef = ref(db, 'events');
 
+        const ADMIN_LOGIN = 'admin';
+        const ADMIN_PASSWORD = '1234';
+
         let appData = { employees: [], clients: [], events: [] };
         let dataLoaded = false;
+        let isAdmin = false;
         let selectedEmpId = null;
         let selectedClientId = null;
         let selectedDate = null;
@@ -255,6 +288,24 @@
                 t = document.getElementById('sync-text');
             d.className = 'sync-dot ' + s;
             t.textContent = s === 'online' ? 'Онлайн' : s === 'offline' ? 'Офлайн' : 'Синхр...';
+        }
+
+        function updateAdminUI() {
+            const badge = document.getElementById('user-badge');
+            const btnLogin = document.getElementById('btn-login');
+            const btnAddEvent = document.getElementById('btn-add-event');
+            if (isAdmin) {
+                badge.textContent = '🔐 Администратор';
+                badge.classList.add('admin');
+                btnLogin.textContent = '🔓 Выйти';
+                btnAddEvent.style.display = 'inline-block';
+            } else {
+                badge.textContent = '👁 Просмотр';
+                badge.classList.remove('admin');
+                btnLogin.textContent = '🔑 Войти как админ';
+                btnAddEvent.style.display = 'none';
+            }
+            renderAll();
         }
 
         function subscribeToData() {
@@ -279,25 +330,42 @@
         const connectedRef = ref(db, '.info/connected');
         onValue(connectedRef, (snap) => setSyncStatus(snap.val() === true ? 'online' : 'offline'));
 
-        function saveEmployeeToFB(emp) { const nr = push(employeesRef); return set(nr, { name: emp.name, color: emp
-            .color }); }
+        function saveEmployeeToFB(emp) { if (!isAdmin) return Promise.reject();
+            const nr = push(employeesRef); return set(nr, { name: emp.name, color: emp.color }); }
 
-        function deleteEmployeeFromFB(id) { return remove(ref(db, 'employees/' + id)); }
+        function deleteEmployeeFromFB(id) { if (!isAdmin) return;
+            remove(ref(db, 'employees/' + id)); }
 
-        function saveClientToFB(cli) { const nr = push(clientsRef); return set(nr, { name: cli.name, address: cli.address,
-                color: cli.color }); }
+        function saveClientToFB(cli) { if (!isAdmin) return Promise.reject();
+            const nr = push(clientsRef); return set(nr, { name: cli.name, address: cli.address, color: cli.color }); }
 
-        function deleteClientFromFB(id) { return remove(ref(db, 'clients/' + id)); }
+        function deleteClientFromFB(id) { if (!isAdmin) return;
+            remove(ref(db, 'clients/' + id)); }
 
-        function saveEventToFB(ev) { const nr = push(eventsRef); return set(nr, { employeeId: ev.employeeId, clientId: ev
-                .clientId, start: ev.start, end: ev.end, note: ev.note }); }
+        function saveEventToFB(ev) { if (!isAdmin) return Promise.reject();
+            const nr = push(eventsRef); return set(nr, { employeeId: ev.employeeId, clientId: ev.clientId, start: ev.start,
+                end: ev.end, note: ev.note }); }
 
-        function updateEventInFB(id, data) { return set(ref(db, 'events/' + id), data); }
+        function updateEventInFB(id, data) { if (!isAdmin) return Promise.reject(); return set(ref(db, 'events/' + id),
+            data); }
 
-        function deleteEventFromFB(id) { return remove(ref(db, 'events/' + id)); }
+        function deleteEventFromFB(id) { if (!isAdmin) return;
+            remove(ref(db, 'events/' + id)); }
 
-        function fmtDate(d) { return d.toISOString().split('T')[0]; }
+        function fmtDate(d) {
+            const y = d.getFullYear(),
+                m = String(d.getMonth() + 1).padStart(2, '0'),
+                day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
+
+        function parseDate(dateStr) {
+            const parts = dateStr.split('-');
+            return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+
         function getEmployee(id) { return appData.employees.find(e => e.id === id); }
+
         function getClient(id) { return appData.clients.find(c => c.id === id); }
 
         function getFilteredEvents() {
@@ -311,13 +379,13 @@
 
         function getDateColorMap() {
             const map = {};
-            const src = selectedEmpId ? appData.events.filter(e => e.employeeId === selectedEmpId) : (selectedClientId ? appData
-                .events.filter(e => e.clientId === selectedClientId) : appData.events);
+            const src = selectedEmpId ? appData.events.filter(e => e.employeeId === selectedEmpId) : (selectedClientId ?
+                appData.events.filter(e => e.clientId === selectedClientId) : appData.events);
             src.forEach(ev => {
                 const emp = getEmployee(ev.employeeId);
                 if (!emp) return;
-                const s = new Date(ev.start),
-                    e = new Date(ev.end);
+                const s = parseDate(ev.start),
+                    e = parseDate(ev.end);
                 for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
                     const ds = fmtDate(d);
                     if (!map[ds]) map[ds] = [];
@@ -328,14 +396,14 @@
         }
 
         function getEventsCountForMonth(year, month) {
-            const src = selectedEmpId ? appData.events.filter(e => e.employeeId === selectedEmpId) : (selectedClientId ? appData
-                .events.filter(e => e.clientId === selectedClientId) : appData.events);
+            const src = selectedEmpId ? appData.events.filter(e => e.employeeId === selectedEmpId) : (selectedClientId ?
+                appData.events.filter(e => e.clientId === selectedClientId) : appData.events);
             const seen = new Set();
             src.forEach(ev => {
-                const s = new Date(ev.start),
-                    e = new Date(ev.end);
-                for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) { if (d.getFullYear() === year && d.getMonth() ===
-                        month) { seen.add(ev.id); break; } }
+                const s = parseDate(ev.start),
+                    e = parseDate(ev.end);
+                for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) { if (d.getFullYear() === year && d
+                        .getMonth() === month) { seen.add(ev.id); break; } }
             });
             return seen.size;
         }
@@ -363,7 +431,7 @@
                 parts.push('👤 ' + emp.name); }
             if (selectedClientId) { const cli = getClient(selectedClientId);
                 parts.push('🏢 ' + cli.name); }
-            if (selectedDate) { parts.push('📅 ' + new Date(selectedDate).toLocaleDateString('ru-RU', { day: 'numeric',
+            if (selectedDate) { parts.push('📅 ' + parseDate(selectedDate).toLocaleDateString('ru-RU', { day: 'numeric',
                     month: 'short' })); }
             info.textContent = parts.length ? 'Фильтр: ' + parts.join(' · ') : 'Все заявки';
         }
@@ -377,19 +445,25 @@
 
         function renderEmployees() {
             const c = document.getElementById('emp-list');
-            let h = appData.employees.length === 0 ?
-                '<div class="emp-list-scroll"><div class="empty-hint">Нет поверителей</div></div>' :
+            let h = appData.employees.length === 0 ? '<div class="emp-list-scroll"><div class="empty-hint">Нет поверителей</div></div>' :
                 '<div class="emp-list-scroll">' + appData.employees.map(e =>
-                    `<div class="emp-item ${selectedEmpId===e.id?'selected':''}" data-empid="${e.id}"><span class="emp-dot" style="background:${e.color};"></span><span class="emp-name">${e.name}</span><button class="delete-emp" data-del-emp="${e.id}">×</button></div>`
+                    `<div class="emp-item ${selectedEmpId===e.id?'selected':''}" data-empid="${e.id}"><span class="emp-dot" style="background:${e.color};"></span><span class="emp-name">${e.name}</span>${isAdmin?`<button class="delete-emp" data-del-emp="${e.id}">×</button>`:''}</div>`
                     ).join('') + '</div>';
-            h +=
-                '<div class="emp-add-row"><input type="text" id="emp-name-input" placeholder="ФИО поверителя"><button id="btn-add-employee">Добавить</button></div>';
+            if (isAdmin) {
+                h +=
+                    '<div class="emp-add-row"><input type="text" id="emp-name-input" placeholder="ФИО поверителя"><button id="btn-add-employee">Добавить</button></div>';
+            }
             c.innerHTML = h;
-            c.querySelectorAll('.emp-item').forEach(el => el.addEventListener('click', () => selectEmployee(el.dataset.empid)));
-            c.querySelectorAll('.delete-emp').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation();
-                deleteEmployee(el.dataset.delEmp); }));
-            c.querySelector('#btn-add-employee')?.addEventListener('click', addEmployee);
-            c.querySelector('#emp-name-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') addEmployee(); });
+            c.querySelectorAll('.emp-item').forEach(el => el.addEventListener('click', () => selectEmployee(el.dataset
+                .empid)));
+            if (isAdmin) {
+                c.querySelectorAll('.delete-emp').forEach(el => el.addEventListener('click', (e) => { e
+                    .stopPropagation();
+                    deleteEmployee(el.dataset.delEmp); }));
+                c.querySelector('#btn-add-employee')?.addEventListener('click', addEmployee);
+                c.querySelector('#emp-name-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter')
+                    addEmployee(); });
+            }
         }
 
         function selectEmployee(id) { selectedEmpId = selectedEmpId === id ? null : id;
@@ -416,21 +490,25 @@
 
         function renderClients() {
             const c = document.getElementById('client-list');
-            let h = appData.clients.length === 0 ?
-                '<div class="client-list-scroll"><div class="empty-hint">Нет заказчиков</div></div>' :
+            let h = appData.clients.length === 0 ? '<div class="client-list-scroll"><div class="empty-hint">Нет заказчиков</div></div>' :
                 '<div class="client-list-scroll"><div class="client-list">' + appData.clients.map(c =>
-                    `<span class="client-tag ${selectedClientId===c.id?'selected':''}" data-clientid="${c.id}" style="background:${c.color};" title="${c.address||''}">${c.name}<span class="delete-client" data-del-client="${c.id}">×</span></span>`
+                    `<span class="client-tag ${selectedClientId===c.id?'selected':''}" data-clientid="${c.id}" style="background:${c.color};" title="${c.address||''}">${c.name}${isAdmin?`<span class="delete-client" data-del-client="${c.id}">×</span>`:''}</span>`
                     ).join('') + '</div></div>';
-            h +=
-                '<div class="client-add-row"><input type="text" id="client-name-input" placeholder="Название организации"><button id="btn-add-client">Добавить</button></div>';
+            if (isAdmin) {
+                h +=
+                    '<div class="client-add-row"><input type="text" id="client-name-input" placeholder="Название организации"><button id="btn-add-client">Добавить</button></div>';
+            }
             c.innerHTML = h;
             c.querySelectorAll('.client-tag').forEach(el => el.addEventListener('click', () => selectClient(el.dataset
-            .clientid)));
-            c.querySelectorAll('.delete-client').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation();
-                deleteClient(el.dataset.delClient); }));
-            c.querySelector('#btn-add-client')?.addEventListener('click', addClient);
-            c.querySelector('#client-name-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') addClient
-            (); });
+                .clientid)));
+            if (isAdmin) {
+                c.querySelectorAll('.delete-client').forEach(el => el.addEventListener('click', (e) => { e
+                    .stopPropagation();
+                    deleteClient(el.dataset.delClient); }));
+                c.querySelector('#btn-add-client')?.addEventListener('click', addClient);
+                c.querySelector('#client-name-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter')
+                    addClient(); });
+            }
         }
 
         function selectClient(id) { selectedClientId = selectedClientId === id ? null : id;
@@ -516,8 +594,7 @@
             dn.forEach(d => h += `<div class="md-day-name">${d}</div>`);
             for (let i = 0; i < so; i++) h += '<div class="md-day empty"></div>';
             for (let d = 1; d <= ld.getDate(); d++) {
-                const date = new Date(y, mi, d),
-                    ds = fmtDate(date);
+                const ds = fmtDate(new Date(y, mi, d));
                 let cls = 'md-day';
                 if (ds === ts) cls += ' today';
                 if (ds === selectedDate) cls += ' selected';
@@ -549,11 +626,14 @@
             if (events.length === 0) { c.innerHTML =
                     '<div class="no-events"><div class="icon">📋</div>Нет заявок по выбранным фильтрам</div>'; return; }
             c.innerHTML =
-                `<table class="events-table"><thead><tr><th>Поверитель</th><th>Заказчик</th><th>Даты</th><th>Примечание</th><th></th></tr></thead><tbody>${events.map(ev=>{ const emp=getEmployee(ev.employeeId), cli=getClient(ev.clientId); const sd=new Date(ev.start), ed=new Date(ev.end), isMulti=ev.start!==ev.end; const ds=isMulti?`${sd.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})} — ${ed.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}`:sd.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}); const days=Math.round((ed-sd)/86400000)+1; return `<tr data-eventid="${ev.id}"><td><span class="emp-badge"><span class="emp-dot" style="background:${emp?.color||'#888'};width:8px;height:8px;"></span>${emp?.name||'?'}</span></td><td><span class="client-badge" style="background:${cli?.color||'#eee'};">${cli?.name||'?'}</span></td><td class="date-range">${ds} ${isMulti?`<span class="days-badge">(${days} дн.)</span>`:''}</td><td class="note-cell">${ev.note||''}</td><td><button class="delete-event" data-del-event="${ev.id}">×</button></td></tr>`; }).join('')}</tbody></table>`;
+                `<table class="events-table"><thead><tr><th>Поверитель</th><th>Заказчик</th><th>Даты</th><th>Примечание</th>${isAdmin?'<th></th>':''}</tr></thead><tbody>${events.map(ev=>{ const emp=getEmployee(ev.employeeId), cli=getClient(ev.clientId); const sd=parseDate(ev.start), ed=parseDate(ev.end), isMulti=ev.start!==ev.end; const ds=isMulti?`${sd.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})} — ${ed.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}`:sd.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}); const days=Math.round((ed-sd)/86400000)+1; return `<tr data-eventid="${ev.id}"><td><span class="emp-badge"><span class="emp-dot" style="background:${emp?.color||'#888'};width:8px;height:8px;"></span>${emp?.name||'?'}</span></td><td><span class="client-badge" style="background:${cli?.color||'#eee'};">${cli?.name||'?'}</span></td><td class="date-range">${ds} ${isMulti?`<span class="days-badge">(${days} дн.)</span>`:''}</td><td class="note-cell">${ev.note||''}</td>${isAdmin?`<td><button class="delete-event" data-del-event="${ev.id}">×</button></td>`:''}</tr>`; }).join('')}</tbody></table>`;
             c.querySelectorAll('tr[data-eventid]').forEach(el => el.addEventListener('click', () => openEditEventModal(el
                 .dataset.eventid)));
-            c.querySelectorAll('.delete-event').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation();
-                deleteEventById(el.dataset.delEvent); }));
+            if (isAdmin) {
+                c.querySelectorAll('.delete-event').forEach(el => el.addEventListener('click', (e) => { e
+                    .stopPropagation();
+                    deleteEventById(el.dataset.delEvent); }));
+            }
         }
 
         function deleteEventById(id) { if (!confirm('Удалить этот выезд?')) return;
@@ -568,8 +648,10 @@
             events.forEach(ev => {
                 const emp = getEmployee(ev.employeeId),
                     cli = getClient(ev.clientId);
+                const sd = parseDate(ev.start),
+                    ed = parseDate(ev.end);
                 csv +=
-                    `${emp?emp.name:''};${cli?cli.name:''};${new Date(ev.start).toLocaleDateString('ru-RU')};${new Date(ev.end).toLocaleDateString('ru-RU')};${Math.round((new Date(ev.end)-new Date(ev.start))/86400000)+1};${(ev.note||'').replace(/;/g,',')}\n`;
+                    `${emp?emp.name:''};${cli?cli.name:''};${sd.toLocaleDateString('ru-RU')};${ed.toLocaleDateString('ru-RU')};${Math.round((ed-sd)/86400000)+1};${(ev.note||'').replace(/;/g,',')}\n`;
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -636,9 +718,9 @@
                 h = document.getElementById('date-hint');
             if (!pickStart) { d.textContent = 'Выберите даты в календаре';
                 h.textContent = 'Нажмите на первую дату, затем на вторую'; } else if (pickStart && !pickEnd) { d.textContent =
-                    `Начало: ${new Date(pickStart).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} — выберите конец`;
-                h.textContent = 'Нажмите на дату окончания'; } else { const s = new Date(pickStart),
-                    e = new Date(pickEnd); d.textContent =
+                    `Начало: ${parseDate(pickStart).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} — выберите конец`;
+                h.textContent = 'Нажмите на дату окончания'; } else { const s = parseDate(pickStart),
+                    e = parseDate(pickEnd); d.textContent =
                     `${s.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} — ${e.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} (${Math.round((e-s)/86400000)+1} дн.)`;
                 h.textContent = 'Нажмите на другую дату чтобы начать заново'; }
         }
@@ -655,6 +737,7 @@
         }
 
         function openAddEventModal() {
+            if (!isAdmin) return showToast('Только администратор может добавлять выезды');
             if (appData.employees.length === 0) return showToast('Сначала добавьте поверителей');
             if (appData.clients.length === 0) return showToast('Сначала добавьте заказчиков');
             document.getElementById('modal-title').textContent = 'Добавить выезд';
@@ -672,6 +755,7 @@
         }
 
         function openEditEventModal(eventId) {
+            if (!isAdmin) return;
             const ev = appData.events.find(e => e.id === eventId);
             if (!ev) return;
             document.getElementById('modal-title').textContent = 'Редактировать выезд';
@@ -682,7 +766,7 @@
             pickEnd = ev.end;
             document.getElementById('event-start').value = ev.start;
             document.getElementById('event-end').value = ev.end;
-            modalMonth = new Date(ev.start);
+            modalMonth = parseDate(ev.start);
             populateSelects();
             document.getElementById('event-employee').value = ev.employeeId;
             document.getElementById('event-client').value = ev.clientId;
@@ -691,6 +775,7 @@
         }
 
         function saveEvent() {
+            if (!isAdmin) return;
             const id = document.getElementById('event-id').value;
             const employeeId = document.getElementById('event-employee').value;
             const clientId = document.getElementById('event-client').value;
@@ -706,6 +791,7 @@
         }
 
         function deleteEvent() {
+            if (!isAdmin) return;
             const id = document.getElementById('event-id').value;
             if (!id) return;
             if (!confirm('Удалить?')) return;
@@ -724,6 +810,47 @@
             t._timeout = setTimeout(() => t.classList.remove('show'), 2000);
         }
 
+        // === ЛОГИН ===
+        function showLogin() {
+            document.getElementById('login-error').textContent = '';
+            document.getElementById('login-input').value = '';
+            document.getElementById('password-input').value = '';
+            document.getElementById('login-overlay').classList.add('show');
+        }
+
+        function hideLogin() {
+            document.getElementById('login-overlay').classList.remove('show');
+        }
+
+        function doLogin() {
+            const login = document.getElementById('login-input').value.trim();
+            const password = document.getElementById('password-input').value;
+            if (login === ADMIN_LOGIN && password === ADMIN_PASSWORD) {
+                isAdmin = true;
+                hideLogin();
+                updateAdminUI();
+                showToast('Вы вошли как администратор');
+            } else {
+                document.getElementById('login-error').textContent = 'Неверный логин или пароль';
+            }
+        }
+
+        function doLogout() {
+            if (!confirm('Выйти из режима администратора?')) return;
+            isAdmin = false;
+            updateAdminUI();
+            showToast('Вы вышли из режима администратора');
+        }
+
+        // Кнопки
+        document.getElementById('btn-login').addEventListener('click', () => {
+            if (isAdmin) doLogout();
+            else showLogin();
+        });
+        document.getElementById('btn-do-login').addEventListener('click', doLogin);
+        document.getElementById('btn-cancel-login').addEventListener('click', hideLogin);
+        document.getElementById('login-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+        document.getElementById('password-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
         document.getElementById('btn-add-event').addEventListener('click', openAddEventModal);
         document.getElementById('btn-download-excel').addEventListener('click', downloadExcel);
         document.getElementById('btn-clear-filter').addEventListener('click', clearFilter);
@@ -735,6 +862,7 @@
         document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal('modal-event'); });
 
         subscribeToData();
+        updateAdminUI();
     </script>
 </body>
 </html>
