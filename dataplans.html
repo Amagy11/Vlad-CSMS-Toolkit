@@ -81,6 +81,8 @@
 
         .cal-back-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
         .cal-back-row .cal-title { font-weight:700; font-size:0.85rem; color:var(--primary); }
+        .year-nav { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+        .year-nav .year-label { font-weight:700; font-size:0.9rem; color:var(--primary); }
         .months-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
         .month-card { background:#fafafa; border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; transition:var(--transition); text-align:center; padding:6px 5px; }
         .month-card:hover { background:#f0f4f8; border-color:var(--primary); }
@@ -178,6 +180,7 @@
             <span class="user-badge" id="user-badge">👁 Просмотр</span>
             <button class="btn btn-login btn-sm" id="btn-login">🔑 Войти как админ</button>
             <button class="btn btn-success btn-sm" id="btn-download-excel">📥 Excel</button>
+            <button class="btn btn-danger btn-sm" id="btn-clear-old" style="display:none;">🧹 Очистить</button>
             <button class="btn btn-primary" id="btn-add-event" style="display:none;">+ Выезд</button>
         </div>
     </header>
@@ -193,7 +196,7 @@
                 <div class="card-body" id="client-list"></div>
             </div>
             <div class="card">
-                <div class="card-header">📅 Календарь 2026</div>
+                <div class="card-header">📅 Календарь <span id="calendar-year-label">2026</span></div>
                 <div class="card-body" id="calendar-body" style="max-height:450px;overflow-y:auto;">
                     <div id="cal-months-view"></div>
                     <div id="cal-month-detail" style="display:none;"></div>
@@ -249,6 +252,25 @@
         </div>
     </div>
 
+    <!-- ОКНО ОЧИСТКИ -->
+    <div class="modal-overlay" id="modal-clear">
+        <div class="modal">
+            <h3>🧹 Очистка старых данных</h3>
+            <div class="modal-scroll">
+                <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:10px;">Выберите годы для удаления. Данные можно предварительно выгрузить в Excel.</p>
+                <div id="clear-years-list" style="margin-bottom:10px;"></div>
+                <div class="form-group" style="display:flex;align-items:center;gap:6px;">
+                    <input type="checkbox" id="clear-need-excel" style="width:auto;" checked>
+                    <label for="clear-need-excel" style="margin:0;cursor:pointer;">Выгрузить данные в Excel перед удалением</label>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-outline btn-sm" id="btn-cancel-clear">Отмена</button>
+                <button class="btn btn-danger" id="btn-do-clear">Удалить</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
     <script type="module">
@@ -286,6 +308,7 @@
         let selectedDate = null;
         let currentView = 'months';
         let detailMonthIdx = 0;
+        let calendarYear = new Date().getFullYear();
         let modalCalendarView = 'month';
         let modalMonthIdx = new Date().getMonth();
         let pickStart = null;
@@ -302,16 +325,19 @@
             const badge = document.getElementById('user-badge');
             const btnLogin = document.getElementById('btn-login');
             const btnAddEvent = document.getElementById('btn-add-event');
+            const btnClearOld = document.getElementById('btn-clear-old');
             if (isAdmin) {
                 badge.textContent = '🔐 Администратор';
                 badge.classList.add('admin');
                 btnLogin.textContent = '🔓 Выйти';
                 btnAddEvent.style.display = 'inline-block';
+                btnClearOld.style.display = 'inline-block';
             } else {
                 badge.textContent = '👁 Просмотр';
                 badge.classList.remove('admin');
                 btnLogin.textContent = '🔑 Войти как админ';
                 btnAddEvent.style.display = 'none';
+                btnClearOld.style.display = 'none';
             }
             renderAll();
         }
@@ -491,11 +517,17 @@
             else renderMonthDetail();
         }
 
+        function changeYear(delta) {
+            calendarYear += delta;
+            document.getElementById('calendar-year-label').textContent = calendarYear;
+            renderCalendarView();
+        }
+
         function renderMonthsGrid() {
             const c = document.getElementById('cal-months-view');
             const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-            const y = new Date().getFullYear(), dc = getDateColorMap();
-            c.innerHTML = '<div class="months-grid">' + months.map((m, i) => {
+            const y = calendarYear, dc = getDateColorMap();
+            c.innerHTML = '<div class="year-nav"><button class="btn btn-outline btn-xs" id="btn-year-prev">◀</button><span class="year-label">' + y + '</span><button class="btn btn-outline btn-xs" id="btn-year-next">▶</button></div><div class="months-grid">' + months.map((m, i) => {
                 const cnt = getEventsCountForMonth(y, i), fd = new Date(y, i, 1), so = (fd.getDay() + 6) % 7, ld = new Date(y, i + 1, 0), td = ld.getDate();
                 let mh = '';
                 for (let j = 0; j < so; j++) mh += '<div class="mc-mini-day"></div>';
@@ -508,6 +540,8 @@
                 return `<div class="month-card" data-month="${i}"><div class="mc-name">${m}</div><div class="mc-mini-grid">${mh}</div><span class="mc-badge">${cnt} заявк${cnt===1?'а':(cnt>=2&&cnt<=4?'и':'')}</span></div>`;
             }).join('') + '</div>';
             c.querySelectorAll('.month-card').forEach(el => el.addEventListener('click', () => openMonth(parseInt(el.dataset.month))));
+            c.querySelector('#btn-year-prev')?.addEventListener('click', () => changeYear(-1));
+            c.querySelector('#btn-year-next')?.addEventListener('click', () => changeYear(1));
         }
 
         function openMonth(mIdx) { detailMonthIdx = mIdx; currentView = 'month-detail'; renderCalendarView(); }
@@ -516,7 +550,7 @@
         function renderMonthDetail() {
             const c = document.getElementById('cal-month-detail');
             const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-            const y = new Date().getFullYear(), mi = detailMonthIdx, dc = getDateColorMap(), today = new Date(), ts = fmtDate(today), fd = new Date(y, mi, 1), ld = new Date(y, mi + 1, 0), so = (fd.getDay() + 6) % 7, dn = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+            const y = calendarYear, mi = detailMonthIdx, dc = getDateColorMap(), today = new Date(), ts = fmtDate(today), fd = new Date(y, mi, 1), ld = new Date(y, mi + 1, 0), so = (fd.getDay() + 6) % 7, dn = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
             let h = `<div class="cal-back-row"><button class="btn btn-outline btn-xs" id="btn-back-months">← Назад</button><span class="cal-title">${months[mi]} ${y}</span></div><div class="month-detail"><div class="md-grid">`;
             dn.forEach(d => h += `<div class="md-day-name">${d}</div>`);
             for (let i = 0; i < so; i++) h += '<div class="md-day empty"></div>';
@@ -596,6 +630,72 @@
             XLSX.utils.book_append_sheet(wb, ws, 'Выезды');
             XLSX.writeFile(wb, `Выезды_поверителей_${new Date().toLocaleDateString('ru-RU').replace(/\./g, '-')}.xlsx`);
             showToast('Файл Excel скачан!');
+        }
+
+        // === ОЧИСТКА СТАРЫХ ДАННЫХ ===
+        function openClearModal() {
+            if (!isAdmin) return;
+            const yearsList = document.getElementById('clear-years-list');
+            const currentYear = new Date().getFullYear();
+            const yearsInData = new Set();
+            appData.events.forEach(ev => {
+                yearsInData.add(parseDate(ev.start).getFullYear());
+                yearsInData.add(parseDate(ev.end).getFullYear());
+            });
+            const oldYears = [...yearsInData].filter(y => y < currentYear).sort((a, b) => b - a);
+            if (oldYears.length === 0) {
+                showToast('Нет данных за прошлые годы');
+                return;
+            }
+            yearsList.innerHTML = oldYears.map(y => `
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                    <input type="checkbox" id="clear-year-${y}" checked style="width:auto;">
+                    <label for="clear-year-${y}" style="cursor:pointer;font-size:0.8rem;">${y} год</label>
+                </div>`).join('');
+            document.getElementById('clear-need-excel').checked = true;
+            document.getElementById('modal-clear').classList.add('show');
+        }
+
+        function doClearOld() {
+            const currentYear = new Date().getFullYear();
+            const selectedYears = [];
+            document.querySelectorAll('[id^="clear-year-"]').forEach(el => {
+                if (el.checked) selectedYears.push(parseInt(el.id.replace('clear-year-', '')));
+            });
+            if (selectedYears.length === 0) return showToast('Выберите хотя бы один год');
+            const eventsToDelete = appData.events.filter(ev => selectedYears.includes(parseDate(ev.start).getFullYear()) || selectedYears.includes(parseDate(ev.end).getFullYear()));
+            if (eventsToDelete.length === 0) { closeModal('modal-clear'); return showToast('Нет заявок за выбранные годы'); }
+            const needExcel = document.getElementById('clear-need-excel').checked;
+            if (needExcel) {
+                exportEventsToExcel(eventsToDelete, 'Старые_выезды_' + selectedYears.join('_'));
+            }
+            const confirmMsg = needExcel ? `Удалить ${eventsToDelete.length} заявк(и) за ${selectedYears.join(', ')} год(ы)? Excel уже скачан.` : `Удалить ${eventsToDelete.length} заявк(и) за ${selectedYears.join(', ')} год(ы)?`;
+            if (!confirm(confirmMsg)) return;
+            eventsToDelete.forEach(ev => deleteEventFromFB(ev.id));
+            closeModal('modal-clear');
+            showToast('Очищено: ' + eventsToDelete.length + ' заявк(и)');
+        }
+
+        function exportEventsToExcel(events, fileName) {
+            if (typeof XLSX === 'undefined') { showToast('Excel-библиотека не загружена'); return; }
+            const data = [];
+            data.push(['Выезды поверителей (архив)']);
+            data.push(['Дата формирования: ' + new Date().toLocaleDateString('ru-RU')]);
+            data.push([]);
+            data.push(['№', 'Поверитель', 'Заказчик', 'Дата начала', 'Дата окончания', 'Количество дней', 'Примечание']);
+            events.forEach((ev, index) => {
+                const emp = getEmployee(ev.employeeId);
+                const cli = getClient(ev.clientId);
+                const sd = parseDate(ev.start);
+                const ed = parseDate(ev.end);
+                data.push([index + 1, emp ? emp.name : '—', cli ? cli.name : '—', sd.toLocaleDateString('ru-RU'), ed.toLocaleDateString('ru-RU'), Math.round((ed - sd) / 86400000) + 1, ev.note || '']);
+            });
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            ws['!cols'] = [{ wch: 4 }, { wch: 25 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 40 }];
+            ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } }];
+            XLSX.utils.book_append_sheet(wb, ws, 'Архив');
+            XLSX.writeFile(wb, fileName + '.xlsx');
         }
 
         // === МОДАЛЬНЫЙ КАЛЕНДАРЬ ===
@@ -789,8 +889,12 @@
         document.getElementById('btn-save-event').addEventListener('click', saveEvent);
         document.getElementById('btn-cancel-event').addEventListener('click', () => closeModal('modal-event'));
         document.getElementById('btn-delete-event').addEventListener('click', deleteEvent);
+        document.getElementById('btn-clear-old').addEventListener('click', openClearModal);
+        document.getElementById('btn-do-clear').addEventListener('click', doClearOld);
+        document.getElementById('btn-cancel-clear').addEventListener('click', () => closeModal('modal-clear'));
         document.getElementById('modal-event').addEventListener('click', function(e) { if (e.target === this) closeModal('modal-event'); });
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal('modal-event'); });
+        document.getElementById('modal-clear').addEventListener('click', function(e) { if (e.target === this) closeModal('modal-clear'); });
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { closeModal('modal-event'); closeModal('modal-clear'); } });
 
         subscribeToData();
         updateAdminUI();
