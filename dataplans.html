@@ -81,8 +81,6 @@
 
         .cal-back-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
         .cal-back-row .cal-title { font-weight:700; font-size:0.85rem; color:var(--primary); }
-        .year-nav { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
-        .year-nav .year-label { font-weight:700; font-size:0.9rem; color:var(--primary); }
         .months-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
         .month-card { background:#fafafa; border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; transition:var(--transition); text-align:center; padding:6px 5px; }
         .month-card:hover { background:#f0f4f8; border-color:var(--primary); }
@@ -180,7 +178,6 @@
             <span class="user-badge" id="user-badge">👁 Просмотр</span>
             <button class="btn btn-login btn-sm" id="btn-login">🔑 Войти как админ</button>
             <button class="btn btn-success btn-sm" id="btn-download-excel">📥 Excel</button>
-            <button class="btn btn-danger btn-sm" id="btn-clear-old" style="display:none;">🧹 Очистить</button>
             <button class="btn btn-primary" id="btn-add-event" style="display:none;">+ Выезд</button>
         </div>
     </header>
@@ -196,7 +193,7 @@
                 <div class="card-body" id="client-list"></div>
             </div>
             <div class="card">
-                <div class="card-header">📅 Календарь <span id="calendar-year-label">2026</span></div>
+                <div class="card-header">📅 Календарь 2026</div>
                 <div class="card-body" id="calendar-body" style="max-height:450px;overflow-y:auto;">
                     <div id="cal-months-view"></div>
                     <div id="cal-month-detail" style="display:none;"></div>
@@ -218,12 +215,8 @@
     <div class="login-overlay" id="login-overlay">
         <div class="login-modal">
             <h3>🔑 Вход для администратора</h3>
-            <div class="form-group"><label>Логин</label><input type="text" id="login-input" autocomplete="off"></div>
-            <div class="form-group"><label>Пароль</label><input type="password" id="password-input" autocomplete="off"></div>
-            <div class="form-group" style="display:flex;align-items:center;gap:6px;margin-top:4px;">
-                <input type="checkbox" id="remember-me" style="width:auto;">
-                <label for="remember-me" style="margin:0;cursor:pointer;">Запомнить меня на этом ПК</label>
-            </div>
+            <div class="form-group"><label>Логин</label><input type="text" id="login-input" placeholder="User"></div>
+            <div class="form-group"><label>Пароль</label><input type="password" id="password-input" placeholder="••••••••"></div>
             <button class="btn btn-primary" id="btn-do-login">Войти</button>
             <button class="btn btn-outline" id="btn-cancel-login" style="margin-top:6px;">Отмена</button>
             <div class="login-error" id="login-error"></div>
@@ -256,25 +249,6 @@
         </div>
     </div>
 
-    <!-- ОКНО ОЧИСТКИ -->
-    <div class="modal-overlay" id="modal-clear">
-        <div class="modal">
-            <h3>🧹 Очистка старых данных</h3>
-            <div class="modal-scroll">
-                <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:10px;">Выберите годы для удаления. Данные можно предварительно выгрузить в Excel.</p>
-                <div id="clear-years-list" style="margin-bottom:10px;"></div>
-                <div class="form-group" style="display:flex;align-items:center;gap:6px;">
-                    <input type="checkbox" id="clear-need-excel" style="width:auto;" checked>
-                    <label for="clear-need-excel" style="margin:0;cursor:pointer;">Выгрузить данные в Excel перед удалением</label>
-                </div>
-            </div>
-            <div class="form-actions">
-                <button class="btn btn-outline btn-sm" id="btn-cancel-clear">Отмена</button>
-                <button class="btn btn-danger" id="btn-do-clear">Удалить</button>
-            </div>
-        </div>
-    </div>
-
     <div class="toast" id="toast"></div>
 
     <script type="module">
@@ -298,7 +272,7 @@
         const eventsRef = ref(db, 'events');
 
         // ====================================================
-        // ⚠️ НАСТРОЙКИ ДОСТУПА
+        // ⚠️ НАСТРОЙКИ ДОСТУПА — ЗДЕСЬ МЕНЯЙ ЛОГИН И ПАРОЛЬ
         // ====================================================
         const ADMIN_LOGIN = 'admin';
         const ADMIN_PASSWORD = '2150TTI';
@@ -312,7 +286,6 @@
         let selectedDate = null;
         let currentView = 'months';
         let detailMonthIdx = 0;
-        let calendarYear = new Date().getFullYear();
         let modalCalendarView = 'month';
         let modalMonthIdx = new Date().getMonth();
         let pickStart = null;
@@ -329,19 +302,16 @@
             const badge = document.getElementById('user-badge');
             const btnLogin = document.getElementById('btn-login');
             const btnAddEvent = document.getElementById('btn-add-event');
-            const btnClearOld = document.getElementById('btn-clear-old');
             if (isAdmin) {
                 badge.textContent = '🔐 Администратор';
                 badge.classList.add('admin');
                 btnLogin.textContent = '🔓 Выйти';
                 btnAddEvent.style.display = 'inline-block';
-                btnClearOld.style.display = 'inline-block';
             } else {
                 badge.textContent = '👁 Просмотр';
                 badge.classList.remove('admin');
                 btnLogin.textContent = '🔑 Войти как админ';
                 btnAddEvent.style.display = 'none';
-                btnClearOld.style.display = 'none';
             }
             renderAll();
         }
@@ -417,4 +387,413 @@
             const src = selectedEmpId ? appData.events.filter(e => e.employeeId === selectedEmpId) : (selectedClientId ? appData.events.filter(e => e.clientId === selectedClientId) : appData.events);
             const seen = new Set();
             src.forEach(ev => {
-                const s
+                const s = parseDate(ev.start), e = parseDate(ev.end);
+                for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) { if (d.getFullYear() === year && d.getMonth() === month) { seen.add(ev.id); break; } }
+            });
+            return seen.size;
+        }
+
+        function renderAll() {
+            renderEmployees();
+            renderClients();
+            renderCalendarView();
+            renderEvents();
+            renderLegend();
+            updateCounts();
+            updateFilterInfo();
+        }
+
+        function updateCounts() {
+            document.getElementById('emp-count').textContent = appData.employees.length;
+            document.getElementById('client-count').textContent = appData.clients.length;
+            document.getElementById('events-count-label').textContent = getFilteredEvents().length;
+        }
+
+        function updateFilterInfo() {
+            const info = document.getElementById('filter-info'), parts = [];
+            if (selectedEmpId) { const emp = getEmployee(selectedEmpId); parts.push('👤 ' + emp.name); }
+            if (selectedClientId) { const cli = getClient(selectedClientId); parts.push('🏢 ' + cli.name); }
+            if (selectedDate) { parts.push('📅 ' + parseDate(selectedDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })); }
+            info.textContent = parts.length ? 'Фильтр: ' + parts.join(' · ') : 'Все заявки';
+        }
+
+        function renderLegend() {
+            const emps = selectedEmpId ? appData.employees.filter(e => e.id === selectedEmpId) : appData.employees;
+            document.getElementById('legend').innerHTML = emps.length ? emps.map(e => `<span class="legend-item"><span class="legend-dot" style="background:${e.color};"></span>${e.name.split(' ')[0]}</span>`).join('') : '<span style="font-size:0.65rem;color:#999;">Нет поверителей</span>';
+        }
+
+        function renderEmployees() {
+            const c = document.getElementById('emp-list');
+            let h = appData.employees.length === 0 ? '<div class="emp-list-scroll"><div class="empty-hint">Нет поверителей</div></div>' : '<div class="emp-list-scroll">' + appData.employees.map(e => `<div class="emp-item ${selectedEmpId===e.id?'selected':''}" data-empid="${e.id}"><span class="emp-dot" style="background:${e.color};"></span><span class="emp-name">${e.name}</span>${isAdmin?`<button class="delete-emp" data-del-emp="${e.id}">×</button>`:''}</div>`).join('') + '</div>';
+            if (isAdmin) { h += '<div class="emp-add-row"><input type="text" id="emp-name-input" placeholder="ФИО поверителя"><button id="btn-add-employee">Добавить</button></div>'; }
+            c.innerHTML = h;
+            c.querySelectorAll('.emp-item').forEach(el => el.addEventListener('click', () => selectEmployee(el.dataset.empid)));
+            if (isAdmin) {
+                c.querySelectorAll('.delete-emp').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); deleteEmployee(el.dataset.delEmp); }));
+                c.querySelector('#btn-add-employee')?.addEventListener('click', addEmployee);
+                c.querySelector('#emp-name-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') addEmployee(); });
+            }
+        }
+
+        function selectEmployee(id) { selectedEmpId = selectedEmpId === id ? null : id; renderAll(); }
+
+        function addEmployee() {
+            const ni = document.getElementById('emp-name-input');
+            if (!ni || !ni.value.trim()) return showToast('Введите ФИО');
+            const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#e91e63', '#00bcd4', '#ff5722'];
+            saveEmployeeToFB({ name: ni.value.trim(), color: colors[appData.employees.length % colors.length] }).then(() => showToast('Поверитель добавлен'));
+            ni.value = '';
+        }
+
+        function deleteEmployee(id) {
+            if (!confirm('Удалить поверителя и все его выезды?')) return;
+            deleteEmployeeFromFB(id);
+            appData.events.filter(ev => ev.employeeId === id).forEach(ev => deleteEventFromFB(ev.id));
+            if (selectedEmpId === id) selectedEmpId = null;
+            showToast('Удалено');
+        }
+
+        function renderClients() {
+            const c = document.getElementById('client-list');
+            let h = appData.clients.length === 0 ? '<div class="client-list-scroll"><div class="empty-hint">Нет заказчиков</div></div>' : '<div class="client-list-scroll"><div class="client-list">' + appData.clients.map(c => `<span class="client-tag ${selectedClientId===c.id?'selected':''}" data-clientid="${c.id}" style="background:${c.color};" title="${c.address||''}">${c.name}${isAdmin?`<span class="delete-client" data-del-client="${c.id}">×</span>`:''}</span>`).join('') + '</div></div>';
+            if (isAdmin) { h += '<div class="client-add-row"><input type="text" id="client-name-input" placeholder="Название организации"><button id="btn-add-client">Добавить</button></div>'; }
+            c.innerHTML = h;
+            c.querySelectorAll('.client-tag').forEach(el => el.addEventListener('click', () => selectClient(el.dataset.clientid)));
+            if (isAdmin) {
+                c.querySelectorAll('.delete-client').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); deleteClient(el.dataset.delClient); }));
+                c.querySelector('#btn-add-client')?.addEventListener('click', addClient);
+                c.querySelector('#client-name-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') addClient(); });
+            }
+        }
+
+        function selectClient(id) { selectedClientId = selectedClientId === id ? null : id; renderAll(); }
+
+        function addClient() {
+            const ni = document.getElementById('client-name-input');
+            if (!ni || !ni.value.trim()) return showToast('Введите название');
+            const colors = ['#f8d7da', '#d1ecf1', '#d4edda', '#fff3cd', '#e8daef', '#fadbd8', '#d5f5e3', '#ebdef0'];
+            saveClientToFB({ name: ni.value.trim(), address: '', color: colors[appData.clients.length % colors.length] }).then(() => showToast('Заказчик добавлен'));
+            ni.value = '';
+        }
+
+        function deleteClient(id) {
+            if (!confirm('Удалить заказчика и все связанные выезды?')) return;
+            deleteClientFromFB(id);
+            appData.events.filter(ev => ev.clientId === id).forEach(ev => deleteEventFromFB(ev.id));
+            if (selectedClientId === id) selectedClientId = null;
+            showToast('Удалено');
+        }
+
+        function renderCalendarView() {
+            document.getElementById('cal-months-view').style.display = currentView === 'months' ? 'block' : 'none';
+            document.getElementById('cal-month-detail').style.display = currentView === 'month-detail' ? 'block' : 'none';
+            if (currentView === 'months') renderMonthsGrid();
+            else renderMonthDetail();
+        }
+
+        function renderMonthsGrid() {
+            const c = document.getElementById('cal-months-view');
+            const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+            const y = new Date().getFullYear(), dc = getDateColorMap();
+            c.innerHTML = '<div class="months-grid">' + months.map((m, i) => {
+                const cnt = getEventsCountForMonth(y, i), fd = new Date(y, i, 1), so = (fd.getDay() + 6) % 7, ld = new Date(y, i + 1, 0), td = ld.getDate();
+                let mh = '';
+                for (let j = 0; j < so; j++) mh += '<div class="mc-mini-day"></div>';
+                for (let d = 1; d <= td; d++) {
+                    const ds = fmtDate(new Date(y, i, d)), has = dc[ds] && dc[ds].length > 0;
+                    mh += `<div class="mc-mini-day${has?' has-event':''}" style="background:${has?dc[ds][0]:'transparent'};"></div>`;
+                }
+                const tc = so + td, rem = tc % 7 === 0 ? 0 : 7 - (tc % 7);
+                for (let j = 0; j < rem; j++) mh += '<div class="mc-mini-day"></div>';
+                return `<div class="month-card" data-month="${i}"><div class="mc-name">${m}</div><div class="mc-mini-grid">${mh}</div><span class="mc-badge">${cnt} заявк${cnt===1?'а':(cnt>=2&&cnt<=4?'и':'')}</span></div>`;
+            }).join('') + '</div>';
+            c.querySelectorAll('.month-card').forEach(el => el.addEventListener('click', () => openMonth(parseInt(el.dataset.month))));
+        }
+
+        function openMonth(mIdx) { detailMonthIdx = mIdx; currentView = 'month-detail'; renderCalendarView(); }
+        function goBackToMonths() { currentView = 'months'; renderCalendarView(); }
+
+        function renderMonthDetail() {
+            const c = document.getElementById('cal-month-detail');
+            const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+            const y = new Date().getFullYear(), mi = detailMonthIdx, dc = getDateColorMap(), today = new Date(), ts = fmtDate(today), fd = new Date(y, mi, 1), ld = new Date(y, mi + 1, 0), so = (fd.getDay() + 6) % 7, dn = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+            let h = `<div class="cal-back-row"><button class="btn btn-outline btn-xs" id="btn-back-months">← Назад</button><span class="cal-title">${months[mi]} ${y}</span></div><div class="month-detail"><div class="md-grid">`;
+            dn.forEach(d => h += `<div class="md-day-name">${d}</div>`);
+            for (let i = 0; i < so; i++) h += '<div class="md-day empty"></div>';
+            for (let d = 1; d <= ld.getDate(); d++) {
+                const ds = fmtDate(new Date(y, mi, d));
+                let cls = 'md-day';
+                if (ds === ts) cls += ' today';
+                if (ds === selectedDate) cls += ' selected';
+                const colors = dc[ds] || [];
+                let dots = '';
+                if (colors.length > 0) { const sc = colors.slice(0, 4); dots = `<span class="day-dots">${sc.map(c=>`<span class="day-dot" style="background:${c};"></span>`).join('')}</span>`; }
+                h += `<div class="${cls}" data-date="${ds}">${d}${dots}</div>`;
+            }
+            h += '</div></div>';
+            c.innerHTML = h;
+            c.querySelector('#btn-back-months')?.addEventListener('click', goBackToMonths);
+            c.querySelectorAll('.md-day[data-date]').forEach(el => el.addEventListener('click', () => selectDate(el.dataset.date)));
+        }
+
+        function selectDate(dateStr) { selectedDate = selectedDate === dateStr ? null : dateStr; renderAll(); }
+        function clearFilter() { selectedEmpId = null; selectedClientId = null; selectedDate = null; renderAll(); }
+
+        function renderEvents() {
+            const c = document.getElementById('events-list'), events = getFilteredEvents();
+            if (events.length === 0) { c.innerHTML = '<div class="no-events"><div class="icon">📋</div>Нет заявок по выбранным фильтрам</div>'; return; }
+            c.innerHTML = `<table class="events-table"><thead><tr><th>Поверитель</th><th>Заказчик</th><th>Даты</th><th>Примечание</th>${isAdmin?'<th></th>':''}</tr></thead><tbody>${events.map(ev=>{ const emp=getEmployee(ev.employeeId), cli=getClient(ev.clientId); const sd=parseDate(ev.start), ed=parseDate(ev.end), isMulti=ev.start!==ev.end; const ds=isMulti?`${sd.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})} — ${ed.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}`:sd.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}); const days=Math.round((ed-sd)/86400000)+1; return `<tr data-eventid="${ev.id}"><td><span class="emp-badge"><span class="emp-dot" style="background:${emp?.color||'#888'};width:8px;height:8px;"></span>${emp?.name||'?'}</span></td><td><span class="client-badge" style="background:${cli?.color||'#eee'};">${cli?.name||'?'}</span></td><td class="date-range">${ds} ${isMulti?`<span class="days-badge">(${days} дн.)</span>`:''}</td><td class="note-cell">${ev.note||''}</td>${isAdmin?`<td><button class="delete-event" data-del-event="${ev.id}">×</button></td>`:''}</tr>`; }).join('')}</tbody></table>`;
+            c.querySelectorAll('tr[data-eventid]').forEach(el => el.addEventListener('click', () => openEditEventModal(el.dataset.eventid)));
+            if (isAdmin) { c.querySelectorAll('.delete-event').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); deleteEventById(el.dataset.delEvent); })); }
+        }
+
+        function deleteEventById(id) { if (!confirm('Удалить этот выезд?')) return; deleteEventFromFB(id); showToast('Выезд удалён'); }
+
+        // === СКАЧИВАНИЕ НАСТОЯЩЕГО EXCEL ===
+        function downloadExcel() {
+            const events = getFilteredEvents();
+            if (events.length === 0) return showToast('Нет заявок для скачивания');
+            if (typeof XLSX === 'undefined') return showToast('Excel-библиотека не загружена. Проверьте интернет.');
+
+            const data = [];
+            data.push(['Выезды поверителей']);
+            data.push(['Дата формирования: ' + new Date().toLocaleDateString('ru-RU')]);
+            data.push([]);
+            data.push(['№', 'Поверитель', 'Заказчик', 'Дата начала', 'Дата окончания', 'Количество дней', 'Примечание']);
+
+            events.forEach((ev, index) => {
+                const emp = getEmployee(ev.employeeId);
+                const cli = getClient(ev.clientId);
+                const sd = parseDate(ev.start);
+                const ed = parseDate(ev.end);
+                const days = Math.round((ed - sd) / 86400000) + 1;
+                data.push([
+                    index + 1,
+                    emp ? emp.name : '—',
+                    cli ? cli.name : '—',
+                    sd.toLocaleDateString('ru-RU'),
+                    ed.toLocaleDateString('ru-RU'),
+                    days,
+                    ev.note || ''
+                ]);
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            ws['!cols'] = [
+                { wch: 4 },
+                { wch: 25 },
+                { wch: 25 },
+                { wch: 15 },
+                { wch: 15 },
+                { wch: 18 },
+                { wch: 40 },
+            ];
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
+            ];
+            XLSX.utils.book_append_sheet(wb, ws, 'Выезды');
+            XLSX.writeFile(wb, `Выезды_поверителей_${new Date().toLocaleDateString('ru-RU').replace(/\./g, '-')}.xlsx`);
+            showToast('Файл Excel скачан!');
+        }
+
+        // === МОДАЛЬНЫЙ КАЛЕНДАРЬ ===
+        function renderModalCalendar() {
+            const c = document.getElementById('modal-calendar');
+            if (modalCalendarView === 'months') {
+                renderModalMonthsGrid(c);
+            } else {
+                renderModalMonthDetail(c);
+            }
+            updateDateDisplay();
+        }
+
+        function renderModalMonthsGrid(c) {
+            const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+            const y = new Date().getFullYear();
+            let h = `<div class="mc-back-row"><button class="mc-back-to-month">← Назад</button></div><div class="months-grid">`;
+            h += months.map((m, i) => `<div class="month-card" data-modal-month="${i}"><div class="mc-name">${m}</div><span class="mc-badge">${getEventsCountForMonth(y, i)} заявк${getEventsCountForMonth(y,i)===1?'а':(getEventsCountForMonth(y,i)>=2&&getEventsCountForMonth(y,i)<=4?'и':'')}</span></div>`).join('');
+            h += '</div>';
+            c.innerHTML = h;
+            c.querySelector('.mc-back-to-month')?.addEventListener('click', () => { modalCalendarView = 'month'; modalMonthIdx = new Date().getMonth(); renderModalCalendar(); });
+            c.querySelectorAll('[data-modal-month]').forEach(el => el.addEventListener('click', () => { modalMonthIdx = parseInt(el.dataset.modalMonth); modalCalendarView = 'month'; renderModalCalendar(); }));
+        }
+
+        function renderModalMonthDetail(c) {
+            const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+            const y = new Date().getFullYear();
+            const mi = modalMonthIdx;
+            const fd = new Date(y, mi, 1);
+            const ld = new Date(y, mi + 1, 0);
+            const so = (fd.getDay() + 6) % 7;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const ts = fmtDate(today);
+            const dn = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+            let h = `<div class="mc-back-row"><button class="mc-back-to-months">← Все месяцы</button></div><div class="mc-header"><button class="mc-prev">◀</button><span class="mc-month-title">${months[mi]} ${y}</span><button class="mc-next">▶</button></div><div class="mc-grid">`;
+            dn.forEach(d => h += `<div class="mc-day-name">${d}</div>`);
+            for (let i = 0; i < so; i++) h += '<div class="mc-day other-month"></div>';
+            for (let d = 1; d <= ld.getDate(); d++) {
+                const ds = fmtDate(new Date(y, mi, d));
+                let cls = 'mc-day';
+                if (ds === ts) cls += ' today';
+                if (pickStart && ds === pickStart) cls += ' range-start';
+                if (pickEnd && ds === pickEnd) cls += ' range-end';
+                if (pickStart && pickEnd && ds > pickStart && ds < pickEnd) cls += ' in-range';
+                if (pickStart && !pickEnd && ds === pickStart) cls += ' range-start range-end';
+                h += `<div class="${cls}" data-mc-date="${ds}">${d}</div>`;
+            }
+            h += '</div>';
+            c.innerHTML = h;
+            c.querySelector('.mc-back-to-months')?.addEventListener('click', () => { modalCalendarView = 'months'; renderModalCalendar(); });
+            c.querySelector('.mc-prev')?.addEventListener('click', () => { modalMonthIdx--; if (modalMonthIdx < 0) { modalMonthIdx = 11; } renderModalCalendar(); });
+            c.querySelector('.mc-next')?.addEventListener('click', () => { modalMonthIdx++; if (modalMonthIdx > 11) { modalMonthIdx = 0; } renderModalCalendar(); });
+            c.querySelectorAll('[data-mc-date]').forEach(el => el.addEventListener('click', () => pickDate(el.dataset.mcDate)));
+        }
+
+        function pickDate(dateStr) {
+            if (!pickStart || (pickStart && pickEnd)) { pickStart = dateStr; pickEnd = null; }
+            else { if (dateStr < pickStart) { pickEnd = pickStart; pickStart = dateStr; } else { pickEnd = dateStr; } }
+            document.getElementById('event-start').value = pickStart;
+            document.getElementById('event-end').value = pickEnd || pickStart;
+            renderModalCalendar();
+        }
+
+        function updateDateDisplay() {
+            const d = document.getElementById('date-display'), h = document.getElementById('date-hint');
+            if (!pickStart) { d.textContent = 'Выберите даты в календаре'; h.textContent = 'Нажмите на первую дату, затем на вторую'; }
+            else if (pickStart && !pickEnd) { d.textContent = `Начало: ${parseDate(pickStart).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} — выберите конец`; h.textContent = 'Нажмите на дату окончания'; }
+            else { const s = parseDate(pickStart), e = parseDate(pickEnd); d.textContent = `${s.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} — ${e.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} (${Math.round((e-s)/86400000)+1} дн.)`; h.textContent = 'Нажмите на другую дату чтобы начать заново'; }
+        }
+
+        function resetModalPickers() { pickStart = null; pickEnd = null; modalCalendarView = 'month'; modalMonthIdx = new Date().getMonth(); }
+
+        function populateSelects() {
+            document.getElementById('event-employee').innerHTML = appData.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+            document.getElementById('event-client').innerHTML = appData.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+
+        function openAddEventModal() {
+            if (!isAdmin) return showToast('Только администратор может добавлять выезды');
+            if (appData.employees.length === 0) return showToast('Сначала добавьте поверителей');
+            if (appData.clients.length === 0) return showToast('Сначала добавьте заказчиков');
+            document.getElementById('modal-title').textContent = 'Добавить выезд';
+            document.getElementById('event-id').value = '';
+            document.getElementById('event-note').value = '';
+            document.getElementById('btn-delete-event').style.display = 'none';
+            resetModalPickers();
+            document.getElementById('event-start').value = '';
+            document.getElementById('event-end').value = '';
+            populateSelects();
+            if (selectedEmpId) document.getElementById('event-employee').value = selectedEmpId;
+            if (selectedClientId) document.getElementById('event-client').value = selectedClientId;
+            renderModalCalendar();
+            document.getElementById('modal-event').classList.add('show');
+        }
+
+        function openEditEventModal(eventId) {
+            if (!isAdmin) return;
+            const ev = appData.events.find(e => e.id === eventId);
+            if (!ev) return;
+            document.getElementById('modal-title').textContent = 'Редактировать выезд';
+            document.getElementById('event-id').value = ev.id;
+            document.getElementById('event-note').value = ev.note || '';
+            document.getElementById('btn-delete-event').style.display = 'inline-block';
+            pickStart = ev.start;
+            pickEnd = ev.end;
+            document.getElementById('event-start').value = ev.start;
+            document.getElementById('event-end').value = ev.end;
+            modalMonthIdx = parseDate(ev.start).getMonth();
+            modalCalendarView = 'month';
+            populateSelects();
+            document.getElementById('event-employee').value = ev.employeeId;
+            document.getElementById('event-client').value = ev.clientId;
+            renderModalCalendar();
+            document.getElementById('modal-event').classList.add('show');
+        }
+
+        function saveEvent() {
+            if (!isAdmin) return;
+            const id = document.getElementById('event-id').value;
+            const employeeId = document.getElementById('event-employee').value;
+            const clientId = document.getElementById('event-client').value;
+            const start = document.getElementById('event-start').value;
+            const end = document.getElementById('event-end').value;
+            const note = document.getElementById('event-note').value.trim();
+            if (!employeeId || !clientId || !start || !end) return showToast('Заполните обязательные поля');
+            if (end < start) return showToast('Дата окончания раньше начала');
+            const ed = { employeeId, clientId, start, end, note };
+            const promise = id ? updateEventInFB(id, ed) : saveEventToFB(ed);
+            promise.then(() => { closeModal('modal-event'); showToast('Сохранено'); });
+        }
+
+        function deleteEvent() {
+            if (!isAdmin) return;
+            const id = document.getElementById('event-id').value;
+            if (!id) return;
+            if (!confirm('Удалить?')) return;
+            deleteEventFromFB(id);
+            closeModal('modal-event');
+            showToast('Удалено');
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            clearTimeout(t._timeout);
+            t._timeout = setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        // === ЛОГИН ===
+        function showLogin() {
+            document.getElementById('login-error').textContent = '';
+            document.getElementById('login-input').value = '';
+            document.getElementById('password-input').value = '';
+            document.getElementById('login-overlay').classList.add('show');
+        }
+
+        function hideLogin() { document.getElementById('login-overlay').classList.remove('show'); }
+
+        function doLogin() {
+            const login = document.getElementById('login-input').value.trim();
+            const password = document.getElementById('password-input').value;
+            if (login === ADMIN_LOGIN && password === ADMIN_PASSWORD) {
+                isAdmin = true;
+                hideLogin();
+                updateAdminUI();
+                showToast('Вы вошли как администратор');
+            } else {
+                document.getElementById('login-error').textContent = 'Неверный логин или пароль';
+            }
+        }
+
+        function doLogout() {
+            if (!confirm('Выйти из режима администратора?')) return;
+            isAdmin = false;
+            updateAdminUI();
+            showToast('Вы вышли из режима администратора');
+        }
+
+        document.getElementById('btn-login').addEventListener('click', () => { if (isAdmin) doLogout(); else showLogin(); });
+        document.getElementById('btn-do-login').addEventListener('click', doLogin);
+        document.getElementById('btn-cancel-login').addEventListener('click', hideLogin);
+        document.getElementById('login-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+        document.getElementById('password-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+        document.getElementById('btn-add-event').addEventListener('click', openAddEventModal);
+        document.getElementById('btn-download-excel').addEventListener('click', downloadExcel);
+        document.getElementById('btn-clear-filter').addEventListener('click', clearFilter);
+        document.getElementById('btn-save-event').addEventListener('click', saveEvent);
+        document.getElementById('btn-cancel-event').addEventListener('click', () => closeModal('modal-event'));
+        document.getElementById('btn-delete-event').addEventListener('click', deleteEvent);
+        document.getElementById('modal-event').addEventListener('click', function(e) { if (e.target === this) closeModal('modal-event'); });
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal('modal-event'); });
+
+        subscribeToData();
+        updateAdminUI();
+    </script>
+</body>
+</html>
