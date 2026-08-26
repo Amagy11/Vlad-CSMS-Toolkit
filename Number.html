@@ -1,956 +1,184 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Учет счетов</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+// Обновленная функция рендера таблицы с исправленным поиском
+function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    const searchQuery = document.getElementById('search').value.trim().toLowerCase();
     
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    let filteredData = [...table1Data];
     
-    <style>
-        .budget { background-color: #fff3cd; }
-        .urgent { background-color: #f8d7da; }
-        .debt { background-color: #ffe5d0; }
-        .highlighted { border-left: 5px solid #dc3545; }
-        .status-new { }
-        .status-inwork { background-color: #cce5ff; }
-        .status-completed { opacity: 0.6; text-decoration: line-through; background-color: #d4edda; }
-        .badge-budget { background-color: #ffc107; color: #000; }
-        .badge-urgent { background-color: #dc3545; color: white; }
-        .badge-debt { background-color: #fd7e14; color: white; }
-        .badge-matched { background-color: #28a745; color: white; }
-        .badge-new { background-color: #6c757d; color: white; }
-        .badge-inwork { background-color: #007bff; color: white; }
-        .badge-completed { background-color: #28a745; color: white; }
-        .table-container { max-height: 600px; overflow-y: auto; overflow-x: auto; }
-        .table-info { display: none; margin-top: 10px; }
-        .device-filter { margin-bottom: 15px; }
-        .device-tag { 
-            display: inline-block; 
-            margin: 3px; 
-            padding: 5px 10px; 
-            border-radius: 15px; 
-            cursor: pointer; 
-            transition: all 0.3s;
-            user-select: none;
-            font-size: 0.85em;
-        }
-        .device-tag:hover { 
-            transform: scale(1.05); 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        .device-tag.active { 
-            box-shadow: 0 0 0 2px #007bff;
-            font-weight: bold;
-        }
-        .sync-status {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-        }
-        .sync-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 5px;
-        }
-        .sync-online { background-color: #28a745; }
-        .sync-offline { background-color: #dc3545; }
-        .sync-syncing { background-color: #ffc107; }
-        
-        .col-invoice {
-            min-width: 150px;
-            white-space: nowrap;
-        }
-        
-        .col-contractor {
-            min-width: 200px;
-        }
-        
-        #invoicesTable {
-            width: 100%;
-            min-width: 1200px;
-        }
-        
-        #invoicesTable th, #invoicesTable td {
-            padding: 8px 10px;
-            vertical-align: middle;
-        }
-        
-        .sort-btn {
-            cursor: pointer;
-            user-select: none;
-        }
-        
-        .sort-btn:hover {
-            color: #ffc107;
-        }
-        
-        .sort-indicator {
-            font-size: 0.8em;
-        }
-    </style>
-</head>
-<body>
-    <!-- Индикатор синхронизации -->
-    <div class="sync-status">
-        <span class="badge bg-light text-dark border">
-            <span class="sync-indicator sync-offline" id="syncIndicator"></span>
-            <span id="syncText">Не подключено</span>
-        </span>
-    </div>
-
-    <div class="container-fluid mt-4">
-        <h1 class="mb-4">📊 Учет счетов</h1>
-        
-        <!-- Загрузка файлов -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5>📁 Загрузка таблиц</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Таблица 1 (счета с приборами):</label>
-                            <input type="file" id="table1File" class="form-control" accept=".xlsx,.xls">
-                            <small class="text-muted">Поддерживаются объединенные ячейки</small>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Таблица 2 (квитанции с пометками):</label>
-                            <input type="file" id="table2File" class="form-control" accept=".xlsx,.xls">
-                            <small class="text-muted">Колонки: N - квитанции, K - дата оплаты, R - бюджет, S - срочность</small>
-                        </div>
-                        
-                        <button class="btn btn-success" onclick="loadBothTables()">📥 Загрузить</button>
-                        <button class="btn btn-danger" onclick="clearAllData()">🗑 Очистить</button>
-                        
-                        <div id="table1Info" class="alert alert-info table-info"></div>
-                        <div id="table2Info" class="alert alert-info table-info"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h5>🔍 Фильтры и сортировка</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="btn-group mb-3 flex-wrap" role="group">
-                            <button class="btn btn-outline-primary" onclick="setFilter('all')">Все</button>
-                            <button class="btn btn-outline-secondary" onclick="setFilter('new')">Новые</button>
-                            <button class="btn btn-outline-info" onclick="setFilter('inwork')">В работе</button>
-                            <button class="btn btn-outline-success" onclick="setFilter('completed')">Выполненные</button>
-                            <button class="btn btn-outline-warning" onclick="setFilter('highlighted')">С пометками</button>
-                            <button class="btn btn-outline-dark" onclick="setFilter('matched')">Совпавшие</button>
-                        </div>
-                        
-                        <input type="text" id="search" class="form-control mb-3" placeholder="🔎 Поиск..." oninput="renderTable()">
-                        
-                        <!-- Сортировка по дате -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">📅 Сортировка по дате оплаты:</label>
-                            <div class="btn-group" role="group">
-                                <button class="btn btn-outline-secondary" onclick="setSortByDate('none')">Без сортировки</button>
-                                <button class="btn btn-outline-danger" onclick="setSortByDate('earliest')">↑ Сначала ранние</button>
-                                <button class="btn btn-outline-success" onclick="setSortByDate('latest')">↓ Сначала поздние</button>
-                                <button class="btn btn-outline-warning" onclick="setSortByDate('noDate')">Без даты оплаты</button>
-                            </div>
-                        </div>
-                        
-                        <div class="device-filter">
-                            <label class="form-label fw-bold">🏷 Типы приборов:</label>
-                            <div id="deviceTags" class="mt-2"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Статистика -->
-        <div class="row mb-3">
-            <div class="col-md-2">
-                <div class="card bg-primary text-white">
-                    <div class="card-body text-center">
-                        <h6>Всего</h6>
-                        <h3 id="totalCount">0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card bg-secondary text-white">
-                    <div class="card-body text-center">
-                        <h6>Новые</h6>
-                        <h3 id="newCount">0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card bg-info text-white">
-                    <div class="card-body text-center">
-                        <h6>В работе</h6>
-                        <h3 id="inworkCount">0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card bg-success text-white">
-                    <div class="card-body text-center">
-                        <h6>Выполнено</h6>
-                        <h3 id="completedCount">0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card bg-warning text-white">
-                    <div class="card-body text-center">
-                        <h6>С пометками</h6>
-                        <h3 id="highlightedCount">0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card bg-danger text-white">
-                    <div class="card-body text-center">
-                        <h6>Срочные</h6>
-                        <h3 id="urgentCount">0</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Таблица -->
-        <div class="card">
-            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                <h5 id="tableTitle">📋 Все счета</h5>
-                <button class="btn btn-sm btn-light" onclick="exportToExcel()">📊 Экспорт</button>
-            </div>
-            <div class="card-body table-container">
-                <div class="table-responsive">
-                    <table class="table table-hover" id="invoicesTable">
-                        <thead class="table-dark">
-                            <tr>
-                                <th class="col-invoice">Квитанция/Счет</th>
-                                <th>Дата выписки</th>
-                                <th class="col-contractor">Контрагент</th>
-                                <th>Прибор</th>
-                                <th>Кол-во</th>
-                                <th>Сумма</th>
-                                <th>Оплата</th>
-                                <th class="sort-btn" onclick="sortByPaymentDate()">
-                                    Дата оплаты <span id="dateSortIndicator" class="sort-indicator"></span>
-                                </th>
-                                <th>Срочность</th>
-                                <th>Статус</th>
-                                <th>Пометки</th>
-                                <th>Действия</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+    // Фильтры по статусу
+    if (currentFilter === 'new') {
+        filteredData = filteredData.filter(row => row.status === 'new');
+    } else if (currentFilter === 'inwork') {
+        filteredData = filteredData.filter(row => row.status === 'inwork');
+    } else if (currentFilter === 'completed') {
+        filteredData = filteredData.filter(row => row.status === 'completed');
+    } else if (currentFilter === 'highlighted') {
+        filteredData = filteredData.filter(row => row.isBudget || row.isUrgent || row.isDebt);
+    } else if (currentFilter === 'matched') {
+        filteredData = filteredData.filter(row => row.isMatched);
+    }
     
-    <script>
-        // Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
-            authDomain: "vlad-csms-af6df.firebaseapp.com",
-            databaseURL: "https://vlad-csms-af6df-default-rtdb.firebaseio.com",
-            projectId: "vlad-csms-af6df",
-            storageBucket: "vlad-csms-af6df.firebasestorage.app",
-            messagingSenderId: "417297799117",
-            appId: "1:417297799117:web:0a93dce429cd37db499684",
-            measurementId: "G-MD79ZVT24Z"
-        };
+    // Фильтр по типу прибора
+    if (selectedDevice) {
+        filteredData = filteredData.filter(row => {
+            const device = row['Прибор'] || '';
+            return device.split(' ').slice(0, 3).join(' ') === selectedDevice;
+        });
+    }
+    
+    // Поиск (улучшенный)
+    if (searchQuery) {
+        filteredData = filteredData.filter(row => {
+            const invoiceNumber = (row['Номер счета'] || '').toString().toLowerCase();
+            const contractor = (row['Контрагент (Наименование)'] || '').toLowerCase();
+            const device = (row['Прибор'] || '').toLowerCase();
+            const paymentDate = (row.paymentDate || row['Дата оплаты'] || '').toLowerCase();
+            const urgency = (row.urgency || '').toLowerCase();
+            
+            // Поиск по номеру счета (можно искать часть номера)
+            if (invoiceNumber.includes(searchQuery)) return true;
+            
+            // Поиск по контрагенту
+            if (contractor.includes(searchQuery)) return true;
+            
+            // Поиск по прибору
+            if (device.includes(searchQuery)) return true;
+            
+            // Поиск по дате оплаты
+            if (paymentDate.includes(searchQuery)) return true;
+            
+            // Поиск по срочности
+            if (urgency.includes(searchQuery)) return true;
+            
+            return false;
+        });
+    }
+    
+    // Сортировка по дате оплаты
+    if (sortByDate === 'earliest') {
+        filteredData.sort((a, b) => {
+            const dateA = parseDate(a.paymentDate || a['Дата оплаты']);
+            const dateB = parseDate(b.paymentDate || b['Дата оплаты']);
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            return dateA - dateB;
+        });
+    } else if (sortByDate === 'latest') {
+        filteredData.sort((a, b) => {
+            const dateA = parseDate(a.paymentDate || a['Дата оплаты']);
+            const dateB = parseDate(b.paymentDate || b['Дата оплаты']);
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            return dateB - dateA;
+        });
+    } else if (sortByDate === 'noDate') {
+        filteredData = filteredData.filter(row => 
+            !row.paymentDate && !row['Дата оплаты']
+        );
+    }
+    
+    // Обновление индикатора сортировки
+    const dateSortIndicator = document.getElementById('dateSortIndicator');
+    if (sortByDate === 'earliest') {
+        dateSortIndicator.textContent = '↑';
+    } else if (sortByDate === 'latest') {
+        dateSortIndicator.textContent = '↓';
+    } else if (sortByDate === 'noDate') {
+        dateSortIndicator.textContent = '∅';
+    } else {
+        dateSortIndicator.textContent = '';
+    }
+    
+    // Статистика
+    document.getElementById('totalCount').textContent = table1Data.length;
+    document.getElementById('newCount').textContent = table1Data.filter(r => r.status === 'new').length;
+    document.getElementById('inworkCount').textContent = table1Data.filter(r => r.status === 'inwork').length;
+    document.getElementById('completedCount').textContent = table1Data.filter(r => r.status === 'completed').length;
+    document.getElementById('highlightedCount').textContent = table1Data.filter(r => r.isBudget || r.isUrgent || r.isDebt).length;
+    document.getElementById('urgentCount').textContent = table1Data.filter(r => r.isUrgent).length;
+    
+    // Заголовок
+    const titles = {
+        'all': 'Все счета',
+        'new': 'Новые счета',
+        'inwork': 'Счета в работе',
+        'completed': 'Выполненные счета',
+        'highlighted': 'Счета с пометками',
+        'matched': 'Совпавшие счета'
+    };
+    let title = titles[currentFilter] || 'Счета';
+    if (sortByDate === 'earliest') title += ' (сначала ранние)';
+    if (sortByDate === 'latest') title += ' (сначала поздние)';
+    if (sortByDate === 'noDate') title += ' (без даты оплаты)';
+    if (searchQuery) title += ` (поиск: "${searchQuery}")`;
+    
+    document.getElementById('tableTitle').textContent = `📋 ${title} (${filteredData.length})`;
+    
+    // Рендер
+    tbody.innerHTML = '';
+    
+    if (filteredData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted">Нет данных. Измените фильтры или поиск.</td></tr>';
+        return;
+    }
+    
+    filteredData.forEach(row => {
+        const tr = document.createElement('tr');
         
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        if (row.status === 'inwork') tr.classList.add('status-inwork');
+        if (row.status === 'completed') tr.classList.add('status-completed');
+        if (row.isBudget) tr.classList.add('budget');
+        if (row.isUrgent) tr.classList.add('urgent');
+        if (row.isDebt) tr.classList.add('debt');
+        if (row.isBudget || row.isUrgent || row.isDebt) tr.classList.add('highlighted');
         
-        let table1Data = [];
-        let table2Data = [];
-        let currentFilter = 'all';
-        let selectedDevice = null;
-        let deviceTypes = new Set();
-        let sortByDate = 'none'; // 'none', 'earliest', 'latest', 'noDate'
+        const paymentDate = row.paymentDate || row['Дата оплаты'] || '';
         
-        // Функция преобразования даты из формата ДД.ММ.ГГГГ в объект Date
-        function parseDate(dateStr) {
-            if (!dateStr || dateStr === '' || dateStr === '-') return null;
-            
-            const str = dateStr.toString().trim();
-            // Формат ДД.ММ.ГГГГ
-            const parts = str.split('.');
-            if (parts.length === 3) {
-                const day = parseInt(parts[0]);
-                const month = parseInt(parts[1]) - 1;
-                const year = parseInt(parts[2]);
-                return new Date(year, month, day);
-            }
-            
-            // Другие форматы
-            const date = new Date(str);
-            return isNaN(date.getTime()) ? null : date;
-        }
+        tr.innerHTML = `
+            <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong></td>
+            <td>${row['Дата выписки'] || ''}</td>
+            <td class="col-contractor">${row['Контрагент (Наименование)'] || ''}</td>
+            <td>${row['Прибор'] || ''}</td>
+            <td>${row['Кол-во'] || ''}</td>
+            <td>${row['Всего по счету'] || row['Сумма'] || ''}</td>
+            <td>
+                ${row.paymentStatus ? `<span class="badge ${row.paymentStatus === 'Оплачено' ? 'bg-success' : 'bg-secondary'}">${row.paymentStatus}</span>` : '—'}
+            </td>
+            <td>
+                ${paymentDate ? `<strong>${paymentDate}</strong>` : '—'}
+            </td>
+            <td>
+                ${row.urgency ? `<span class="badge badge-urgent">${row.urgency} дн.</span>` : '—'}
+            </td>
+            <td>
+                ${row.status === 'new' ? '<span class="badge badge-new">Новый</span>' : ''}
+                ${row.status === 'inwork' ? '<span class="badge badge-inwork">В работе</span>' : ''}
+                ${row.status === 'completed' ? '<span class="badge badge-completed">✓ Выполнен</span>' : ''}
+            </td>
+            <td>
+                ${row.isBudget ? '<span class="badge badge-budget me-1">Бюджет</span>' : ''}
+                ${row.isUrgent ? '<span class="badge badge-urgent me-1">Срочно</span>' : ''}
+                ${row.isDebt ? '<span class="badge badge-debt me-1">Задолж.</span>' : ''}
+                ${!row.isBudget && !row.isUrgent && !row.isDebt ? '<span class="text-muted">—</span>' : ''}
+            </td>
+            <td>
+                ${row.status === 'new' ? `
+                    <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${row['Номер счета']}', 'inwork')" title="В работу">▶</button>
+                    <button class="btn btn-sm btn-success" onclick="changeStatus('${row['Номер счета']}', 'completed')" title="Выполнен">✓</button>
+                ` : ''}
+                ${row.status === 'inwork' ? `
+                    <button class="btn btn-sm btn-success me-1" onclick="changeStatus('${row['Номер счета']}', 'completed')" title="Выполнен">✓</button>
+                    <button class="btn btn-sm btn-secondary" onclick="changeStatus('${row['Номер счета']}', 'new')" title="В новые">↩</button>
+                ` : ''}
+                ${row.status === 'completed' ? `
+                    <button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${row['Номер счета']}', 'inwork')" title="В работу">↩</button>
+                    <button class="btn btn-sm btn-secondary" onclick="changeStatus('${row['Номер счета']}', 'new')" title="В новые">↩</button>
+                ` : ''}
+            </td>
+        `;
         
-        // Сортировка по дате оплаты
-        function setSortByDate(sortType) {
-            sortByDate = sortType;
-            renderTable();
-        }
-        
-        // Сортировка по дате оплаты (клик по заголовку)
-        function sortByPaymentDate() {
-            if (sortByDate === 'none') {
-                sortByDate = 'earliest';
-            } else if (sortByDate === 'earliest') {
-                sortByDate = 'latest';
-            } else if (sortByDate === 'latest') {
-                sortByDate = 'noDate';
-            } else {
-                sortByDate = 'none';
-            }
-            renderTable();
-        }
-        
-        // Чтение Excel Таблицы 1 (счета с приборами)
-        function readTable1(file, callback) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    let allData = [];
-                    
-                    workbook.SheetNames.forEach(sheetName => {
-                        const sheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(sheet, {
-                            defval: '',
-                            raw: true,
-                            header: 1
-                        });
-                        
-                        console.log(`Лист "${sheetName}": ${jsonData.length} строк`);
-                        
-                        let headerRowIndex = -1;
-                        let headers = [];
-                        
-                        for (let i = 0; i < jsonData.length; i++) {
-                            const row = jsonData[i];
-                            if (row.some(cell => 
-                                cell && cell.toString().toLowerCase().includes('номер') && 
-                                cell.toString().toLowerCase().includes('счет')
-                            )) {
-                                headerRowIndex = i;
-                                headers = row.map(h => h ? h.toString().trim() : '');
-                                console.log(`Шапка в строке ${i + 1}:`, headers);
-                                break;
-                            }
-                        }
-                        
-                        if (headerRowIndex === -1) return;
-                        
-                        for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
-                            const row = jsonData[i];
-                            let invoiceNumber = '';
-                            let invoiceDate = '';
-                            let contractor = '';
-                            let device = '';
-                            let quantity = '';
-                            let amount = '';
-                            let totalAmount = '';
-                            let paymentDate = '';
-                            
-                            headers.forEach((header, index) => {
-                                const value = row[index] || '';
-                                const headerLower = header.toLowerCase();
-                                
-                                if (headerLower.includes('номер') && headerLower.includes('счет')) {
-                                    invoiceNumber = value.toString().trim();
-                                } else if (headerLower.includes('дата') && headerLower.includes('выписк')) {
-                                    invoiceDate = value.toString().trim();
-                                } else if (headerLower.includes('контрагент') || headerLower.includes('наименование')) {
-                                    contractor = value.toString().trim();
-                                } else if (headerLower.includes('прибор')) {
-                                    device = value.toString().trim();
-                                } else if (headerLower.includes('кол-во') || headerLower.includes('колич')) {
-                                    quantity = value.toString().trim();
-                                } else if (headerLower.includes('сумм') || headerLower.includes('всего')) {
-                                    amount = value.toString().trim();
-                                    totalAmount = value.toString().trim();
-                                } else if (headerLower.includes('оплат')) {
-                                    paymentDate = value.toString().trim();
-                                }
-                            });
-                            
-                            if (invoiceNumber && invoiceNumber.includes('-')) {
-                                allData.push({
-                                    'Номер счета': invoiceNumber,
-                                    'Дата выписки': invoiceDate,
-                                    'Контрагент (Наименование)': contractor,
-                                    'Прибор': device,
-                                    'Кол-во': quantity,
-                                    'Сумма': amount,
-                                    'Всего по счету': totalAmount || amount,
-                                    'Оплата': '',
-                                    'Дата оплаты': paymentDate
-                                });
-                            }
-                        }
-                    });
-                    
-                    const uniqueData = [];
-                    const seen = new Set();
-                    allData.forEach(row => {
-                        if (!seen.has(row['Номер счета'])) {
-                            seen.add(row['Номер счета']);
-                            uniqueData.push(row);
-                        }
-                    });
-                    
-                    console.log(`Найдено счетов: ${uniqueData.length}`);
-                    callback(uniqueData);
-                    
-                } catch (error) {
-                    console.error('Ошибка:', error);
-                    alert('Ошибка чтения файла: ' + error.message);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-        
-        // Чтение Excel Таблицы 2 (квитанции с пометками)
-        function readTable2(file, callback) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    let allData = [];
-                    
-                    workbook.SheetNames.forEach(sheetName => {
-                        const sheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(sheet, {
-                            defval: '',
-                            raw: true,
-                            header: 1
-                        });
-                        
-                        console.log(`Лист "${sheetName}" (Таблица 2): ${jsonData.length} строк`);
-                        
-                        let headerRowIndex = -1;
-                        let headers = [];
-                        
-                        for (let i = 0; i < jsonData.length; i++) {
-                            const row = jsonData[i];
-                            if (row.some(cell => 
-                                cell && 
-                                (cell.toString().toLowerCase().includes('номер') || 
-                                 cell.toString().toLowerCase().includes('квитанц') ||
-                                 cell.toString().toLowerCase().includes('счет'))
-                            )) {
-                                headerRowIndex = i;
-                                headers = row.map(h => h ? h.toString().trim() : '');
-                                console.log(`Шапка Таблицы 2 в строке ${i + 1}:`, headers);
-                                break;
-                            }
-                        }
-                        
-                        if (headerRowIndex === -1) return;
-                        
-                        for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
-                            const row = jsonData[i];
-                            
-                            let invoiceNumber = '';
-                            let paymentDate = '';
-                            let isBudget = false;
-                            let urgency = '';
-                            let paymentStatus = '';
-                            let contractor = '';
-                            let amount = '';
-                            
-                            row.forEach((value, index) => {
-                                const header = headers[index] || '';
-                                const headerLower = header.toLowerCase();
-                                const cellValue = value ? value.toString().trim() : '';
-                                
-                                if (headerLower.includes('квитанц') || 
-                                    headerLower.includes('номер') || 
-                                    headerLower.includes('счет')) {
-                                    if (cellValue && cellValue.includes('-')) {
-                                        invoiceNumber = cellValue;
-                                    }
-                                }
-                                
-                                if (headerLower.includes('дата') && headerLower.includes('оплат')) {
-                                    paymentDate = cellValue;
-                                }
-                                
-                                if (headerLower.includes('бюджет') || headerLower === 'r') {
-                                    if (cellValue.toLowerCase() === 'да' || 
-                                        cellValue.toLowerCase() === 'yes' || 
-                                        cellValue === '1' || 
-                                        cellValue === '+') {
-                                        isBudget = true;
-                                    }
-                                }
-                                
-                                if (headerLower.includes('срочн') || headerLower === 's') {
-                                    urgency = cellValue;
-                                }
-                                
-                                if (headerLower.includes('наличие') && headerLower.includes('оплат')) {
-                                    paymentStatus = cellValue;
-                                }
-                                
-                                if (headerLower.includes('контрагент') || headerLower.includes('наименование')) {
-                                    contractor = cellValue;
-                                }
-                                
-                                if (headerLower.includes('сумм')) {
-                                    amount = cellValue;
-                                }
-                            });
-                            
-                            if (invoiceNumber && invoiceNumber.includes('-')) {
-                                allData.push({
-                                    'Номер счета': invoiceNumber,
-                                    'Дата оплаты': paymentDate,
-                                    'Б': isBudget ? 'Да' : '',
-                                    'С': urgency,
-                                    'З': '',
-                                    'Наличие оплаты': paymentStatus,
-                                    'Контрагент': contractor,
-                                    'Сумма': amount
-                                });
-                            }
-                        }
-                    });
-                    
-                    const uniqueData = [];
-                    const seen = new Set();
-                    allData.forEach(row => {
-                        if (!seen.has(row['Номер счета'])) {
-                            seen.add(row['Номер счета']);
-                            uniqueData.push(row);
-                        }
-                    });
-                    
-                    console.log(`Найдено записей в Таблице 2: ${uniqueData.length}`);
-                    callback(uniqueData);
-                    
-                } catch (error) {
-                    console.error('Ошибка чтения Таблицы 2:', error);
-                    alert('Ошибка чтения Таблицы 2: ' + error.message);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-        
-        // Загрузка Таблицы 1
-        function loadTable1() {
-            const fileInput = document.getElementById('table1File');
-            if (!fileInput.files[0]) {
-                alert('Выберите файл Таблицы 1');
-                return;
-            }
-            
-            readTable1(fileInput.files[0], function(data) {
-                if (data.length === 0) {
-                    alert('Не удалось найти счета. Проверьте формат данных.');
-                    return;
-                }
-                
-                table1Data = data.map(row => ({
-                    ...row,
-                    isBudget: false,
-                    isUrgent: false,
-                    isDebt: false,
-                    isMatched: false,
-                    status: 'new',
-                    statusDate: null,
-                    paymentStatus: '',
-                    urgency: '',
-                    workDuration: ''
-                }));
-                
-                saveToStorage();
-                matchTables();
-                renderTable();
-                
-                const infoDiv = document.getElementById('table1Info');
-                infoDiv.style.display = 'block';
-                infoDiv.innerHTML = `✅ Загружено ${table1Data.length} счетов`;
-                setTimeout(() => infoDiv.style.display = 'none', 5000);
-            });
-        }
-        
-        // Загрузка Таблицы 2
-        function loadTable2() {
-            const fileInput = document.getElementById('table2File');
-            if (!fileInput.files[0]) {
-                alert('Выберите файл Таблицы 2');
-                return;
-            }
-            
-            readTable2(fileInput.files[0], function(data) {
-                if (data.length === 0) {
-                    alert('Не удалось найти счета в Таблице 2. Проверьте формат данных.');
-                    return;
-                }
-                
-                table2Data = data;
-                saveToStorage();
-                matchTables();
-                renderTable();
-                
-                const infoDiv = document.getElementById('table2Info');
-                infoDiv.style.display = 'block';
-                infoDiv.innerHTML = `✅ Загружено ${table2Data.length} записей`;
-                setTimeout(() => infoDiv.style.display = 'none', 5000);
-            });
-        }
-        
-        // Загрузка обеих
-        function loadBothTables() {
-            const file1 = document.getElementById('table1File').files[0];
-            const file2 = document.getElementById('table2File').files[0];
-            
-            if (file1 && file2) {
-                loadTable1();
-                setTimeout(loadTable2, 500);
-            } else if (file1) {
-                loadTable1();
-            } else if (file2) {
-                loadTable2();
-            } else {
-                alert('Выберите хотя бы один файл');
-            }
-        }
-        
-        // Сопоставление таблиц
-        function matchTables() {
-            if (!table1Data.length || !table2Data.length) return;
-            
-            const table2Map = {};
-            table2Data.forEach(row => {
-                const num = row['Номер счета']?.trim();
-                if (num) table2Map[num] = row;
-            });
-            
-            table1Data = table1Data.map(row => {
-                const num = row['Номер счета']?.trim();
-                const matched = table2Map[num];
-                
-                if (matched) {
-                    return {
-                        ...row,
-                        isMatched: true,
-                        isBudget: matched['Б'] === 'Да' || matched['Б'] === 'да' || matched['Б'] === true,
-                        isUrgent: matched['С'] && matched['С'].trim() !== '',
-                        urgency: matched['С'] || '',
-                        paymentStatus: matched['Наличие оплаты'] || '',
-                        paymentDate: matched['Дата оплаты'] || row['Дата оплаты'] || ''
-                    };
-                }
-                return row;
-            });
-            
-            saveToStorage();
-        }
-        
-        // Сохранение
-        function saveToStorage() {
-            localStorage.setItem('table1Data', JSON.stringify(table1Data));
-            localStorage.setItem('table2Data', JSON.stringify(table2Data));
-            
-            database.ref('invoices').set({
-                table1Data: table1Data,
-                table2Data: table2Data,
-                timestamp: new Date().toISOString()
-            }).catch(err => console.error('Firebase error:', err));
-            
-            updateDeviceTypes();
-        }
-        
-        // Загрузка из localStorage
-        function loadFromStorage() {
-            const saved1 = localStorage.getItem('table1Data');
-            const saved2 = localStorage.getItem('table2Data');
-            if (saved1) table1Data = JSON.parse(saved1);
-            if (saved2) table2Data = JSON.parse(saved2);
-            updateDeviceTypes();
-            renderTable();
-        }
-        
-        // Обновление типов приборов
-        function updateDeviceTypes() {
-            deviceTypes.clear();
-            table1Data.forEach(row => {
-                const device = row['Прибор'] || '';
-                if (device && device.trim()) {
-                    deviceTypes.add(device.split(' ').slice(0, 3).join(' '));
-                }
-            });
-            renderDeviceTags();
-        }
-        
-        function renderDeviceTags() {
-            const container = document.getElementById('deviceTags');
-            container.innerHTML = '';
-            Array.from(deviceTypes).sort().forEach(device => {
-                const tag = document.createElement('span');
-                tag.className = 'device-tag badge bg-light text-dark border';
-                if (selectedDevice === device) {
-                    tag.classList.add('active');
-                    tag.classList.remove('bg-light');
-                    tag.classList.add('bg-primary', 'text-white');
-                }
-                tag.textContent = device;
-                tag.onclick = () => {
-                    selectedDevice = selectedDevice === device ? null : device;
-                    renderDeviceTags();
-                    renderTable();
-                };
-                container.appendChild(tag);
-            });
-        }
-        
-        // Фильтры
-        function setFilter(filter) {
-            currentFilter = filter;
-            renderTable();
-        }
-        
-        // Изменение статуса
-        function changeStatus(invoiceNumber, newStatus) {
-            table1Data = table1Data.map(row => {
-                if (row['Номер счета'] === invoiceNumber) {
-                    row.status = newStatus;
-                    row.statusDate = new Date().toISOString();
-                }
-                return row;
-            });
-            saveToStorage();
-            renderTable();
-        }
-        
-        // Очистка
-        function clearAllData() {
-            if (confirm('Удалить все данные?')) {
-                table1Data = [];
-                table2Data = [];
-                localStorage.removeItem('table1Data');
-                localStorage.removeItem('table2Data');
-                database.ref('invoices').remove();
-                updateDeviceTypes();
-                renderTable();
-            }
-        }
-        
-        // Рендер таблицы
-        function renderTable() {
-            const tbody = document.getElementById('tableBody');
-            const searchQuery = document.getElementById('search').value.toLowerCase();
-            
-            let filteredData = [...table1Data];
-            
-            if (currentFilter === 'new') {
-                filteredData = filteredData.filter(row => row.status === 'new');
-            } else if (currentFilter === 'inwork') {
-                filteredData = filteredData.filter(row => row.status === 'inwork');
-            } else if (currentFilter === 'completed') {
-                filteredData = filteredData.filter(row => row.status === 'completed');
-            } else if (currentFilter === 'highlighted') {
-                filteredData = filteredData.filter(row => row.isBudget || row.isUrgent || row.isDebt);
-            } else if (currentFilter === 'matched') {
-                filteredData = filteredData.filter(row => row.isMatched);
-            }
-            
-            if (selectedDevice) {
-                filteredData = filteredData.filter(row => {
-                    const device = row['Прибор'] || '';
-                    return device.split(' ').slice(0, 3).join(' ') === selectedDevice;
-                });
-            }
-            
-            if (searchQuery) {
-                filteredData = filteredData.filter(row => 
-                    (row['Номер счета'] && row['Номер счета'].toLowerCase().includes(searchQuery)) ||
-                    (row['Контрагент (Наименование)'] && row['Контрагент (Наименование)'].toLowerCase().includes(searchQuery)) ||
-                    (row['Прибор'] && row['Прибор'].toLowerCase().includes(searchQuery))
-                );
-            }
-            
-            // Сортировка по дате оплаты
-            if (sortByDate === 'earliest') {
-                filteredData.sort((a, b) => {
-                    const dateA = parseDate(a.paymentDate || a['Дата оплаты']);
-                    const dateB = parseDate(b.paymentDate || b['Дата оплаты']);
-                    if (!dateA && !dateB) return 0;
-                    if (!dateA) return 1;
-                    if (!dateB) return -1;
-                    return dateA - dateB;
-                });
-            } else if (sortByDate === 'latest') {
-                filteredData.sort((a, b) => {
-                    const dateA = parseDate(a.paymentDate || a['Дата оплаты']);
-                    const dateB = parseDate(b.paymentDate || b['Дата оплаты']);
-                    if (!dateA && !dateB) return 0;
-                    if (!dateA) return 1;
-                    if (!dateB) return -1;
-                    return dateB - dateA;
-                });
-            } else if (sortByDate === 'noDate') {
-                filteredData = filteredData.filter(row => 
-                    !row.paymentDate && !row['Дата оплаты']
-                );
-            }
-            
-            // Обновление индикатора сортировки
-            const dateSortIndicator = document.getElementById('dateSortIndicator');
-            if (sortByDate === 'earliest') {
-                dateSortIndicator.textContent = '↑';
-            } else if (sortByDate === 'latest') {
-                dateSortIndicator.textContent = '↓';
-            } else if (sortByDate === 'noDate') {
-                dateSortIndicator.textContent = '∅';
-            } else {
-                dateSortIndicator.textContent = '';
-            }
-            
-            // Статистика
-            document.getElementById('totalCount').textContent = table1Data.length;
-            document.getElementById('newCount').textContent = table1Data.filter(r => r.status === 'new').length;
-            document.getElementById('inworkCount').textContent = table1Data.filter(r => r.status === 'inwork').length;
-            document.getElementById('completedCount').textContent = table1Data.filter(r => r.status === 'completed').length;
-            document.getElementById('highlightedCount').textContent = table1Data.filter(r => r.isBudget || r.isUrgent || r.isDebt).length;
-            document.getElementById('urgentCount').textContent = table1Data.filter(r => r.isUrgent).length;
-            
-            // Заголовок
-            const titles = {
-                'all': 'Все счета',
-                'new': 'Новые счета',
-                'inwork': 'Счета в работе',
-                'completed': 'Выполненные счета',
-                'highlighted': 'Счета с пометками',
-                'matched': 'Совпавшие счета'
-            };
-            let title = titles[currentFilter] || 'Счета';
-            if (sortByDate === 'earliest') title += ' (сначала ранние)';
-            if (sortByDate === 'latest') title += ' (сначала поздние)';
-            if (sortByDate === 'noDate') title += ' (без даты оплаты)';
-            
-            document.getElementById('tableTitle').textContent = `📋 ${title} (${filteredData.length})`;
-            
-            // Рендер
-            tbody.innerHTML = '';
-            
-            if (filteredData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted">Нет данных</td></tr>';
-                return;
-            }
-            
-            filteredData.forEach(row => {
-                const tr = document.createElement('tr');
-                
-                if (row.status === 'inwork') tr.classList.add('status-inwork');
-                if (row.status === 'completed') tr.classList.add('status-completed');
-                if (row.isBudget) tr.classList.add('budget');
-                if (row.isUrgent) tr.classList.add('urgent');
-                if (row.isDebt) tr.classList.add('debt');
-                if (row.isBudget || row.isUrgent || row.isDebt) tr.classList.add('highlighted');
-                
-                const paymentDate = row.paymentDate || row['Дата оплаты'] || '';
-                
-                tr.innerHTML = `
-                    <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong></td>
-                    <td>${row['Дата выписки'] || ''}</td>
-                    <td class="col-contractor">${row['Контрагент (Наименование)'] || ''}</td>
-                    <td>${row['Прибор'] || ''}</td>
-                    <td>${row['Кол-во'] || ''}</td>
-                    <td>${row['Всего по счету'] || row['Сумма'] || ''}</td>
-                    <td>
-                        ${row.paymentStatus ? `<span class="badge ${row.paymentStatus === 'Оплачено' ? 'bg-success' : 'bg-secondary'}">${row.paymentStatus}</span>` : '—'}
-                    </td>
-                    <td>
-                        ${paymentDate ? `<strong>${paymentDate}</strong>` : '—'}
-                    </td>
-                    <td>
-                        ${row.urgency ? `<span class="badge badge-urgent">${row.urgency} дн.</span>` : '—'}
-                    </td>
-                    <td>
-                        ${row.status === 'new' ? '<span class="badge badge-new">Новый</span>' : ''}
-                        ${row.status === 'inwork' ? '<span class="badge badge-inwork">В работе</span>' : ''}
-                        ${row.status === 'completed' ? '<span class="badge badge-completed">✓ Выполнен</span>' : ''}
-                    </td>
-                    <td>
-                        ${row.isBudget ? '<span class="badge badge-budget me-1">Бюджет</span>' : ''}
-                        ${row.isUrgent ? '<span class="badge badge-urgent me-1">Срочно</span>' : ''}
-                        ${row.isDebt ? '<span class="badge badge-debt me-1">Задолж.</span>' : ''}
-                        ${!row.isBudget && !row.isUrgent && !row.isDebt ? '<span class="text-muted">—</span>' : ''}
-                    </td>
-                    <td>
-                        ${row.status === 'new' ? `
-                            <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${row['Номер счета']}', 'inwork')" title="В работу">▶</button>
-                            <button class="btn btn-sm btn-success" onclick="changeStatus('${row['Номер счета']}', 'completed')" title="Выполнен">✓</button>
-                        ` : ''}
-                        ${row.status === 'inwork' ? `
-                            <button class="btn btn-sm btn-success me-1" onclick="changeStatus('${row['Номер счета']}', 'completed')" title="Выполнен">✓</button>
-                            <button class="btn btn-sm btn-secondary" onclick="changeStatus('${row['Номер счета']}', 'new')" title="В новые">↩</button>
-                        ` : ''}
-                        ${row.status === 'completed' ? `
-                            <button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${row['Номер счета']}', 'inwork')" title="В работу">↩</button>
-                            <button class="btn btn-sm btn-secondary" onclick="changeStatus('${row['Номер счета']}', 'new')" title="В новые">↩</button>
-                        ` : ''}
-                    </td>
-                `;
-                
-                tbody.appendChild(tr);
-            });
-        }
-        
-        // Экспорт
-        function exportToExcel() {
-            if (!table1Data.length) {
-                alert('Нет данных');
-                return;
-            }
-            
-            const exportData = table1Data.map(row => ({
-                'Квитанция/Счет': row['Номер счета'],
-                'Дата выписки': row['Дата выписки'],
-                'Контрагент': row['Контрагент (Наименование)'],
-                'Прибор': row['Прибор'],
-                'Кол-во': row['Кол-во'],
-                'Сумма': row['Всего по счету'],
-                'Дата оплаты': row.paymentDate || row['Дата оплаты'],
-                'Срочность': row.urgency,
-                'Статус': row.status,
-                'Бюджет': row.isBudget ? 'Да' : ''
-            }));
-            
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Счета');
-            XLSX.writeFile(wb, 'счета_экспорт.xlsx');
-        }
-        
-        // Инициализация
-        window.onload = function() {
-            loadFromStorage();
-            renderTable();
-        };
-    </script>
-</body>
-</html>
+        tbody.appendChild(tr);
+    });
+}
