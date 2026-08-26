@@ -19,14 +19,14 @@
         .status-new { }
         .status-inwork { background-color: #cce5ff; }
         .status-completed { opacity: 0.6; text-decoration: line-through; background-color: #d4edda; }
-        .badge-budget { background-color: #ffc107; }
+        .badge-budget { background-color: #ffc107; color: #000; }
         .badge-urgent { background-color: #dc3545; color: white; }
         .badge-debt { background-color: #fd7e14; color: white; }
         .badge-matched { background-color: #28a745; color: white; }
         .badge-new { background-color: #6c757d; color: white; }
         .badge-inwork { background-color: #007bff; color: white; }
         .badge-completed { background-color: #28a745; color: white; }
-        .table-container { max-height: 600px; overflow-y: auto; }
+        .table-container { max-height: 600px; overflow-y: auto; overflow-x: auto; }
         .table-info { display: none; margin-top: 10px; }
         .device-filter { margin-bottom: 15px; }
         .device-tag { 
@@ -37,6 +37,7 @@
             cursor: pointer; 
             transition: all 0.3s;
             user-select: none;
+            font-size: 0.85em;
         }
         .device-tag:hover { 
             transform: scale(1.05); 
@@ -62,6 +63,38 @@
         .sync-online { background-color: #28a745; }
         .sync-offline { background-color: #dc3545; }
         .sync-syncing { background-color: #ffc107; }
+        
+        .col-invoice {
+            min-width: 150px;
+            white-space: nowrap;
+        }
+        
+        .col-contractor {
+            min-width: 200px;
+        }
+        
+        #invoicesTable {
+            width: 100%;
+            min-width: 1200px;
+        }
+        
+        #invoicesTable th, #invoicesTable td {
+            padding: 8px 10px;
+            vertical-align: middle;
+        }
+        
+        .sort-btn {
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .sort-btn:hover {
+            color: #ffc107;
+        }
+        
+        .sort-indicator {
+            font-size: 0.8em;
+        }
     </style>
 </head>
 <body>
@@ -91,8 +124,9 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Таблица 2 (контрольная с пометками):</label>
+                            <label class="form-label fw-bold">Таблица 2 (квитанции с пометками):</label>
                             <input type="file" id="table2File" class="form-control" accept=".xlsx,.xls">
+                            <small class="text-muted">Колонки: N - квитанции, K - дата оплаты, R - бюджет, S - срочность</small>
                         </div>
                         
                         <button class="btn btn-success" onclick="loadBothTables()">📥 Загрузить</button>
@@ -107,7 +141,7 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header bg-info text-white">
-                        <h5>🔍 Фильтры</h5>
+                        <h5>🔍 Фильтры и сортировка</h5>
                     </div>
                     <div class="card-body">
                         <div class="btn-group mb-3 flex-wrap" role="group">
@@ -116,11 +150,26 @@
                             <button class="btn btn-outline-info" onclick="setFilter('inwork')">В работе</button>
                             <button class="btn btn-outline-success" onclick="setFilter('completed')">Выполненные</button>
                             <button class="btn btn-outline-warning" onclick="setFilter('highlighted')">С пометками</button>
+                            <button class="btn btn-outline-dark" onclick="setFilter('matched')">Совпавшие</button>
                         </div>
                         
                         <input type="text" id="search" class="form-control mb-3" placeholder="🔎 Поиск..." oninput="renderTable()">
                         
-                        <div id="deviceTags" class="mt-2"></div>
+                        <!-- Сортировка по дате -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">📅 Сортировка по дате оплаты:</label>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-outline-secondary" onclick="setSortByDate('none')">Без сортировки</button>
+                                <button class="btn btn-outline-danger" onclick="setSortByDate('earliest')">↑ Сначала ранние</button>
+                                <button class="btn btn-outline-success" onclick="setSortByDate('latest')">↓ Сначала поздние</button>
+                                <button class="btn btn-outline-warning" onclick="setSortByDate('noDate')">Без даты оплаты</button>
+                            </div>
+                        </div>
+                        
+                        <div class="device-filter">
+                            <label class="form-label fw-bold">🏷 Типы приборов:</label>
+                            <div id="deviceTags" class="mt-2"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -168,6 +217,14 @@
                     </div>
                 </div>
             </div>
+            <div class="col-md-2">
+                <div class="card bg-danger text-white">
+                    <div class="card-body text-center">
+                        <h6>Срочные</h6>
+                        <h3 id="urgentCount">0</h3>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- Таблица -->
@@ -181,13 +238,17 @@
                     <table class="table table-hover" id="invoicesTable">
                         <thead class="table-dark">
                             <tr>
-                                <th>№ счета</th>
-                                <th>Дата</th>
-                                <th>Контрагент</th>
+                                <th class="col-invoice">Квитанция/Счет</th>
+                                <th>Дата выписки</th>
+                                <th class="col-contractor">Контрагент</th>
                                 <th>Прибор</th>
                                 <th>Кол-во</th>
                                 <th>Сумма</th>
                                 <th>Оплата</th>
+                                <th class="sort-btn" onclick="sortByPaymentDate()">
+                                    Дата оплаты <span id="dateSortIndicator" class="sort-indicator"></span>
+                                </th>
+                                <th>Срочность</th>
                                 <th>Статус</th>
                                 <th>Пометки</th>
                                 <th>Действия</th>
@@ -221,9 +282,49 @@
         let currentFilter = 'all';
         let selectedDevice = null;
         let deviceTypes = new Set();
+        let sortByDate = 'none'; // 'none', 'earliest', 'latest', 'noDate'
         
-        // Чтение Excel с обработкой объединенных ячеек
-        function readExcelWithMergedCells(file, callback) {
+        // Функция преобразования даты из формата ДД.ММ.ГГГГ в объект Date
+        function parseDate(dateStr) {
+            if (!dateStr || dateStr === '' || dateStr === '-') return null;
+            
+            const str = dateStr.toString().trim();
+            // Формат ДД.ММ.ГГГГ
+            const parts = str.split('.');
+            if (parts.length === 3) {
+                const day = parseInt(parts[0]);
+                const month = parseInt(parts[1]) - 1;
+                const year = parseInt(parts[2]);
+                return new Date(year, month, day);
+            }
+            
+            // Другие форматы
+            const date = new Date(str);
+            return isNaN(date.getTime()) ? null : date;
+        }
+        
+        // Сортировка по дате оплаты
+        function setSortByDate(sortType) {
+            sortByDate = sortType;
+            renderTable();
+        }
+        
+        // Сортировка по дате оплаты (клик по заголовку)
+        function sortByPaymentDate() {
+            if (sortByDate === 'none') {
+                sortByDate = 'earliest';
+            } else if (sortByDate === 'earliest') {
+                sortByDate = 'latest';
+            } else if (sortByDate === 'latest') {
+                sortByDate = 'noDate';
+            } else {
+                sortByDate = 'none';
+            }
+            renderTable();
+        }
+        
+        // Чтение Excel Таблицы 1 (счета с приборами)
+        function readTable1(file, callback) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
@@ -244,7 +345,6 @@
                         let headerRowIndex = -1;
                         let headers = [];
                         
-                        // Ищем шапку
                         for (let i = 0; i < jsonData.length; i++) {
                             const row = jsonData[i];
                             if (row.some(cell => 
@@ -258,12 +358,8 @@
                             }
                         }
                         
-                        if (headerRowIndex === -1) {
-                            console.log(`Шапка не найдена в листе "${sheetName}"`);
-                            return;
-                        }
+                        if (headerRowIndex === -1) return;
                         
-                        // Обрабатываем данные
                         for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
                             const row = jsonData[i];
                             let invoiceNumber = '';
@@ -272,24 +368,27 @@
                             let device = '';
                             let quantity = '';
                             let amount = '';
+                            let totalAmount = '';
                             let paymentDate = '';
                             
                             headers.forEach((header, index) => {
                                 const value = row[index] || '';
+                                const headerLower = header.toLowerCase();
                                 
-                                if (header.includes('Номер') && header.includes('счет')) {
+                                if (headerLower.includes('номер') && headerLower.includes('счет')) {
                                     invoiceNumber = value.toString().trim();
-                                } else if (header.includes('Дата') && header.includes('выписк')) {
+                                } else if (headerLower.includes('дата') && headerLower.includes('выписк')) {
                                     invoiceDate = value.toString().trim();
-                                } else if (header.includes('Контрагент') || header.includes('Наименование')) {
+                                } else if (headerLower.includes('контрагент') || headerLower.includes('наименование')) {
                                     contractor = value.toString().trim();
-                                } else if (header.includes('Прибор')) {
+                                } else if (headerLower.includes('прибор')) {
                                     device = value.toString().trim();
-                                } else if (header.includes('Кол-во') || header.includes('Колич')) {
+                                } else if (headerLower.includes('кол-во') || headerLower.includes('колич')) {
                                     quantity = value.toString().trim();
-                                } else if (header.includes('Сумма') || header.includes('Всего')) {
+                                } else if (headerLower.includes('сумм') || headerLower.includes('всего')) {
                                     amount = value.toString().trim();
-                                } else if (header.includes('Оплат')) {
+                                    totalAmount = value.toString().trim();
+                                } else if (headerLower.includes('оплат')) {
                                     paymentDate = value.toString().trim();
                                 }
                             });
@@ -302,7 +401,7 @@
                                     'Прибор': device,
                                     'Кол-во': quantity,
                                     'Сумма': amount,
-                                    'Всего по счету': amount,
+                                    'Всего по счету': totalAmount || amount,
                                     'Оплата': '',
                                     'Дата оплаты': paymentDate
                                 });
@@ -310,7 +409,6 @@
                         }
                     });
                     
-                    // Удаляем дубликаты
                     const uniqueData = [];
                     const seen = new Set();
                     allData.forEach(row => {
@@ -321,13 +419,139 @@
                     });
                     
                     console.log(`Найдено счетов: ${uniqueData.length}`);
-                    console.log('Пример:', uniqueData.slice(0, 3));
-                    
                     callback(uniqueData);
                     
                 } catch (error) {
                     console.error('Ошибка:', error);
                     alert('Ошибка чтения файла: ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // Чтение Excel Таблицы 2 (квитанции с пометками)
+        function readTable2(file, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    let allData = [];
+                    
+                    workbook.SheetNames.forEach(sheetName => {
+                        const sheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(sheet, {
+                            defval: '',
+                            raw: true,
+                            header: 1
+                        });
+                        
+                        console.log(`Лист "${sheetName}" (Таблица 2): ${jsonData.length} строк`);
+                        
+                        let headerRowIndex = -1;
+                        let headers = [];
+                        
+                        for (let i = 0; i < jsonData.length; i++) {
+                            const row = jsonData[i];
+                            if (row.some(cell => 
+                                cell && 
+                                (cell.toString().toLowerCase().includes('номер') || 
+                                 cell.toString().toLowerCase().includes('квитанц') ||
+                                 cell.toString().toLowerCase().includes('счет'))
+                            )) {
+                                headerRowIndex = i;
+                                headers = row.map(h => h ? h.toString().trim() : '');
+                                console.log(`Шапка Таблицы 2 в строке ${i + 1}:`, headers);
+                                break;
+                            }
+                        }
+                        
+                        if (headerRowIndex === -1) return;
+                        
+                        for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
+                            const row = jsonData[i];
+                            
+                            let invoiceNumber = '';
+                            let paymentDate = '';
+                            let isBudget = false;
+                            let urgency = '';
+                            let paymentStatus = '';
+                            let contractor = '';
+                            let amount = '';
+                            
+                            row.forEach((value, index) => {
+                                const header = headers[index] || '';
+                                const headerLower = header.toLowerCase();
+                                const cellValue = value ? value.toString().trim() : '';
+                                
+                                if (headerLower.includes('квитанц') || 
+                                    headerLower.includes('номер') || 
+                                    headerLower.includes('счет')) {
+                                    if (cellValue && cellValue.includes('-')) {
+                                        invoiceNumber = cellValue;
+                                    }
+                                }
+                                
+                                if (headerLower.includes('дата') && headerLower.includes('оплат')) {
+                                    paymentDate = cellValue;
+                                }
+                                
+                                if (headerLower.includes('бюджет') || headerLower === 'r') {
+                                    if (cellValue.toLowerCase() === 'да' || 
+                                        cellValue.toLowerCase() === 'yes' || 
+                                        cellValue === '1' || 
+                                        cellValue === '+') {
+                                        isBudget = true;
+                                    }
+                                }
+                                
+                                if (headerLower.includes('срочн') || headerLower === 's') {
+                                    urgency = cellValue;
+                                }
+                                
+                                if (headerLower.includes('наличие') && headerLower.includes('оплат')) {
+                                    paymentStatus = cellValue;
+                                }
+                                
+                                if (headerLower.includes('контрагент') || headerLower.includes('наименование')) {
+                                    contractor = cellValue;
+                                }
+                                
+                                if (headerLower.includes('сумм')) {
+                                    amount = cellValue;
+                                }
+                            });
+                            
+                            if (invoiceNumber && invoiceNumber.includes('-')) {
+                                allData.push({
+                                    'Номер счета': invoiceNumber,
+                                    'Дата оплаты': paymentDate,
+                                    'Б': isBudget ? 'Да' : '',
+                                    'С': urgency,
+                                    'З': '',
+                                    'Наличие оплаты': paymentStatus,
+                                    'Контрагент': contractor,
+                                    'Сумма': amount
+                                });
+                            }
+                        }
+                    });
+                    
+                    const uniqueData = [];
+                    const seen = new Set();
+                    allData.forEach(row => {
+                        if (!seen.has(row['Номер счета'])) {
+                            seen.add(row['Номер счета']);
+                            uniqueData.push(row);
+                        }
+                    });
+                    
+                    console.log(`Найдено записей в Таблице 2: ${uniqueData.length}`);
+                    callback(uniqueData);
+                    
+                } catch (error) {
+                    console.error('Ошибка чтения Таблицы 2:', error);
+                    alert('Ошибка чтения Таблицы 2: ' + error.message);
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -341,7 +565,7 @@
                 return;
             }
             
-            readExcelWithMergedCells(fileInput.files[0], function(data) {
+            readTable1(fileInput.files[0], function(data) {
                 if (data.length === 0) {
                     alert('Не удалось найти счета. Проверьте формат данных.');
                     return;
@@ -356,6 +580,7 @@
                     status: 'new',
                     statusDate: null,
                     paymentStatus: '',
+                    urgency: '',
                     workDuration: ''
                 }));
                 
@@ -378,9 +603,9 @@
                 return;
             }
             
-            readExcelWithMergedCells(fileInput.files[0], function(data) {
+            readTable2(fileInput.files[0], function(data) {
                 if (data.length === 0) {
-                    alert('Не удалось найти счета. Проверьте формат данных.');
+                    alert('Не удалось найти счета в Таблице 2. Проверьте формат данных.');
                     return;
                 }
                 
@@ -431,11 +656,11 @@
                     return {
                         ...row,
                         isMatched: true,
-                        isBudget: checkMark(matched['Б']) || checkMark(matched['Бюджет']),
-                        isUrgent: checkMark(matched['С']) || checkMark(matched['Срочность']),
-                        isDebt: checkMark(matched['З']) || checkMark(matched['Задолженность']),
+                        isBudget: matched['Б'] === 'Да' || matched['Б'] === 'да' || matched['Б'] === true,
+                        isUrgent: matched['С'] && matched['С'].trim() !== '',
+                        urgency: matched['С'] || '',
                         paymentStatus: matched['Наличие оплаты'] || '',
-                        workDuration: matched['Продолж. работ'] || ''
+                        paymentDate: matched['Дата оплаты'] || row['Дата оплаты'] || ''
                     };
                 }
                 return row;
@@ -444,18 +669,11 @@
             saveToStorage();
         }
         
-        function checkMark(value) {
-            if (!value) return false;
-            const str = value.toString().trim().toLowerCase();
-            return str === 'да' || str === 'true' || str === '1' || str === '+' || str === '✓' || str === 'yes';
-        }
-        
         // Сохранение
         function saveToStorage() {
             localStorage.setItem('table1Data', JSON.stringify(table1Data));
             localStorage.setItem('table2Data', JSON.stringify(table2Data));
             
-            // Firebase
             database.ref('invoices').set({
                 table1Data: table1Data,
                 table2Data: table2Data,
@@ -484,15 +702,24 @@
                     deviceTypes.add(device.split(' ').slice(0, 3).join(' '));
                 }
             });
-            
+            renderDeviceTags();
+        }
+        
+        function renderDeviceTags() {
             const container = document.getElementById('deviceTags');
             container.innerHTML = '';
             Array.from(deviceTypes).sort().forEach(device => {
                 const tag = document.createElement('span');
                 tag.className = 'device-tag badge bg-light text-dark border';
+                if (selectedDevice === device) {
+                    tag.classList.add('active');
+                    tag.classList.remove('bg-light');
+                    tag.classList.add('bg-primary', 'text-white');
+                }
                 tag.textContent = device;
                 tag.onclick = () => {
                     selectedDevice = selectedDevice === device ? null : device;
+                    renderDeviceTags();
                     renderTable();
                 };
                 container.appendChild(tag);
@@ -546,6 +773,8 @@
                 filteredData = filteredData.filter(row => row.status === 'completed');
             } else if (currentFilter === 'highlighted') {
                 filteredData = filteredData.filter(row => row.isBudget || row.isUrgent || row.isDebt);
+            } else if (currentFilter === 'matched') {
+                filteredData = filteredData.filter(row => row.isMatched);
             }
             
             if (selectedDevice) {
@@ -563,12 +792,50 @@
                 );
             }
             
+            // Сортировка по дате оплаты
+            if (sortByDate === 'earliest') {
+                filteredData.sort((a, b) => {
+                    const dateA = parseDate(a.paymentDate || a['Дата оплаты']);
+                    const dateB = parseDate(b.paymentDate || b['Дата оплаты']);
+                    if (!dateA && !dateB) return 0;
+                    if (!dateA) return 1;
+                    if (!dateB) return -1;
+                    return dateA - dateB;
+                });
+            } else if (sortByDate === 'latest') {
+                filteredData.sort((a, b) => {
+                    const dateA = parseDate(a.paymentDate || a['Дата оплаты']);
+                    const dateB = parseDate(b.paymentDate || b['Дата оплаты']);
+                    if (!dateA && !dateB) return 0;
+                    if (!dateA) return 1;
+                    if (!dateB) return -1;
+                    return dateB - dateA;
+                });
+            } else if (sortByDate === 'noDate') {
+                filteredData = filteredData.filter(row => 
+                    !row.paymentDate && !row['Дата оплаты']
+                );
+            }
+            
+            // Обновление индикатора сортировки
+            const dateSortIndicator = document.getElementById('dateSortIndicator');
+            if (sortByDate === 'earliest') {
+                dateSortIndicator.textContent = '↑';
+            } else if (sortByDate === 'latest') {
+                dateSortIndicator.textContent = '↓';
+            } else if (sortByDate === 'noDate') {
+                dateSortIndicator.textContent = '∅';
+            } else {
+                dateSortIndicator.textContent = '';
+            }
+            
             // Статистика
             document.getElementById('totalCount').textContent = table1Data.length;
             document.getElementById('newCount').textContent = table1Data.filter(r => r.status === 'new').length;
             document.getElementById('inworkCount').textContent = table1Data.filter(r => r.status === 'inwork').length;
             document.getElementById('completedCount').textContent = table1Data.filter(r => r.status === 'completed').length;
             document.getElementById('highlightedCount').textContent = table1Data.filter(r => r.isBudget || r.isUrgent || r.isDebt).length;
+            document.getElementById('urgentCount').textContent = table1Data.filter(r => r.isUrgent).length;
             
             // Заголовок
             const titles = {
@@ -576,15 +843,21 @@
                 'new': 'Новые счета',
                 'inwork': 'Счета в работе',
                 'completed': 'Выполненные счета',
-                'highlighted': 'Счета с пометками'
+                'highlighted': 'Счета с пометками',
+                'matched': 'Совпавшие счета'
             };
-            document.getElementById('tableTitle').textContent = `📋 ${titles[currentFilter] || 'Счета'} (${filteredData.length})`;
+            let title = titles[currentFilter] || 'Счета';
+            if (sortByDate === 'earliest') title += ' (сначала ранние)';
+            if (sortByDate === 'latest') title += ' (сначала поздние)';
+            if (sortByDate === 'noDate') title += ' (без даты оплаты)';
+            
+            document.getElementById('tableTitle').textContent = `📋 ${title} (${filteredData.length})`;
             
             // Рендер
             tbody.innerHTML = '';
             
             if (filteredData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">Нет данных</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted">Нет данных</td></tr>';
                 return;
             }
             
@@ -596,15 +869,26 @@
                 if (row.isBudget) tr.classList.add('budget');
                 if (row.isUrgent) tr.classList.add('urgent');
                 if (row.isDebt) tr.classList.add('debt');
+                if (row.isBudget || row.isUrgent || row.isDebt) tr.classList.add('highlighted');
+                
+                const paymentDate = row.paymentDate || row['Дата оплаты'] || '';
                 
                 tr.innerHTML = `
-                    <td><strong>${row['Номер счета'] || ''}</strong></td>
+                    <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong></td>
                     <td>${row['Дата выписки'] || ''}</td>
-                    <td>${row['Контрагент (Наименование)'] || ''}</td>
+                    <td class="col-contractor">${row['Контрагент (Наименование)'] || ''}</td>
                     <td>${row['Прибор'] || ''}</td>
                     <td>${row['Кол-во'] || ''}</td>
                     <td>${row['Всего по счету'] || row['Сумма'] || ''}</td>
-                    <td>${row.paymentStatus || '—'}</td>
+                    <td>
+                        ${row.paymentStatus ? `<span class="badge ${row.paymentStatus === 'Оплачено' ? 'bg-success' : 'bg-secondary'}">${row.paymentStatus}</span>` : '—'}
+                    </td>
+                    <td>
+                        ${paymentDate ? `<strong>${paymentDate}</strong>` : '—'}
+                    </td>
+                    <td>
+                        ${row.urgency ? `<span class="badge badge-urgent">${row.urgency} дн.</span>` : '—'}
+                    </td>
                     <td>
                         ${row.status === 'new' ? '<span class="badge badge-new">Новый</span>' : ''}
                         ${row.status === 'inwork' ? '<span class="badge badge-inwork">В работе</span>' : ''}
@@ -613,21 +897,21 @@
                     <td>
                         ${row.isBudget ? '<span class="badge badge-budget me-1">Бюджет</span>' : ''}
                         ${row.isUrgent ? '<span class="badge badge-urgent me-1">Срочно</span>' : ''}
-                        ${row.isDebt ? '<span class="badge badge-debt me-1">Задолженность</span>' : ''}
+                        ${row.isDebt ? '<span class="badge badge-debt me-1">Задолж.</span>' : ''}
                         ${!row.isBudget && !row.isUrgent && !row.isDebt ? '<span class="text-muted">—</span>' : ''}
                     </td>
                     <td>
                         ${row.status === 'new' ? `
-                            <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${row['Номер счета']}', 'inwork')">▶</button>
-                            <button class="btn btn-sm btn-success" onclick="changeStatus('${row['Номер счета']}', 'completed')">✓</button>
+                            <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${row['Номер счета']}', 'inwork')" title="В работу">▶</button>
+                            <button class="btn btn-sm btn-success" onclick="changeStatus('${row['Номер счета']}', 'completed')" title="Выполнен">✓</button>
                         ` : ''}
                         ${row.status === 'inwork' ? `
-                            <button class="btn btn-sm btn-success me-1" onclick="changeStatus('${row['Номер счета']}', 'completed')">✓</button>
-                            <button class="btn btn-sm btn-secondary" onclick="changeStatus('${row['Номер счета']}', 'new')">↩</button>
+                            <button class="btn btn-sm btn-success me-1" onclick="changeStatus('${row['Номер счета']}', 'completed')" title="Выполнен">✓</button>
+                            <button class="btn btn-sm btn-secondary" onclick="changeStatus('${row['Номер счета']}', 'new')" title="В новые">↩</button>
                         ` : ''}
                         ${row.status === 'completed' ? `
-                            <button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${row['Номер счета']}', 'inwork')">↩</button>
-                            <button class="btn btn-sm btn-secondary" onclick="changeStatus('${row['Номер счета']}', 'new')">↩</button>
+                            <button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${row['Номер счета']}', 'inwork')" title="В работу">↩</button>
+                            <button class="btn btn-sm btn-secondary" onclick="changeStatus('${row['Номер счета']}', 'new')" title="В новые">↩</button>
                         ` : ''}
                     </td>
                 `;
@@ -644,16 +928,16 @@
             }
             
             const exportData = table1Data.map(row => ({
-                'Номер счета': row['Номер счета'],
+                'Квитанция/Счет': row['Номер счета'],
                 'Дата выписки': row['Дата выписки'],
                 'Контрагент': row['Контрагент (Наименование)'],
                 'Прибор': row['Прибор'],
                 'Кол-во': row['Кол-во'],
                 'Сумма': row['Всего по счету'],
+                'Дата оплаты': row.paymentDate || row['Дата оплаты'],
+                'Срочность': row.urgency,
                 'Статус': row.status,
-                'Бюджет': row.isBudget ? 'Да' : '',
-                'Срочно': row.isUrgent ? 'Да' : '',
-                'Задолженность': row.isDebt ? 'Да' : ''
+                'Бюджет': row.isBudget ? 'Да' : ''
             }));
             
             const ws = XLSX.utils.json_to_sheet(exportData);
