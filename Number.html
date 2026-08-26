@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Учет счетов</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        .budget { background-color: #fff3cd; }
+        .urgent { background-color: #f8d7da; }
+        .debt { background-color: #ffe5d0; }
+        .highlighted { border-left: 5px solid #dc3545; }
+        .completed { opacity: 0.6; text-decoration: line-through; }
+        .badge-budget { background-color: #ffc107; }
+        .badge-urgent { background-color: #dc3545; color: white; }
+        .badge-debt { background-color: #fd7e14; color: white; }
+        .badge-matched { background-color: #28a745; color: white; }
+        .table-container { max-height: 600px; overflow-y: auto; }
+        .status-badge { font-size: 0.85em; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <h1 class="mb-4">📊 Учет счетов</h1>
+        
+        <!-- Загрузка файлов -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5>📁 Загрузка таблиц</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Таблица 1 (счета с приборами):</label>
+                            <input type="file" id="table1File" class="form-control" accept=".xlsx,.xls">
+                            <small class="text-muted">Колонки: Номер счета, Дата выписки, Код, Контрагент, Прибор, Кол-во, Сумма, Всего по счету, Оплата, Дата оплаты</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Таблица 2 (контрольная с пометками):</label>
+                            <input type="file" id="table2File" class="form-control" accept=".xlsx,.xls">
+                            <small class="text-muted">Колонки: Код прибора, Наименование контрагента, Номер счета, Дата выписки, Сумма, Дата оплаты, Продолж. работ, Наличие оплаты, Сумма оплаты, Таб. №, Б, С, З</small>
+                        </div>
+                        
+                        <button class="btn btn-success" onclick="loadBothTables()">
+                            📥 Загрузить обе таблицы
+                        </button>
+                        <button class="btn btn-danger" onclick="clearAllData()">
+                            🗑 Очистить все
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5>🔍 Фильтры и поиск</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="btn-group mb-3 flex-wrap" role="group">
+                            <button class="btn btn-outline-primary" onclick="setFilter('all')">Все</button>
+                            <button class="btn btn-outline-success" onclick="setFilter('active')">Активные</button>
+                            <button class="btn btn-outline-warning" onclick="setFilter('highlighted')">С пометками</button>
+                            <button class="btn btn-outline-info" onclick="setFilter('matched')">Совпавшие</button>
+                            <button class="btn btn-outline-secondary" onclick="setFilter('not_highlighted')">Без пометок</button>
+                            <button class="btn btn-outline-dark" onclick="setFilter('completed')">Архив</button>
+                        </div>
+                        
+                        <input type="text" id="search" class="form-control" placeholder="🔎 Поиск по номеру, контрагенту или прибору..." oninput="renderTable()">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Статистика -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h5>Всего счетов</h5>
+                        <h2 id="totalCount">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h5>С пометками</h5>
+                        <h2 id="highlightedCount">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h5>Выполнено</h5>
+                        <h2 id="completedCount">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body text-center">
+                        <h5>В работе</h5>
+                        <h2 id="activeCount">0</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Таблица счетов -->
+        <div class="card">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <h5 id="tableTitle">📋 Активные счета</h5>
+                <button class="btn btn-sm btn-light" onclick="exportToExcel()">📊 Экспорт в Excel</button>
+            </div>
+            <div class="card-body table-container">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="invoicesTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>№ счета</th>
+                                <th>Дата выписки</th>
+                                <th>Контрагент</th>
+                                <th>Прибор</th>
+                                <th>Кол-во</th>
+                                <th>Сумма</th>
+                                <th>Оплата</th>
+                                <th>Статус</th>
+                                <th>Пометки</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- Данные будут здесь -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Глобальные переменные
+        let table1Data = [];
+        let table2Data = [];
+        let currentFilter = 'all';
+        
+        // Загрузка данных из localStorage
+        function loadFromStorage() {
+            const saved1 = localStorage.getItem('table1Data');
+            const saved2 = localStorage.getItem('table2Data');
+            
+            if (saved1) table1Data = JSON.parse(saved1);
+            if (saved2) table2Data = JSON.parse(saved2);
+            
+            renderTable();
+        }
+        
+        // Сохранение в localStorage
+        function saveToStorage() {
+            localStorage.setItem('table1Data', JSON.stringify(table1Data));
+            localStorage.setItem('table2Data', JSON.stringify(table2Data));
+        }
+        
+        // Чтение Excel файла
+        function readExcel(file, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                callback(jsonData);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // Загрузка Таблицы 1
+        function loadTable1() {
+            const fileInput = document.getElementById('table1File');
+            if (!fileInput.files[0]) {
+                alert('Выберите файл Таблицы 1');
+                return;
+            }
+            
+            readExcel(fileInput.files[0], function(data) {
+                table1Data = data.filter(row => row['Номер счета'] && row['Номер счета'] !== 'Итого');
+                
+                // Добавляем поля для статуса
+                table1Data = table1Data.map(row => ({
+                    ...row,
+                    isBudget: false,
+                    isUrgent: false,
+                    isDebt: false,
+                    isMatched: false,
+                    isCompleted: false,
+                    completedDate: null,
+                    paymentStatus: row['Оплата'] || '',
+                    workDuration: ''
+                }));
+                
+                saveToStorage();
+                matchTables();
+                renderTable();
+                alert(`Загружено ${table1Data.length} счетов из Таблицы 1`);
+            });
+        }
+        
+        // Загрузка Таблицы 2
+        function loadTable2() {
+            const fileInput = document.getElementById('table2File');
+            if (!fileInput.files[0]) {
+                alert('Выберите файл Таблицы 2');
+                return;
+            }
+            
+            readExcel(fileInput.files[0], function(data) {
+                table2Data = data.filter(row => row['Номер счета']);
+                saveToStorage();
+                matchTables();
+                renderTable();
+                alert(`Загружено ${table2Data.length} записей из Таблицы 2`);
+            });
+        }
+        
+        // Загрузка обеих таблиц
+        function loadBothTables() {
+            const file1 = document.getElementById('table1File').files[0];
+            const file2 = document.getElementById('table2File').files[0];
+            
+            if (file1 && file2) {
+                loadTable1();
+                setTimeout(loadTable2, 500);
+            } else if (file1) {
+                loadTable1();
+            } else if (file2) {
+                loadTable2();
+            } else {
+                alert('Выберите хотя бы один файл');
+            }
+        }
+        
+        // Сопоставление таблиц
+        function matchTables() {
+            if (!table1Data.length || !table2Data.length) return;
+            
+            const table2Map = {};
+            table2Data.forEach(row => {
+                const invoiceNumber = row['Номер счета'].toString().trim();
+                if (invoiceNumber) {
+                    table2Map[invoiceNumber] = row;
+                }
+            });
+            
+            table1Data = table1Data.map(row => {
+                const invoiceNumber = row['Номер счета'].toString().trim();
+                const matchedRow = table2Map[invoiceNumber];
+                
+                if (matchedRow) {
+                    return {
+                        ...row,
+                        isMatched: true,
+                        isBudget: matchedRow['Б'] === 'Да' || matchedRow['Б'] === 'да' || matchedRow['Б'] === true,
+                        isUrgent: matchedRow['С'] === 'Да' || matchedRow['С'] === 'да' || matchedRow['С'] === true,
+                        isDebt: matchedRow['З'] === 'Да' || matchedRow['З'] === 'да' || matchedRow['З'] === true,
+                        paymentStatus: matchedRow['Наличие оплаты'] || row.paymentStatus,
+                        workDuration: matchedRow['Продолж. работ с опл. с вып. рабоч.'] || '',
+                        paymentAmount: matchedRow['Сумма оплаты'] || 0
+                    };
+                }
+                return row;
+            });
+            
+            saveToStorage();
+        }
+        
+        // Установка фильтра
+        function setFilter(filter) {
+            currentFilter = filter;
+            renderTable();
+        }
+        
+        // Отметить как выполненный
+        function toggleComplete(invoiceNumber) {
+            table1Data = table1Data.map(row => {
+                if (row['Номер счета'] === invoiceNumber) {
+                    row.isCompleted = !row.isCompleted;
+                    row.completedDate = row.isCompleted ? new Date().toISOString() : null;
+                }
+                return row;
+            });
+            
+            saveToStorage();
+            renderTable();
+        }
+        
+        // Очистка данных
+        function clearAllData() {
+            if (confirm('Вы уверены? Все данные будут удалены!')) {
+                table1Data = [];
+                table2Data = [];
+                localStorage.removeItem('table1Data');
+                localStorage.removeItem('table2Data');
+                document.getElementById('table1File').value = '';
+                document.getElementById('table2File').value = '';
+                renderTable();
+            }
+        }
+        
+        // Рендер таблицы
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const searchQuery = document.getElementById('search').value.toLowerCase();
+            
+            // Фильтрация
+            let filteredData = [...table1Data];
+            
+            if (currentFilter === 'active') {
+                filteredData = filteredData.filter(row => !row.isCompleted);
+            } else if (currentFilter === 'completed') {
+                filteredData = filteredData.filter(row => row.isCompleted);
+            } else if (currentFilter === 'highlighted') {
+                filteredData = filteredData.filter(row => row.isBudget || row.isUrgent || row.isDebt);
+            } else if (currentFilter === 'matched') {
+                filteredData = filteredData.filter(row => row.isMatched);
+            } else if (currentFilter === 'not_highlighted') {
+                filteredData = filteredData.filter(row => !row.isBudget && !row.isUrgent && !row.isDebt);
+            }
+            
+            // Поиск
+            if (searchQuery) {
+                filteredData = filteredData.filter(row => 
+                    (row['Номер счета'] && row['Номер счета'].toString().toLowerCase().includes(searchQuery)) ||
+                    (row['Контрагент (Наименование)'] && row['Контрагент (Наименование)'].toLowerCase().includes(searchQuery)) ||
+                    (row['Прибор'] && row['Прибор'].toLowerCase().includes(searchQuery))
+                );
+            }
+            
+            // Обновление статистики
+            document.getElementById('totalCount').textContent = table1Data.length;
+            document.getElementById('highlightedCount').textContent = table1Data.filter(r => r.isBudget || r.isUrgent || r.isDebt).length;
+            document.getElementById('completedCount').textContent = table1Data.filter(r => r.isCompleted).length;
+            document.getElementById('activeCount').textContent = table1Data.filter(r => !r.isCompleted).length;
+            
+            // Обновление заголовка
+            const titles = {
+                'all': 'Все счета',
+                'active': 'Активные счета',
+                'completed': 'Архив (выполненные)',
+                'highlighted': 'Счета с пометками',
+                'matched': 'Совпавшие счета',
+                'not_highlighted': 'Счета без пометок'
+            };
+            document.getElementById('tableTitle').textContent = titles[currentFilter] || 'Счета';
+            
+            // Рендер строк
+            tbody.innerHTML = '';
+            
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">Нет данных. Загрузите таблицы.</td></tr>';
+                return;
+            }
+            
+            filteredData.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                // Классы строки
+                if (row.isCompleted) tr.classList.add('completed');
+                if (row.isBudget) tr.classList.add('budget');
+                if (row.isUrgent) tr.classList.add('urgent');
+                if (row.isDebt) tr.classList.add('debt');
+                if (row.isBudget || row.isUrgent || row.isDebt) tr.classList.add('highlighted');
+                
+                // Номер счета
+                const tdNumber = document.createElement('td');
+                tdNumber.innerHTML = `<strong>${row['Номер счета'] || ''}</strong>`;
+                tr.appendChild(tdNumber);
+                
+                // Дата выписки
+                const tdDate = document.createElement('td');
+                tdDate.textContent = row['Дата выписки'] || '';
+                tr.appendChild(tdDate);
+                
+                // Контрагент
+                const tdContractor = document.createElement('td');
+                tdContractor.textContent = row['Контрагент (Наименование)'] || '';
+                tr.appendChild(tdContractor);
+                
+                // Прибор
+                const tdDevice = document.createElement('td');
+                tdDevice.textContent = row['Прибор'] || '';
+                tr.appendChild(tdDevice);
+                
+                // Количество
+                const tdQuantity = document.createElement('td');
+                tdQuantity.textContent = row['Кол-во'] || '';
+                tr.appendChild(tdQuantity);
+                
+                // Сумма
+                const tdAmount = document.createElement('td');
+                tdAmount.textContent = row['Всего по счету'] || row['Сумма'] || '';
+                tr.appendChild(tdAmount);
+                
+                // Оплата
+                const tdPayment = document.createElement('td');
+                tdPayment.innerHTML = `<span class="badge ${row.paymentStatus === 'Оплачено' ? 'bg-success' : 'bg-secondary'}">${row.paymentStatus || '—'}</span>`;
+                tr.appendChild(tdPayment);
+                
+                // Статус
+                const tdStatus = document.createElement('td');
+                if (row.isMatched) {
+                    tdStatus.innerHTML = '<span class="badge badge-matched">✓ Совпадает</span>';
+                } else {
+                    tdStatus.innerHTML = '<span class="badge bg-secondary">—</span>';
+                }
+                tr.appendChild(tdStatus);
+                
+                // Пометки
+                const tdMarks = document.createElement('td');
+                let marksHtml = '';
+                if (row.isBudget) marksHtml += '<span class="badge badge-budget me-1">Бюджет</span>';
+                if (row.isUrgent) marksHtml += '<span class="badge badge-urgent me-1">Срочно</span>';
+                if (row.isDebt) marksHtml += '<span class="badge badge-debt me-1">Задолженность</span>';
+                if (!marksHtml) marksHtml = '<span class="text-muted">—</span>';
+                tdMarks.innerHTML = marksHtml;
+                tr.appendChild(tdMarks);
+                
+                // Действия
+                const tdActions = document.createElement('td');
+                if (!row.isCompleted) {
+                    tdActions.innerHTML = `<button class="btn btn-sm btn-success" onclick="toggleComplete('${row['Номер счета']}')">✓ Выполнен</button>`;
+                } else {
+                    tdActions.innerHTML = `<button class="btn btn-sm btn-warning" onclick="toggleComplete('${row['Номер счета']}')">↩ Вернуть</button>`;
+                }
+                tr.appendChild(tdActions);
+                
+                tbody.appendChild(tr);
+            });
+        }
+        
+        // Экспорт в Excel
+        function exportToExcel() {
+            if (!table1Data.length) {
+                alert('Нет данных для экспорта');
+                return;
+            }
+            
+            const exportData = table1Data.map(row => ({
+                'Номер счета': row['Номер счета'],
+                'Дата выписки': row['Дата выписки'],
+                'Контрагент': row['Контрагент (Наименование)'],
+                'Прибор': row['Прибор'],
+                'Кол-во': row['Кол-во'],
+                'Сумма': row['Сумма'],
+                'Всего': row['Всего по счету'],
+                'Оплата': row.paymentStatus,
+                'Бюджет': row.isBudget ? 'Да' : '',
+                'Срочно': row.isUrgent ? 'Да' : '',
+                'Задолженность': row.isDebt ? 'Да' : '',
+                'Выполнен': row.isCompleted ? 'Да' : 'Нет',
+                'Дата выполнения': row.completedDate ? new Date(row.completedDate).toLocaleDateString('ru-RU') : ''
+            }));
+            
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Счета');
+            XLSX.writeFile(wb, 'счета_экспорт.xlsx');
+        }
+        
+        // Инициализация при загрузке страницы
+        window.onload = function() {
+            loadFromStorage();
+            renderTable();
+        };
+    </script>
+</body>
+</html>
