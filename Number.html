@@ -6,21 +6,81 @@
     <title>Учет счетов</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
+    
     <style>
         .budget { background-color: #fff3cd; }
         .urgent { background-color: #f8d7da; }
         .debt { background-color: #ffe5d0; }
         .highlighted { border-left: 5px solid #dc3545; }
-        .completed { opacity: 0.6; text-decoration: line-through; }
+        .status-new { }
+        .status-inwork { background-color: #cce5ff; }
+        .status-completed { opacity: 0.6; text-decoration: line-through; background-color: #d4edda; }
         .badge-budget { background-color: #ffc107; }
         .badge-urgent { background-color: #dc3545; color: white; }
         .badge-debt { background-color: #fd7e14; color: white; }
         .badge-matched { background-color: #28a745; color: white; }
+        .badge-new { background-color: #6c757d; color: white; }
+        .badge-inwork { background-color: #007bff; color: white; }
+        .badge-completed { background-color: #28a745; color: white; }
         .table-container { max-height: 600px; overflow-y: auto; }
         .status-badge { font-size: 0.85em; }
+        .table-info { display: none; margin-top: 10px; }
+        .device-filter { margin-bottom: 15px; }
+        .device-tag { 
+            display: inline-block; 
+            margin: 3px; 
+            padding: 5px 10px; 
+            border-radius: 15px; 
+            cursor: pointer; 
+            transition: all 0.3s;
+            user-select: none;
+        }
+        .device-tag:hover { 
+            transform: scale(1.05); 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .device-tag.active { 
+            box-shadow: 0 0 0 2px #007bff;
+            font-weight: bold;
+        }
+        .sync-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .sync-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .sync-online { background-color: #28a745; }
+        .sync-offline { background-color: #dc3545; }
+        .sync-syncing { background-color: #ffc107; }
+        .status-select {
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
+    <!-- Индикатор синхронизации -->
+    <div class="sync-status">
+        <span class="badge bg-light text-dark border">
+            <span class="sync-indicator sync-offline" id="syncIndicator"></span>
+            <span id="syncText">Не подключено</span>
+        </span>
+    </div>
+
     <div class="container-fluid mt-4">
         <h1 class="mb-4">📊 Учет счетов</h1>
         
@@ -35,7 +95,7 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold">Таблица 1 (счета с приборами):</label>
                             <input type="file" id="table1File" class="form-control" accept=".xlsx,.xls">
-                            <small class="text-muted">Колонки: Номер счета, Дата выписки, Код, Контрагент, Прибор, Кол-во, Сумма, Всего по счету, Оплата, Дата оплаты</small>
+                            <small class="text-muted">Может содержать несколько таблиц с шапками. Шапки будут автоматически обнаружены и пропущены.</small>
                         </div>
                         
                         <div class="mb-3">
@@ -50,6 +110,12 @@
                         <button class="btn btn-danger" onclick="clearAllData()">
                             🗑 Очистить все
                         </button>
+                        <button class="btn btn-info" onclick="syncWithFirebase()">
+                            🔄 Синхронизировать
+                        </button>
+                        
+                        <div id="table1Info" class="alert alert-info table-info"></div>
+                        <div id="table2Info" class="alert alert-info table-info"></div>
                     </div>
                 </div>
             </div>
@@ -62,14 +128,25 @@
                     <div class="card-body">
                         <div class="btn-group mb-3 flex-wrap" role="group">
                             <button class="btn btn-outline-primary" onclick="setFilter('all')">Все</button>
-                            <button class="btn btn-outline-success" onclick="setFilter('active')">Активные</button>
+                            <button class="btn btn-outline-secondary" onclick="setFilter('new')">Новые</button>
+                            <button class="btn btn-outline-info" onclick="setFilter('inwork')">В работе</button>
+                            <button class="btn btn-outline-success" onclick="setFilter('completed')">Выполненные</button>
                             <button class="btn btn-outline-warning" onclick="setFilter('highlighted')">С пометками</button>
-                            <button class="btn btn-outline-info" onclick="setFilter('matched')">Совпавшие</button>
-                            <button class="btn btn-outline-secondary" onclick="setFilter('not_highlighted')">Без пометок</button>
-                            <button class="btn btn-outline-dark" onclick="setFilter('completed')">Архив</button>
+                            <button class="btn btn-outline-dark" onclick="setFilter('matched')">Совпавшие</button>
                         </div>
                         
-                        <input type="text" id="search" class="form-control" placeholder="🔎 Поиск по номеру, контрагенту или прибору..." oninput="renderTable()">
+                        <input type="text" id="search" class="form-control mb-3" placeholder="🔎 Поиск по номеру, контрагенту или прибору..." oninput="renderTable()">
+                        
+                        <!-- Фильтр по типам приборов -->
+                        <div class="device-filter">
+                            <label class="form-label fw-bold">🏷 Фильтр по типам приборов:</label>
+                            <div id="deviceTags" class="mt-2">
+                                <!-- Теги приборов будут здесь -->
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger mt-2" onclick="clearDeviceFilter()" style="display: none;" id="clearDeviceFilter">
+                                ✕ Сбросить фильтр приборов
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -77,35 +154,51 @@
         
         <!-- Статистика -->
         <div class="row mb-3">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="card bg-primary text-white">
                     <div class="card-body text-center">
-                        <h5>Всего счетов</h5>
-                        <h2 id="totalCount">0</h2>
+                        <h6>Всего</h6>
+                        <h3 id="totalCount">0</h3>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card bg-warning text-white">
+            <div class="col-md-2">
+                <div class="card bg-secondary text-white">
                     <div class="card-body text-center">
-                        <h5>С пометками</h5>
-                        <h2 id="highlightedCount">0</h2>
+                        <h6>Новые</h6>
+                        <h3 id="newCount">0</h3>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h6>В работе</h6>
+                        <h3 id="inworkCount">0</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
                 <div class="card bg-success text-white">
                     <div class="card-body text-center">
-                        <h5>Выполнено</h5>
-                        <h2 id="completedCount">0</h2>
+                        <h6>Выполнено</h6>
+                        <h3 id="completedCount">0</h3>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h6>С пометками</h6>
+                        <h3 id="highlightedCount">0</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
                 <div class="card bg-danger text-white">
                     <div class="card-body text-center">
-                        <h5>В работе</h5>
-                        <h2 id="activeCount">0</h2>
+                        <h6>Просрочено</h6>
+                        <h3 id="overdueCount">0</h3>
                     </div>
                 </div>
             </div>
@@ -114,7 +207,7 @@
         <!-- Таблица счетов -->
         <div class="card">
             <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                <h5 id="tableTitle">📋 Активные счета</h5>
+                <h5 id="tableTitle">📋 Все счета</h5>
                 <button class="btn btn-sm btn-light" onclick="exportToExcel()">📊 Экспорт в Excel</button>
             </div>
             <div class="card-body table-container">
@@ -144,10 +237,120 @@
     </div>
     
     <script>
+        // Firebase инициализация
+        const firebaseConfig = {
+            apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
+            authDomain: "vlad-csms-af6df.firebaseapp.com",
+            databaseURL: "https://vlad-csms-af6df-default-rtdb.firebaseio.com",
+            projectId: "vlad-csms-af6df",
+            storageBucket: "vlad-csms-af6df.firebasestorage.app",
+            messagingSenderId: "417297799117",
+            appId: "1:417297799117:web:0a93dce429cd37db499684",
+            measurementId: "G-MD79ZVT24Z"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
         // Глобальные переменные
         let table1Data = [];
         let table2Data = [];
         let currentFilter = 'all';
+        let selectedDevice = null;
+        let deviceTypes = new Set();
+        let isSyncing = false;
+        
+        // Обновление индикатора синхронизации
+        function updateSyncStatus(status, text) {
+            const indicator = document.getElementById('syncIndicator');
+            const syncText = document.getElementById('syncText');
+            
+            indicator.className = 'sync-indicator';
+            if (status === 'online') {
+                indicator.classList.add('sync-online');
+                syncText.textContent = 'Подключено';
+            } else if (status === 'offline') {
+                indicator.classList.add('sync-offline');
+                syncText.textContent = 'Не подключено';
+            } else if (status === 'syncing') {
+                indicator.classList.add('sync-syncing');
+                syncText.textContent = 'Синхронизация...';
+            }
+        }
+        
+        // Проверка подключения к Firebase
+        function checkFirebaseConnection() {
+            const connectedRef = database.ref('.info/connected');
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    updateSyncStatus('online');
+                    loadFromFirebase();
+                } else {
+                    updateSyncStatus('offline');
+                }
+            });
+        }
+        
+        // Сохранение данных в Firebase
+        function saveToFirebase() {
+            if (isSyncing) return;
+            
+            isSyncing = true;
+            updateSyncStatus('syncing');
+            
+            const dataToSave = {
+                table1Data: table1Data,
+                table2Data: table2Data,
+                timestamp: new Date().toISOString()
+            };
+            
+            database.ref('invoices').set(dataToSave)
+                .then(() => {
+                    console.log('Данные сохранены в Firebase');
+                    updateSyncStatus('online');
+                    isSyncing = false;
+                    localStorage.setItem('table1Data', JSON.stringify(table1Data));
+                    localStorage.setItem('table2Data', JSON.stringify(table2Data));
+                })
+                .catch((error) => {
+                    console.error('Ошибка сохранения в Firebase:', error);
+                    updateSyncStatus('offline');
+                    isSyncing = false;
+                    localStorage.setItem('table1Data', JSON.stringify(table1Data));
+                    localStorage.setItem('table2Data', JSON.stringify(table2Data));
+                });
+        }
+        
+        // Загрузка данных из Firebase
+        function loadFromFirebase() {
+            database.ref('invoices').once('value')
+                .then((snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        if (data.table1Data) {
+                            table1Data = data.table1Data;
+                        }
+                        if (data.table2Data) {
+                            table2Data = data.table2Data;
+                        }
+                        
+                        updateDeviceTypes();
+                        renderTable();
+                        console.log('Данные загружены из Firebase');
+                    }
+                })
+                .catch((error) => {
+                    console.error('Ошибка загрузки из Firebase:', error);
+                    loadFromStorage();
+                });
+        }
+        
+        // Ручная синхронизация
+        function syncWithFirebase() {
+            saveToFirebase();
+            loadFromFirebase();
+        }
         
         // Загрузка данных из localStorage
         function loadFromStorage() {
@@ -157,24 +360,174 @@
             if (saved1) table1Data = JSON.parse(saved1);
             if (saved2) table2Data = JSON.parse(saved2);
             
+            updateDeviceTypes();
             renderTable();
         }
         
-        // Сохранение в localStorage
+        // Сохранение в localStorage и Firebase
         function saveToStorage() {
             localStorage.setItem('table1Data', JSON.stringify(table1Data));
             localStorage.setItem('table2Data', JSON.stringify(table2Data));
+            updateDeviceTypes();
+            saveToFirebase();
         }
         
-        // Чтение Excel файла
-        function readExcel(file, callback) {
+        // Обновление списка типов приборов
+        function updateDeviceTypes() {
+            deviceTypes.clear();
+            table1Data.forEach(row => {
+                const device = row['Прибор'] || '';
+                if (device && device.trim()) {
+                    const words = device.split(' ').slice(0, 3).join(' ');
+                    deviceTypes.add(words);
+                }
+            });
+            renderDeviceTags();
+        }
+        
+        // Рендер тегов приборов
+        function renderDeviceTags() {
+            const container = document.getElementById('deviceTags');
+            container.innerHTML = '';
+            
+            const sortedDevices = Array.from(deviceTypes).sort();
+            
+            sortedDevices.forEach(device => {
+                const tag = document.createElement('span');
+                tag.className = 'device-tag badge bg-light text-dark border';
+                if (selectedDevice === device) {
+                    tag.classList.add('active');
+                    tag.classList.remove('bg-light');
+                    tag.classList.add('bg-primary', 'text-white');
+                }
+                tag.textContent = device;
+                tag.onclick = () => toggleDeviceFilter(device);
+                container.appendChild(tag);
+            });
+            
+            const clearBtn = document.getElementById('clearDeviceFilter');
+            if (selectedDevice) {
+                clearBtn.style.display = 'inline-block';
+            } else {
+                clearBtn.style.display = 'none';
+            }
+        }
+        
+        // Переключение фильтра по прибору
+        function toggleDeviceFilter(device) {
+            if (selectedDevice === device) {
+                selectedDevice = null;
+            } else {
+                selectedDevice = device;
+            }
+            renderDeviceTags();
+            renderTable();
+        }
+        
+        // Сброс фильтра по прибору
+        function clearDeviceFilter() {
+            selectedDevice = null;
+            renderDeviceTags();
+            renderTable();
+        }
+        
+        // Определение, является ли строка шапкой
+        function isHeaderRow(row) {
+            const invoiceNumber = row['Номер счета'];
+            const contractor = row['Контрагент (Наименование)'] || row['Контрагент'] || row['Наименование контрагента'];
+            
+            if (!invoiceNumber || invoiceNumber === 'Номер счета' || invoiceNumber === 'Итого' || invoiceNumber === 'Итого:') {
+                return true;
+            }
+            
+            const invoiceStr = invoiceNumber.toString().trim();
+            if (!/\d/.test(invoiceStr) || !invoiceStr.includes('-')) {
+                if (!/\d/.test(invoiceStr)) {
+                    return true;
+                }
+            }
+            
+            const values = Object.values(row);
+            const nonEmptyValues = values.filter(v => v !== null && v !== undefined && v.toString().trim() !== '');
+            if (nonEmptyValues.length === 0) {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // Нормализация данных строки
+        function normalizeRow(row) {
+            const normalized = {};
+            
+            Object.keys(row).forEach(key => {
+                const value = row[key];
+                const normalizedKey = key.trim();
+                
+                if (value === null || value === undefined || value.toString().trim() === '') {
+                    normalized[normalizedKey] = '';
+                    return;
+                }
+                
+                normalized[normalizedKey] = value;
+            });
+            
+            return normalized;
+        }
+        
+        // Чтение Excel файла с обработкой нескольких таблиц
+        function readExcelWithMultipleTables(file, callback) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                callback(jsonData);
+                
+                let allData = [];
+                let tableCount = 0;
+                
+                workbook.SheetNames.forEach(sheetName => {
+                    const sheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet, {defval: ''});
+                    
+                    let currentTable = [];
+                    let foundHeader = false;
+                    
+                    jsonData.forEach((row, index) => {
+                        const normalizedRow = normalizeRow(row);
+                        
+                        const headerCheck = isHeaderRow(normalizedRow);
+                        
+                        if (headerCheck) {
+                            if (currentTable.length > 0) {
+                                allData = allData.concat(currentTable);
+                                tableCount++;
+                                currentTable = [];
+                            }
+                            foundHeader = true;
+                        } else if (foundHeader) {
+                            currentTable.push(normalizedRow);
+                        }
+                    });
+                    
+                    if (currentTable.length > 0) {
+                        allData = allData.concat(currentTable);
+                        tableCount++;
+                    }
+                });
+                
+                // Удаляем дубликаты по номеру счета
+                const uniqueData = [];
+                const seenInvoices = new Set();
+                
+                allData.forEach(row => {
+                    const invoiceNumber = row['Номер счета']?.toString().trim();
+                    if (invoiceNumber && !seenInvoices.has(invoiceNumber)) {
+                        seenInvoices.add(invoiceNumber);
+                        uniqueData.push(row);
+                    }
+                });
+                
+                callback(uniqueData, tableCount);
             };
             reader.readAsArrayBuffer(file);
         }
@@ -187,18 +540,15 @@
                 return;
             }
             
-            readExcel(fileInput.files[0], function(data) {
-                table1Data = data.filter(row => row['Номер счета'] && row['Номер счета'] !== 'Итого');
-                
-                // Добавляем поля для статуса
-                table1Data = table1Data.map(row => ({
+            readExcelWithMultipleTables(fileInput.files[0], function(data, tableCount) {
+                table1Data = data.map(row => ({
                     ...row,
                     isBudget: false,
                     isUrgent: false,
                     isDebt: false,
                     isMatched: false,
-                    isCompleted: false,
-                    completedDate: null,
+                    status: 'new', // new, inwork, completed
+                    statusDate: null,
                     paymentStatus: row['Оплата'] || '',
                     workDuration: ''
                 }));
@@ -206,7 +556,14 @@
                 saveToStorage();
                 matchTables();
                 renderTable();
-                alert(`Загружено ${table1Data.length} счетов из Таблицы 1`);
+                
+                const infoDiv = document.getElementById('table1Info');
+                infoDiv.style.display = 'block';
+                infoDiv.innerHTML = `✅ Загружено ${table1Data.length} счетов из ${tableCount} таблиц`;
+                
+                setTimeout(() => {
+                    infoDiv.style.display = 'none';
+                }, 5000);
             });
         }
         
@@ -218,12 +575,19 @@
                 return;
             }
             
-            readExcel(fileInput.files[0], function(data) {
-                table2Data = data.filter(row => row['Номер счета']);
+            readExcelWithMultipleTables(fileInput.files[0], function(data, tableCount) {
+                table2Data = data;
                 saveToStorage();
                 matchTables();
                 renderTable();
-                alert(`Загружено ${table2Data.length} записей из Таблицы 2`);
+                
+                const infoDiv = document.getElementById('table2Info');
+                infoDiv.style.display = 'block';
+                infoDiv.innerHTML = `✅ Загружено ${table2Data.length} записей из ${tableCount} таблиц`;
+                
+                setTimeout(() => {
+                    infoDiv.style.display = 'none';
+                }, 5000);
             });
         }
         
@@ -250,23 +614,27 @@
             
             const table2Map = {};
             table2Data.forEach(row => {
-                const invoiceNumber = row['Номер счета'].toString().trim();
+                const invoiceNumber = row['Номер счета']?.toString().trim();
                 if (invoiceNumber) {
                     table2Map[invoiceNumber] = row;
                 }
             });
             
             table1Data = table1Data.map(row => {
-                const invoiceNumber = row['Номер счета'].toString().trim();
+                const invoiceNumber = row['Номер счета']?.toString().trim();
                 const matchedRow = table2Map[invoiceNumber];
                 
                 if (matchedRow) {
+                    const isBudget = checkMark(matchedRow['Б']) || checkMark(matchedRow['Бюджет']);
+                    const isUrgent = checkMark(matchedRow['С']) || checkMark(matchedRow['Срочность']);
+                    const isDebt = checkMark(matchedRow['З']) || checkMark(matchedRow['Задолженность']);
+                    
                     return {
                         ...row,
                         isMatched: true,
-                        isBudget: matchedRow['Б'] === 'Да' || matchedRow['Б'] === 'да' || matchedRow['Б'] === true,
-                        isUrgent: matchedRow['С'] === 'Да' || matchedRow['С'] === 'да' || matchedRow['С'] === true,
-                        isDebt: matchedRow['З'] === 'Да' || matchedRow['З'] === 'да' || matchedRow['З'] === true,
+                        isBudget: isBudget,
+                        isUrgent: isUrgent,
+                        isDebt: isDebt,
                         paymentStatus: matchedRow['Наличие оплаты'] || row.paymentStatus,
                         workDuration: matchedRow['Продолж. работ с опл. с вып. рабоч.'] || '',
                         paymentAmount: matchedRow['Сумма оплаты'] || 0
@@ -278,18 +646,25 @@
             saveToStorage();
         }
         
+        // Проверка отметок
+        function checkMark(value) {
+            if (!value) return false;
+            const str = value.toString().trim().toLowerCase();
+            return str === 'да' || str === 'true' || str === '1' || str === '+' || str === '✓' || str === 'yes';
+        }
+        
         // Установка фильтра
         function setFilter(filter) {
             currentFilter = filter;
             renderTable();
         }
         
-        // Отметить как выполненный
-        function toggleComplete(invoiceNumber) {
+        // Изменение статуса счета
+        function changeStatus(invoiceNumber, newStatus) {
             table1Data = table1Data.map(row => {
                 if (row['Номер счета'] === invoiceNumber) {
-                    row.isCompleted = !row.isCompleted;
-                    row.completedDate = row.isCompleted ? new Date().toISOString() : null;
+                    row.status = newStatus;
+                    row.statusDate = new Date().toISOString();
                 }
                 return row;
             });
@@ -303,10 +678,17 @@
             if (confirm('Вы уверены? Все данные будут удалены!')) {
                 table1Data = [];
                 table2Data = [];
+                selectedDevice = null;
                 localStorage.removeItem('table1Data');
                 localStorage.removeItem('table2Data');
+                
+                database.ref('invoices').remove()
+                    .then(() => console.log('Данные удалены из Firebase'))
+                    .catch(error => console.error('Ошибка удаления:', error));
+                
                 document.getElementById('table1File').value = '';
                 document.getElementById('table2File').value = '';
+                updateDeviceTypes();
                 renderTable();
             }
         }
@@ -319,16 +701,25 @@
             // Фильтрация
             let filteredData = [...table1Data];
             
-            if (currentFilter === 'active') {
-                filteredData = filteredData.filter(row => !row.isCompleted);
+            if (currentFilter === 'new') {
+                filteredData = filteredData.filter(row => row.status === 'new');
+            } else if (currentFilter === 'inwork') {
+                filteredData = filteredData.filter(row => row.status === 'inwork');
             } else if (currentFilter === 'completed') {
-                filteredData = filteredData.filter(row => row.isCompleted);
+                filteredData = filteredData.filter(row => row.status === 'completed');
             } else if (currentFilter === 'highlighted') {
                 filteredData = filteredData.filter(row => row.isBudget || row.isUrgent || row.isDebt);
             } else if (currentFilter === 'matched') {
                 filteredData = filteredData.filter(row => row.isMatched);
-            } else if (currentFilter === 'not_highlighted') {
-                filteredData = filteredData.filter(row => !row.isBudget && !row.isUrgent && !row.isDebt);
+            }
+            
+            // Фильтр по типу прибора
+            if (selectedDevice) {
+                filteredData = filteredData.filter(row => {
+                    const device = row['Прибор'] || '';
+                    const deviceCategory = device.split(' ').slice(0, 3).join(' ');
+                    return deviceCategory === selectedDevice;
+                });
             }
             
             // Поиск
@@ -336,40 +727,49 @@
                 filteredData = filteredData.filter(row => 
                     (row['Номер счета'] && row['Номер счета'].toString().toLowerCase().includes(searchQuery)) ||
                     (row['Контрагент (Наименование)'] && row['Контрагент (Наименование)'].toLowerCase().includes(searchQuery)) ||
+                    (row['Наименование контрагента'] && row['Наименование контрагента'].toLowerCase().includes(searchQuery)) ||
+                    (row['Контрагент'] && row['Контрагент'].toLowerCase().includes(searchQuery)) ||
                     (row['Прибор'] && row['Прибор'].toLowerCase().includes(searchQuery))
                 );
             }
             
             // Обновление статистики
             document.getElementById('totalCount').textContent = table1Data.length;
+            document.getElementById('newCount').textContent = table1Data.filter(r => r.status === 'new').length;
+            document.getElementById('inworkCount').textContent = table1Data.filter(r => r.status === 'inwork').length;
+            document.getElementById('completedCount').textContent = table1Data.filter(r => r.status === 'completed').length;
             document.getElementById('highlightedCount').textContent = table1Data.filter(r => r.isBudget || r.isUrgent || r.isDebt).length;
-            document.getElementById('completedCount').textContent = table1Data.filter(r => r.isCompleted).length;
-            document.getElementById('activeCount').textContent = table1Data.filter(r => !r.isCompleted).length;
             
             // Обновление заголовка
-            const titles = {
-                'all': 'Все счета',
-                'active': 'Активные счета',
-                'completed': 'Архив (выполненные)',
-                'highlighted': 'Счета с пометками',
-                'matched': 'Совпавшие счета',
-                'not_highlighted': 'Счета без пометок'
-            };
-            document.getElementById('tableTitle').textContent = titles[currentFilter] || 'Счета';
+            let title = 'Все счета';
+            if (currentFilter === 'new') title = 'Новые счета';
+            else if (currentFilter === 'inwork') title = 'Счета в работе';
+            else if (currentFilter === 'completed') title = 'Выполненные счета';
+            else if (currentFilter === 'highlighted') title = 'Счета с пометками';
+            else if (currentFilter === 'matched') title = 'Совпавшие счета';
+            
+            if (selectedDevice) {
+                title += ` (${selectedDevice})`;
+            }
+            
+            document.getElementById('tableTitle').textContent = `📋 ${title} (${filteredData.length})`;
             
             // Рендер строк
             tbody.innerHTML = '';
             
             if (filteredData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">Нет данных. Загрузите таблицы.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">Нет данных. Загрузите таблицы или измените фильтры.</td></tr>';
                 return;
             }
             
             filteredData.forEach(row => {
                 const tr = document.createElement('tr');
                 
-                // Классы строки
-                if (row.isCompleted) tr.classList.add('completed');
+                // Классы строки в зависимости от статуса
+                if (row.status === 'new') tr.classList.add('status-new');
+                else if (row.status === 'inwork') tr.classList.add('status-inwork');
+                else if (row.status === 'completed') tr.classList.add('status-completed');
+                
                 if (row.isBudget) tr.classList.add('budget');
                 if (row.isUrgent) tr.classList.add('urgent');
                 if (row.isDebt) tr.classList.add('debt');
@@ -387,7 +787,7 @@
                 
                 // Контрагент
                 const tdContractor = document.createElement('td');
-                tdContractor.textContent = row['Контрагент (Наименование)'] || '';
+                tdContractor.textContent = row['Контрагент (Наименование)'] || row['Контрагент'] || row['Наименование контрагента'] || '';
                 tr.appendChild(tdContractor);
                 
                 // Прибор
@@ -407,16 +807,22 @@
                 
                 // Оплата
                 const tdPayment = document.createElement('td');
-                tdPayment.innerHTML = `<span class="badge ${row.paymentStatus === 'Оплачено' ? 'bg-success' : 'bg-secondary'}">${row.paymentStatus || '—'}</span>`;
+                const paymentStatus = row.paymentStatus || '—';
+                const badgeClass = paymentStatus === 'Оплачено' ? 'bg-success' : 'bg-secondary';
+                tdPayment.innerHTML = `<span class="badge ${badgeClass}">${paymentStatus}</span>`;
                 tr.appendChild(tdPayment);
                 
                 // Статус
                 const tdStatus = document.createElement('td');
-                if (row.isMatched) {
-                    tdStatus.innerHTML = '<span class="badge badge-matched">✓ Совпадает</span>';
-                } else {
-                    tdStatus.innerHTML = '<span class="badge bg-secondary">—</span>';
+                let statusBadge = '';
+                if (row.status === 'new') {
+                    statusBadge = '<span class="badge badge-new">Новый</span>';
+                } else if (row.status === 'inwork') {
+                    statusBadge = '<span class="badge badge-inwork">В работе</span>';
+                } else if (row.status === 'completed') {
+                    statusBadge = '<span class="badge badge-completed">✓ Выполнен</span>';
                 }
+                tdStatus.innerHTML = statusBadge;
                 tr.appendChild(tdStatus);
                 
                 // Пометки
@@ -431,11 +837,21 @@
                 
                 // Действия
                 const tdActions = document.createElement('td');
-                if (!row.isCompleted) {
-                    tdActions.innerHTML = `<button class="btn btn-sm btn-success" onclick="toggleComplete('${row['Номер счета']}')">✓ Выполнен</button>`;
-                } else {
-                    tdActions.innerHTML = `<button class="btn btn-sm btn-warning" onclick="toggleComplete('${row['Номер счета']}')">↩ Вернуть</button>`;
+                const currentStatus = row.status || 'new';
+                
+                let actionsHtml = '';
+                if (currentStatus === 'new') {
+                    actionsHtml += `<button class="btn btn-sm btn-info me-1" onclick="changeStatus('${row['Номер счета']}', 'inwork')" title="В работу">▶ В работу</button>`;
+                    actionsHtml += `<button class="btn btn-sm btn-success" onclick="changeStatus('${row['Номер счета']}', 'completed')" title="Выполнен">✓ Выполнен</button>`;
+                } else if (currentStatus === 'inwork') {
+                    actionsHtml += `<button class="btn btn-sm btn-success me-1" onclick="changeStatus('${row['Номер счета']}', 'completed')" title="Выполнен">✓ Выполнен</button>`;
+                    actionsHtml += `<button class="btn btn-sm btn-secondary" onclick="changeStatus('${row['Номер счета']}', 'new')" title="Вернуть в новые">↩ В новые</button>`;
+                } else if (currentStatus === 'completed') {
+                    actionsHtml += `<button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${row['Номер счета']}', 'inwork')" title="Вернуть в работу">↩ В работу</button>`;
+                    actionsHtml += `<button class="btn btn-sm btn-secondary" onclick="changeStatus('${row['Номер счета']}', 'new')" title="Вернуть в новые">↩ В новые</button>`;
                 }
+                
+                tdActions.innerHTML = actionsHtml;
                 tr.appendChild(tdActions);
                 
                 tbody.appendChild(tr);
@@ -452,7 +868,7 @@
             const exportData = table1Data.map(row => ({
                 'Номер счета': row['Номер счета'],
                 'Дата выписки': row['Дата выписки'],
-                'Контрагент': row['Контрагент (Наименование)'],
+                'Контрагент': row['Контрагент (Наименование)'] || row['Контрагент'] || row['Наименование контрагента'],
                 'Прибор': row['Прибор'],
                 'Кол-во': row['Кол-во'],
                 'Сумма': row['Сумма'],
@@ -461,8 +877,8 @@
                 'Бюджет': row.isBudget ? 'Да' : '',
                 'Срочно': row.isUrgent ? 'Да' : '',
                 'Задолженность': row.isDebt ? 'Да' : '',
-                'Выполнен': row.isCompleted ? 'Да' : 'Нет',
-                'Дата выполнения': row.completedDate ? new Date(row.completedDate).toLocaleDateString('ru-RU') : ''
+                'Статус': row.status === 'new' ? 'Новый' : row.status === 'inwork' ? 'В работе' : 'Выполнен',
+                'Дата изменения': row.statusDate ? new Date(row.statusDate).toLocaleDateString('ru-RU') : ''
             }));
             
             const ws = XLSX.utils.json_to_sheet(exportData);
@@ -473,8 +889,8 @@
         
         // Инициализация при загрузке страницы
         window.onload = function() {
+            checkFirebaseConnection();
             loadFromStorage();
-            renderTable();
         };
     </script>
 </body>
