@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=2.0">
+  <title>Быстрые тексты</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: #f1f5f9;
+      font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 1rem;
+      color: #0f172a;
+    }
+    .app {
+      max-width: 640px;
+      margin: 0 auto;
+      padding-bottom: 5rem;
+    }
+
+    /* Верхняя панель */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      position: sticky;
+      top: 0;
+      background: #f1f5f9;
+      padding: 0.5rem 0;
+      z-index: 10;
+    }
+    .title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #0f172a;
+    }
+    .title span { color: #2563eb; }
+    .icon-btn {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      width: 2.6rem; height: 2.6rem;
+      border-radius: 0.9rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: all 0.15s;
+      color: #334155;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .icon-btn:hover { background: #eff6ff; border-color: #bfdbfe; }
+    .icon-btn.active {
+      background: #2563eb; color: #fff; border-color: #2563eb;
+      box-shadow: 0 6px 16px rgba(37,99,235,0.3);
+    }
+
+    /* Поиск */
+    .search {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+      font-size: 0.95rem;
+      outline: none;
+      margin-bottom: 1rem;
+      transition: all 0.15s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .search:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+
+    /* Разделы */
+    .section {
+      background: #fff;
+      border-radius: 1.2rem;
+      margin-bottom: 0.7rem;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border: 1px solid #e9eef3;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 1rem 1.1rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .section-header:hover { background: #f8fafc; }
+    .section-arrow {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+    .section.open .section-arrow { transform: rotate(90deg); }
+    .section-name {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #1e293b;
+      flex: 1;
+      word-break: break-word;
+    }
+    .section-count {
+      background: #eff6ff;
+      color: #2563eb;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.15rem 0.55rem;
+      border-radius: 0.7rem;
+      flex-shrink: 0;
+    }
+    .section-body {
+      display: none;
+      padding: 0 0.7rem 0.7rem;
+      animation: fadeIn 0.15s ease;
+    }
+    .section.open .section-body { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Элементы текста */
+    .item {
+      background: #f8fafc;
+      border: 1px solid #eef2f7;
+      border-radius: 0.9rem;
+      padding: 0.85rem 0.95rem;
+      margin-bottom: 0.55rem;
+    }
+    .item:last-child { margin-bottom: 0; }
+    .item-head {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .item-label {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: #334155;
+      flex: 1;
+      word-break: break-word;
+    }
+    .item-text {
+      font-size: 0.88rem;
+      color: #475569;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 4.5em;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 0.7rem;
+    }
+    .item-text.expanded { max-height: none; }
+    .item-text::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1.4em;
+      background: linear-gradient(transparent, #f8fafc);
+      pointer-events: none;
+    }
+    .item-text.expanded::after { display: none; }
+
+    .item-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .btn {
+      flex: 1;
+      border: none;
+      border-radius: 0.7rem;
+      padding: 0.6rem 0.9rem;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+    .btn-copy {
+      background: #2563eb;
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(37,99,235,0.25);
+    }
+    .btn-copy:hover { background: #1d4ed8; }
+    .btn-copy:active { transform: scale(0.97); }
+    .btn-copy.copied { background: #16a34a; box-shadow: 0 3px 10px rgba(22,163,74,0.3); }
+
+    .btn-ghost {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      color: #475569;
+      flex: 0 0 auto;
+      padding: 0.6rem 0.8rem;
+    }
+    .btn-ghost:hover { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+    .btn-expand {
+      background: transparent;
+      border: none;
+      color: #2563eb;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: 0.6rem;
+    }
+
+    /* Пустое состояние */
+    .empty {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: #94a3b8;
+      font-size: 0.92rem;
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
+    /* Кнопка добавления */
+    .add-bar {
+      position: fixed;
+      bottom: 1rem; left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 2rem);
+      max-width: 640px;
+      z-index: 20;
+    }
+    .add-btn {
+      width: 100%;
+      padding: 1rem;
+      border-radius: 1.2rem;
+      border: none;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(37,99,235,0.35);
+      transition: transform 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+    }
+    .add-btn:active { transform: scale(0.98); }
+
+    /* Модалка */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,0.55);
+      backdrop-filter: blur(3px);
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 1rem;
+      z-index: 100;
+      animation: fadeIn 0.15s;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 1.5rem;
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 1.5rem;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35);
+    }
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      color: #0f172a;
+    }
+    .field { margin-bottom: 1rem; }
+    .field label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 0.35rem;
+    }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      padding: 0.75rem 0.9rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.8rem;
+      font-size: 0.95rem;
+      outline: none;
+      font-family: inherit;
+      background: #f8fafc;
+      transition: all 0.15s;
+    }
+    .field textarea {
+      resize: vertical;
+      min-height: 120px;
+      line-height: 1.45;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      border-color: #2563eb;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    }
+    .modal-actions {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 1.2rem;
+    }
+    .modal-actions .btn { padding: 0.8rem; }
+    .btn-cancel {
+      background: #f1f5f9; color: #475569; flex: 1;
+    }
+    .btn-cancel:hover { background: #e2e8f0; }
+    .btn-save {
+      background: #2563eb; color: #fff; flex: 1.5;
+      box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    }
+    .btn-save:hover { background: #1d4ed8; }
+
+    /* Тост */
+    .toast {
+      position: fixed;
+      bottom: 6rem; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #0f172a;
+      color: #fff;
+      padding: 0.7rem 1.2rem;
+      border-radius: 0.9rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s;
+      z-index: 200;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Индикатор соединения */
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #64748b;
+    }
+    .status-dot {
+      width: 0.55rem; height: 0.55rem; border-radius: 50%;
+      background: #cbd5e1;
+    }
+    .status.online .status-dot { background: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,0.2); }
+    .status.offline .status-dot { background: #dc2626; }
+
+    @media (max-width: 400px) {
+      .title { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="title">Быстрые <span>тексты</span></div>
+      <div style="display:flex; gap:0.4rem; align-items:center;">
+        <div class="status" id="status">
+          <span class="status-dot"></span>
+          <span id="statusText">...</span>
+        </div>
+        <button class="icon-btn" id="editModeBtn" title="Режим редактирования">✏️</button>
+      </div>
+    </div>
+
+    <input class="search" id="searchInput" type="text" placeholder="🔍 Поиск по разделам и текстам...">
+
+    <div id="sectionsList"></div>
+
+    <div class="add-bar" id="addBar" style="display:none;">
+      <button class="add-btn" id="addBtn">＋ Добавить раздел</button>
+    </div>
+  </div>
+
+  <!-- Модалка -->
+  <div class="overlay" id="overlay">
+    <div class="modal" id="modal"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getDatabase, ref, onValue, push, set, update, remove, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
+      authDomain: "vlad-csms-af6df.firebaseapp.com",
+      databaseURL: "https://vlad-csms-af6df-default-rtdb.firebaseio.com",
+      projectId: "vlad-csms-af6df",
+      storageBucket: "vlad-csms-af6df.firebasestorage.app",
+      messagingSenderId: "417297799117",
+      appId: "1:417297799117:web:0a93dce429cd37db499684"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // ===== Состояние =====
+    let sections = {};        // {id: {name, order}}
+    let items = {};           // {id: {sectionId, label, text, order}}
+    let editMode = false;
+    let searchQuery = '';
+    const openSections = new Set(); // какие разделы развёрнуты
+
+    // ===== DOM =====
+    const sectionsList = document.getElementById('sectionsList');
+    const searchInput = document.getElementById('searchInput');
+    const editModeBtn = document.getElementById('editModeBtn');
+    const addBar = document.getElementById('addBar');
+    const addBtn = document.getElementById('addBtn');
+    const overlay = document.getElementById('overlay');
+    const modal = document.getElementById('modal');
+    const toast = document.getElementById('toast');
+    const statusEl = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
+
+    // ===== Утилиты =====
+    function showToast(msg, ms = 1500) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toast.classList.remove('show'), ms);
+    }
+
+    async function copyText(text, btn) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          // fallback
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        if (btn) {
+          const original = btn.innerHTML;
+          btn.classList.add('copied');
+          btn.innerHTML = '✓ Скопировано';
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.innerHTML = original;
+          }, 1400);
+        }
+        showToast('✓ Скопировано');
+      } catch (e) {
+        showToast('Ошибка копирования');
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[c]);
+    }
+
+    // ===== Рендер =====
+    function render() {
+      const q = searchQuery.trim().toLowerCase();
+      const list = Object.entries(sections)
+        .map(([id, s]) => ({ id, ...s }))
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
+
+      if (list.length === 0) {
+        sectionsList.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">📂</div>
+            Пока нет разделов.<br>
+            ${editMode ? 'Нажми «Добавить раздел» внизу.' : 'Включи режим редактирования ✏️ и добавь разделы.'}
+          </div>`;
+        return;
+      }
+
+      let html = '';
+      for (const s of list) {
+        const secItems = Object.entries(items)
+          .map(([id, it]) => ({ id, ...it }))
+          .filter(it => it.sectionId === s.id)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+        // Фильтр по поиску
+        const secMatches = s.name.toLowerCase().includes(q);
+        const filteredItems = secItems.filter(it =>
+          secMatches ||
+          (it.label || '').toLowerCase().includes(q) ||
+          (it.text || '').toLowerCase().includes(q)
+        );
+
+        if (q && !secMatches && filteredItems.length === 0) continue;
+
+        const isOpen = q ? true : openSections.has(s.id);
+        const shownItems = q ? filteredItems : secItems;
+
+        html += `
+          <div class="section ${isOpen ? 'open' : ''}" data-section-id="${s.id}">
+            <div class="section-header" data-toggle="${s.id}">
+              <span class="section-arrow">▶</span>
+              <span class="section-name">${escapeHtml(s.name)}</span>
+              <span class="section-count">${secItems.length}</span>
+              ${editMode ? `
+                <button class="icon-btn" style="width:2rem;height:2rem;font-size:0.85rem;" data-edit-section="${s.id}" title="Переименовать">✏️</button>
+                <button class="icon-btn" style="width:2rem;height:2rem;font-size:0.85rem;" data-delete-section="${s.id}" title="Удалить">🗑️</button>
+              ` : ''}
+            </div>
+            <div class="section-body">
+              ${shownItems.length === 0 ? `
+                <div class="empty" style="padding:1.2rem;">
+                  ${editMode ? 'Нет текстов. Нажми «＋ Текст» ниже.' : 'В этом разделе пока нет текстов.'}
+                </div>
+              ` : shownItems.map(it => `
+                <div class="item" data-item-id="${it.id}">
+                  <div class="item-head">
+                    <div class="item-label">${escapeHtml(it.label || 'Без названия')}</div>
+                    ${editMode ? `
+                      <button class="icon-btn" style="width:1.9rem;height:1.9rem;font-size:0.8rem;" data-edit-item="${it.id}" title="Изменить">✏️</button>
+                      <button class="icon-btn" style="width:1.9rem;height:1.9rem;font-size:0.8rem;" data-delete-item="${it.id}" title="Удалить">🗑️</button>
+                    ` : ''}
+                  </div>
+                  <div class="item-text" data-text-id="${it.id}">${escapeHtml(it.text || '')}</div>
+                  <button class="btn-expand" data-expand="${it.id}" style="display:none;">Показать полностью ▾</button>
+                  <div class="item-actions">
+                    <button class="btn btn-copy" data-copy="${it.id}">📋 Копировать</button>
+                  </div>
+                </div>
+              `).join('')}
+              ${editMode ? `<button class="add-btn" style="margin-top:0.5rem;padding:0.7rem;font-size:0.9rem;box-shadow:none;" data-add-item="${s.id}">＋ Текст</button>` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      sectionsList.innerHTML = html || `
+        <div class="empty">
+          <div class="empty-icon">🔍</div>
+          Ничего не найдено
+        </div>`;
+
+      // Разворачиваем тексты, которые не влезли
+      requestAnimationFrame(() => {
+        document.querySelectorAll('.item-text').forEach(el => {
+          const expandBtn = el.parentElement.querySelector('.btn-expand');
+          if (expandBtn && el.scrollHeight > el.clientHeight + 2) {
+            expandBtn.style.display = 'inline-block';
+          }
+        });
+      });
+    }
+
+    // ===== Firebase слушатели =====
+    const sectionsRef = ref(db, 'sections');
+    const itemsRef = ref(db, 'items');
+
+    let connectedOnce = false;
+    onValue(ref(db, '.info/connected'), snap => {
+      const online = snap.val() === true;
+      statusEl.classList.toggle('online', online);
+      statusEl.classList.toggle('offline', !online);
+      statusText.textContent = online ? 'online' : 'offline';
+      connectedOnce = true;
+    });
+
+    onValue(sectionsRef, snap => {
+      sections = snap.val() || {};
+      render();
+    }, err => {
+      console.error(err);
+      showToast('Ошибка доступа к Firebase');
+    });
+
+    onValue(itemsRef, snap => {
+      items = snap.val() || {};
+      render();
+    });
+
+    // ===== События =====
+    // Поиск
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      render();
+    });
+
+    // Режим редактирования
+    editModeBtn.addEventListener('click', () => {
+      editMode = !editMode;
+      editModeBtn.classList.toggle('active', editMode);
+      addBar.style.display = editMode ? 'block' : 'none';
+      render();
+      showToast(editMode ? 'Режим редактирования включён' : 'Режим просмотра');
+    });
+
+    // Клик по контенту
+    sectionsList.addEventListener('click', async (e) => {
+      const t = e.target;
+
+      // Свернуть/развернуть раздел
+      const toggle = t.closest('[data-toggle]');
+      if (toggle && !t.closest('[data-edit-section]') && !t.closest('[data-delete-section]')) {
+        const id = toggle.dataset.toggle;
+        if (openSections.has(id)) openSections.delete(id);
+        else openSections.add(id);
+        render();
+        return;
+      }
+
+      // Развернуть текст
+      const expand = t.closest('[data-expand]');
+      if (expand) {
+        const itemEl = expand.closest('.item');
+        const textEl = itemEl.querySelector('.item-text');
+        textEl.classList.toggle('expanded');
+        const isExp = textEl.classList.contains('expanded');
+        expand.textContent = isExp ? 'Свернуть ▴' : 'Показать полностью ▾';
+        return;
+      }
+
+      // Копировать
+      const copyBtn = t.closest('[data-copy]');
+      if (copyBtn) {
+        const id = copyBtn.dataset.copy;
+        const it = items[id];
+        if (it) await copyText(it.text || '', copyBtn);
+        return;
+      }
+
+      // Добавить текст в раздел
+      const addItem = t.closest('[data-add-item]');
+      if (addItem) {
+        openItemModal(null, addItem.dataset.addItem);
+        return;
+      }
+
+      // Изменить раздел
+      const editSec = t.closest('[data-edit-section]');
+      if (editSec) {
+        const s = sections[editSec.dataset.editSection];
+        if (s) openSectionModal(editSec.dataset.editSection, s.name);
+        return;
+      }
+
+      // Удалить раздел
+      const delSec = t.closest('[data-delete-section]');
+      if (delSec) {
+        const id = delSec.dataset.deleteSection;
+        const s = sections[id];
+        const count = Object.values(items).filter(it => it.sectionId === id).length;
+        if (confirm(`Удалить раздел «${s?.name}»?` + (count ? `\nВсе тексты в нём (${count}) тоже удалятся.` : ''))) {
+          // Удаляем и раздел, и его тексты
+          const updates = {};
+          updates[`sections/${id}`] = null;
+          Object.entries(items).forEach(([iid, it]) => {
+            if (it.sectionId === id) updates[`items/${iid}`] = null;
+          });
+          await update(ref(db), updates);
+          openSections.delete(id);
+          showToast('Раздел удалён');
+        }
+        return;
+      }
+
+      // Изменить текст
+      const editIt = t.closest('[data-edit-item]');
+      if (editIt) {
+        const it = items[editIt.dataset.editItem];
+        if (it) openItemModal(editIt.dataset.editItem, it.sectionId, it);
+        return;
+      }
+
+      // Удалить текст
+      const delIt = t.closest('[data-delete-item]');
+      if (delIt) {
+        const id = delIt.dataset.deleteItem;
+        const it = items[id];
+        if (confirm(`Удалить текст «${it?.label || 'без названия'}»?`)) {
+          await remove(ref(db, `items/${id}`));
+          showToast('Текст удалён');
+        }
+        return;
+      }
+    });
+
+    // Добавить раздел
+    addBtn.addEventListener('click', () => openSectionModal(null));
+
+    // ===== Модалки =====
+    function openSectionModal(id, currentName = '') {
+      const isEdit = !!id;
+      modal.innerHTML = `
+        <div class="modal-title">${isEdit ? 'Переименовать раздел' : 'Новый раздел'}</div>
+        <div class="field">
+          <label>Название раздела</label>
+          <input type="text" id="mSectionName" placeholder="Например: Ответы клиентам" value="${escapeHtml(currentName)}">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-cancel" id="mCancel">Отмена</button>
+          <button class="btn btn-save" id="mSave">${isEdit ? 'Сохранить' : 'Создать'}</button>
+        </div>
+      `;
+      overlay.classList.add('open');
+      setTimeout(() => modal.querySelector('#mSectionName').focus(), 50);
+
+      const close = () => overlay.classList.remove('open');
+      modal.querySelector('#mCancel').onclick = close;
+      modal.querySelector('#mSave').onclick = async () => {
+        const name = modal.querySelector('#mSectionName').value.trim();
+        if (!name) { showToast('Введите название'); return; }
+        if (isEdit) {
+          await update(ref(db, `sections/${id}`), { name });
+        } else {
+          const order = Date.now();
+          await push(ref(db, 'sections'), { name, order });
+        }
+        close();
+        showToast(isEdit ? 'Переименовано' : 'Раздел создан');
+      };
+      modal.querySelector('#mSectionName').addEventListener('keydown', e => {
+        if (e.key === 'Enter') modal.querySelector('#mSave').click();
+      });
+    }
+
+    function openItemModal(id, sectionId, current = null) {
+      const isEdit = !!id;
+      const sectionOptions = Object.entries(sections)
+        .map(([sid, s]) => ({ id: sid, ...s }))
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
+
+      modal.innerHTML = `
+        <div class="modal-title">${isEdit ? 'Изменить текст' : 'Новый текст'}</div>
+        <div class="field">
+          <label>Раздел</label>
+          <select id="mSection">
+            ${sectionOptions.map(s => `
+              <option value="${s.id}" ${s.id === sectionId ? 'selected' : ''}>${escapeHtml(s.name)}</option>
+            `).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Название (чтобы было понятно, что копируешь)</label>
+          <input type="text" id="mLabel" placeholder="Например: Приветствие" value="${escapeHtml(current?.label || '')}">
+        </div>
+        <div class="field">
+          <label>Текст для копирования</label>
+          <textarea id="mText" placeholder="Вставь сюда текст...">${escapeHtml(current?.text || '')}</textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-cancel" id="mCancel">Отмена</button>
+          <button class="btn btn-save" id="mSave">${isEdit ? 'Сохранить' : 'Создать'}</button>
+        </div>
+      `;
+      overlay.classList.add('open');
+      setTimeout(() => modal.querySelector('#mLabel').focus(), 50);
+
+      const close = () => overlay.classList.remove('open');
+      modal.querySelector('#mCancel').onclick = close;
+      modal.querySelector('#mSave').onclick = async () => {
+        const label = modal.querySelector('#mLabel').value.trim();
+        const text = modal.querySelector('#mText').value;
+        const sid = modal.querySelector('#mSection').value;
+        if (!label) { showToast('Введите название'); return; }
+        if (!text.trim()) { showToast('Введите текст'); return; }
+        if (isEdit) {
+          await update(ref(db, `items/${id}`), { label, text, sectionId: sid });
+        } else {
+          const order = Date.now();
+          await push(ref(db, 'items'), { label, text, sectionId: sid, order });
+        }
+        close();
+        showToast(isEdit ? 'Текст обновлён' : 'Текст добавлен');
+      };
+    }
+
+    // Закрытие модалки по клику на фон
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.remove('open');
+    });
+
+    // Esc закрывает модалку
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') overlay.classList.remove('open');
+    });
+
+  </script>
+</body>
+</html>
