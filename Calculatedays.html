@@ -5,263 +5,204 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=2.0">
   <title>Отсчёт дней с даты | 35% / 30% / по факту / 100% предоплата</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: linear-gradient(145deg, #f5f7fa 0%, #e9edf5 100%);
       font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1.5rem;
-      margin: 0;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem; margin: 0;
     }
     .card {
-      background: rgba(255,255,255,0.8);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       background: #ffffff;
       box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.08);
-      border-radius: 2.5rem;
-      padding: 2rem 2rem 2.5rem;
-      width: 100%;
-      max-width: 550px;
+      border-radius: 2.5rem; padding: 2rem 2rem 2.5rem;
+      width: 100%; max-width: 550px;
       transition: all 0.2s ease;
       border: 1px solid rgba(255,255,255,0.6);
     }
     h1 {
-      font-size: 1.9rem;
-      font-weight: 600;
-      color: #1e293b;
-      text-align: center;
-      margin-bottom: 0.35rem;
-      letter-spacing: -0.5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
+      font-size: 1.9rem; font-weight: 600; color: #1e293b;
+      text-align: center; margin-bottom: 0.35rem; letter-spacing: -0.5px;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
     }
     h1 span {
-      background: #2563eb;
-      color: white;
-      font-size: 1.4rem;
-      padding: 0.2rem 0.7rem;
-      border-radius: 3rem;
+      background: #2563eb; color: white; font-size: 1.4rem;
+      padding: 0.2rem 0.7rem; border-radius: 3rem;
     }
     .subtitle {
-      text-align: center;
-      color: #475569;
-      margin-bottom: 2rem;
-      font-weight: 500;
-      font-size: 1rem;
-      border-bottom: 1px dashed #cbd5e1;
-      padding-bottom: 1.2rem;
+      text-align: center; color: #475569; margin-bottom: 2rem;
+      font-weight: 500; font-size: 1rem;
+      border-bottom: 1px dashed #cbd5e1; padding-bottom: 1.2rem;
     }
-    .date-picker-area {
-      margin-bottom: 2rem;
-    }
+    .date-picker-area { margin-bottom: 2rem; }
     label {
-      font-weight: 600;
-      font-size: 0.9rem;
-      color: #334155;
-      display: block;
-      margin-bottom: 0.5rem;
-      letter-spacing: 0.3px;
-      text-transform: uppercase;
+      font-weight: 600; font-size: 0.9rem; color: #334155;
+      display: block; margin-bottom: 0.5rem;
+      letter-spacing: 0.3px; text-transform: uppercase;
     }
     input[type="date"] {
-      width: 100%;
-      padding: 1rem 1.2rem;
-      font-size: 1.1rem;
-      background: #f1f5f9;
-      border: 2px solid #e2e8f0;
-      border-radius: 1.5rem;
-      outline: none;
-      transition: all 0.2s;
-      font-weight: 500;
-      color: #0f172a;
-      background: #ffffff;
+      width: 100%; padding: 1rem 1.2rem; font-size: 1.1rem;
+      background: #ffffff; border: 2px solid #e2e8f0;
+      border-radius: 1.5rem; outline: none; transition: all 0.2s;
+      font-weight: 500; color: #0f172a;
       box-shadow: 0 2px 6px rgba(0,0,0,0.02);
     }
     input[type="date"]:focus {
-      border-color: #2563eb;
-      box-shadow: 0 0 0 4px rgba(37,99,235,0.15);
+      border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,0.15);
     }
     .options-box {
-      background: #f8fafc;
-      border-radius: 1.8rem;
-      padding: 1.5rem 1.3rem;
-      margin: 1.5rem 0 1.8rem;
+      background: #f8fafc; border-radius: 1.8rem;
+      padding: 1.5rem 1.3rem; margin: 1.5rem 0 1.8rem;
       border: 1px solid #e9eef3;
-      display: flex;
-      flex-direction: column;
-      gap: 1.2rem;
+      display: flex; flex-direction: column; gap: 1.2rem;
     }
     .option-row {
-      display: flex;
-      align-items: center;
-      gap: 0.9rem;
-      background: white;
-      padding: 0.8rem 1rem;
-      border-radius: 1.2rem;
-      transition: background 0.15s;
+      display: flex; align-items: center; gap: 0.9rem;
+      background: white; padding: 0.8rem 1rem;
+      border-radius: 1.2rem; transition: background 0.15s;
       box-shadow: 0 1px 4px rgba(0,0,0,0.02);
-      border: 1px solid transparent;
-      cursor: pointer;
+      border: 1px solid transparent; cursor: pointer;
     }
-    .option-row:hover {
-      background: #f1f5ff;
-      border-color: #bfdbfe;
-    }
+    .option-row:hover { background: #f1f5ff; border-color: #bfdbfe; }
     .option-row.selected {
-      background: #eff6ff;
-      border-color: #2563eb;
+      background: #eff6ff; border-color: #2563eb;
       box-shadow: 0 6px 14px rgba(37,99,235,0.12);
     }
     input[type="radio"] {
-      appearance: none;
-      width: 1.4rem;
-      height: 1.4rem;
-      border: 2px solid #cbd5e1;
-      border-radius: 50%;
-      margin: 0;
-      display: grid;
-      place-content: center;
-      transition: all 0.2s;
-      flex-shrink: 0;
+      appearance: none; width: 1.4rem; height: 1.4rem;
+      border: 2px solid #cbd5e1; border-radius: 50%;
+      margin: 0; display: grid; place-content: center;
+      transition: all 0.2s; flex-shrink: 0;
     }
     input[type="radio"]::before {
-      content: "";
-      width: 0.7rem;
-      height: 0.7rem;
-      border-radius: 50%;
-      transform: scale(0);
-      transition: 0.15s transform ease-in-out;
-      background: #2563eb;
-      display: block;
+      content: ""; width: 0.7rem; height: 0.7rem; border-radius: 50%;
+      transform: scale(0); transition: 0.15s transform ease-in-out;
+      background: #2563eb; display: block;
     }
-    input[type="radio"]:checked {
-      border-color: #2563eb;
-      background: white;
-    }
-    input[type="radio"]:checked::before {
-      transform: scale(1);
-    }
-    .option-text {
-      display: flex;
-      flex-direction: column;
-    }
-    .option-title {
-      font-weight: 700;
-      font-size: 1.05rem;
-      color: #0f172a;
-    }
-    .option-desc {
-      font-size: 0.8rem;
-      color: #475569;
-      font-weight: 500;
-    }
+    input[type="radio"]:checked { border-color: #2563eb; background: white; }
+    input[type="radio"]:checked::before { transform: scale(1); }
+    .option-text { display: flex; flex-direction: column; }
+    .option-title { font-weight: 700; font-size: 1.05rem; color: #0f172a; }
+    .option-desc { font-size: 0.8rem; color: #475569; font-weight: 500; }
     .result-block {
-      background: #0f172a;
-      border-radius: 1.8rem;
-      padding: 1.5rem 1.5rem;
-      margin: 1.8rem 0 1.5rem;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
+      background: #0f172a; border-radius: 1.8rem;
+      padding: 1.5rem 1.5rem; margin: 1.8rem 0 1rem;
+      color: white; display: flex; flex-direction: column;
+      align-items: center; text-align: center;
       box-shadow: 0 18px 30px -10px rgba(15,23,42,0.4);
     }
     .result-label {
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      font-weight: 500;
-      color: #94a3b8;
-      margin-bottom: 0.5rem;
+      font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px;
+      font-weight: 500; color: #94a3b8; margin-bottom: 0.5rem;
     }
     .result-date {
-      font-size: 2.4rem;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-      line-height: 1.2;
-      word-break: break-word;
-      color: #facc15;
+      font-size: 2.4rem; font-weight: 700; letter-spacing: -0.3px;
+      line-height: 1.2; word-break: break-word; color: #facc15;
       text-shadow: 0 2px 5px rgba(250,204,21,0.3);
     }
-    .result-hint {
-      font-size: 0.9rem;
-      color: #cbd5e1;
-      margin-top: 0.5rem;
-      font-weight: 500;
+    .result-hint { font-size: 0.9rem; color: #cbd5e1; margin-top: 0.5rem; font-weight: 500; }
+    .result-info { font-size: 0.8rem; color: #94a3b8; margin-top: 0.3rem; font-style: italic; }
+    .note { margin-top: 1rem; font-size: 0.8rem; color: #64748b; text-align: center; }
+    hr { border: none; border-top: 1px solid #e2e8f0; margin: 1rem 0 0.5rem; }
+
+    /* ===== Мини-календари ===== */
+    .mini-calendars {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1.2rem;
     }
-    .result-info {
-      font-size: 0.8rem;
-      color: #94a3b8;
-      margin-top: 0.3rem;
-      font-style: italic;
+    .mini-cal {
+      background: #f8fafc;
+      border: 1px solid #e9eef3;
+      border-radius: 1.4rem;
+      padding: 1rem 0.8rem 0.9rem;
     }
-    button {
-      width: 100%;
-      background: #2563eb;
-      border: none;
-      color: white;
-      font-weight: 700;
-      font-size: 1.2rem;
-      padding: 1rem 1.5rem;
-      border-radius: 2rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-      box-shadow: 0 8px 22px rgba(37,99,235,0.35);
-      letter-spacing: 0.4px;
-    }
-    button:hover {
-      background: #1d4ed8;
-      box-shadow: 0 12px 24px rgba(37,99,235,0.45);
-      transform: translateY(-1px);
-    }
-    button:active {
-      transform: translateY(1px);
-      box-shadow: 0 5px 12px rgba(37,99,235,0.4);
-    }
-    .note {
-      margin-top: 1rem;
-      font-size: 0.8rem;
-      color: #64748b;
+    .mini-cal-title {
       text-align: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #1e293b;
+      margin-bottom: 0.6rem;
+      letter-spacing: 0.3px;
     }
-    hr {
-      border: none;
-      border-top: 1px solid #e2e8f0;
-      margin: 1rem 0 0.5rem;
+    .mini-cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+    .mini-cal-dow {
+      text-align: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #94a3b8;
+      padding: 0.15rem 0;
+      text-transform: uppercase;
+    }
+    .mini-cal-day {
+      text-align: center;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #334155;
+      padding: 0.35rem 0;
+      border-radius: 0.5rem;
+      position: relative;
+      transition: background 0.15s;
+      cursor: default;
+    }
+    .mini-cal-day.empty { color: transparent; }
+    .mini-cal-day.weekend { color: #dc2626; background: #fef2f2; }
+    .mini-cal-day.holiday { color: #b91c1c; background: #fee2e2; }
+    .mini-cal-day.today {
+      outline: 2px solid #2563eb;
+      outline-offset: -2px;
+    }
+    .mini-cal-day.start {
+      background: #2563eb;
+      color: #fff;
+    }
+    .mini-cal-day.result {
+      background: #facc15;
+      color: #0f172a;
+      box-shadow: 0 0 0 2px #facc15, 0 0 0 4px rgba(250,204,21,0.35);
+    }
+    .mini-cal-legend {
+      display: flex;
+      justify-content: center;
+      gap: 0.7rem;
+      margin-top: 0.7rem;
+      font-size: 0.65rem;
+      color: #64748b;
+      flex-wrap: wrap;
+    }
+    .mini-cal-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .dot {
+      width: 0.55rem; height: 0.55rem; border-radius: 50%; display: inline-block;
+    }
+    .dot-start { background: #2563eb; }
+    .dot-result { background: #facc15; }
+    .dot-weekend { background: #dc2626; }
+    .dot-today { background: #fff; border: 2px solid #2563eb; }
+
+    @media (max-width: 420px) {
+      .mini-calendars { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>
-      📅 Дни с даты
-      <span>+</span>
-    </h1>
+    <h1>📅 Дни с даты <span>+</span></h1>
     <div class="subtitle">Выберите условие и начальную дату (день отсчёта включён)</div>
 
-    <!-- Выбор даты -->
     <div class="date-picker-area">
       <label for="startDate">📌 Исходная дата (день 1)</label>
       <input type="date" id="startDate" required>
     </div>
 
-    <!-- Радио-кнопки с условиями -->
     <div class="options-box" id="optionsContainer">
       <div class="option-row" data-option="budget35">
         <input type="radio" name="dayOption" id="opt35" value="35budget" checked>
@@ -270,7 +211,7 @@
           <span class="option-desc">5 рабочих дней (с учётом начальной даты)</span>
         </label>
       </div>
-      
+
       <div class="option-row" data-option="percent30">
         <input type="radio" name="dayOption" id="opt30" value="30percent">
         <label for="opt30" class="option-text">
@@ -278,7 +219,7 @@
           <span class="option-desc">10 рабочих дней (с учётом начальной даты)</span>
         </label>
       </div>
-      
+
       <div class="option-row" data-option="fact30">
         <input type="radio" name="dayOption" id="optFact" value="fact">
         <label for="optFact" class="option-text">
@@ -296,7 +237,6 @@
       </div>
     </div>
 
-    <!-- Результат -->
     <div class="result-block" id="resultBox">
       <div class="result-label">Итоговая дата</div>
       <div class="result-date" id="resultDateDisplay">—</div>
@@ -304,11 +244,14 @@
       <div class="result-info" id="resultInfo"></div>
     </div>
 
-    <button id="calculateBtn">
-      <span>⟳</span> Рассчитать дату
-    </button>
+    <!-- Мини-календари: прошлый и текущий месяц -->
+    <div class="mini-calendars">
+      <div class="mini-cal" id="prevMonthCalendar"></div>
+      <div class="mini-cal" id="currentMonthCalendar"></div>
+    </div>
+
     <div class="note">
-      * Рабочие дни: Пн–Пт (без учёта праздников)<br>
+      * Рабочие дни: Пн–Пт с учётом праздников РБ<br>
       * Отсчёт начинается с выбранной даты (она считается днём №1)
     </div>
     <hr>
@@ -319,17 +262,31 @@
 
   <script>
     (function() {
-      // DOM элементы
       const startDateInput = document.getElementById('startDate');
       const resultDateDisplay = document.getElementById('resultDateDisplay');
       const resultDescription = document.getElementById('resultDescription');
       const resultInfo = document.getElementById('resultInfo');
-      const calculateBtn = document.getElementById('calculateBtn');
       const optionRows = document.querySelectorAll('.option-row');
       const radioInputs = document.querySelectorAll('input[name="dayOption"]');
       const currentDateSpan = document.getElementById('currentDateSpan');
+      const prevMonthCalendar = document.getElementById('prevMonthCalendar');
+      const currentMonthCalendar = document.getElementById('currentMonthCalendar');
 
-      // Функция для форматирования даты в российский локальный формат (ДД.ММ.ГГГГ)
+      const BELARUS_HOLIDAYS = [
+        '01-01', '01-02', '01-07', '03-08', '04-21',
+        '05-01', '05-09', '07-03', '11-07', '12-25'
+      ];
+      const WORKING_SATURDAYS = ['2026-04-25'];
+
+      const MONTH_NAMES_RU = [
+        'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+      ];
+      const DOW_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+      // Последний рассчитанный результат — чтобы подсветить в календаре
+      let lastResultDate = null;
+
       function formatDateRU(date) {
         if (!date || isNaN(date.getTime())) return '—';
         const day = String(date.getDate()).padStart(2, '0');
@@ -338,112 +295,185 @@
         return `${day}.${month}.${year}`;
       }
 
-      // Отображение текущей даты
+      function formatISO(date) {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      }
+
       function updateCurrentDateDisplay() {
-        const today = new Date();
-        currentDateSpan.textContent = formatDateRU(today);
+        currentDateSpan.textContent = formatDateRU(new Date());
       }
       updateCurrentDateDisplay();
 
-      // Установить сегодняшнюю дату в поле по умолчанию (если пусто)
       function setDefaultDate() {
         if (!startDateInput.value) {
-          const today = new Date();
-          const yyyy = today.getFullYear();
-          const mm = String(today.getMonth() + 1).padStart(2, '0');
-          const dd = String(today.getDate()).padStart(2, '0');
-          startDateInput.value = `${yyyy}-${mm}-${dd}`;
+          startDateInput.value = formatISO(new Date());
         }
       }
       setDefaultDate();
 
-      // Определение, является ли день рабочим (Пн-Пт)
       function isWeekday(date) {
+        const iso = formatISO(date);
+        if (WORKING_SATURDAYS.includes(iso)) return true;
         const day = date.getDay();
-        return day !== 0 && day !== 6; // 0 вс, 6 сб
+        if (day === 0 || day === 6) return false;
+        const mmdd = iso.slice(5);
+        if (BELARUS_HOLIDAYS.includes(mmdd)) return false;
+        return true;
       }
 
-      // Добавление рабочих дней НАЧИНАЯ С САМОЙ ДАТЫ (она считается первым рабочим днём, если выпадает на будни)
+      function rollBackToWorkingDay(date) {
+        const d = new Date(date);
+        let safety = 0;
+        while (!isWeekday(d) && safety < 30) {
+          d.setDate(d.getDate() - 1);
+          safety++;
+        }
+        return d;
+      }
+
       function addWorkingDaysFromDate(startDate, totalWorkingDays) {
-        // Если начальная дата — выходной, нужно найти ближайший рабочий день?
-        // По логике "с даты": если дата выпадает на выходной, вероятно, отсчёт начнётся со следующего рабочего дня.
-        // Но чаще всего подразумевается, что дата уже рабочий день. Сделаем так:
-        // Если начальная дата не рабочий день, первым днём считается следующий рабочий день.
         let current = new Date(startDate);
-        
-        // Если стартовая дата выходная — сдвигаем на следующий рабочий день (это будет день 1)
-        if (!isWeekday(current)) {
-          // Ищем следующий рабочий день
-          while (!isWeekday(current)) {
-            current.setDate(current.getDate() + 1);
-          }
+        let safety = 0;
+        while (!isWeekday(current) && safety < 60) {
+          current.setDate(current.getDate() + 1);
+          safety++;
         }
-        
-        // Теперь current — первый рабочий день (день №1)
-        let daysCounted = 1; // уже учли первый день
-        
-        // Если нужно всего 1 рабочий день — возвращаем current
-        if (totalWorkingDays === 1) {
-          return new Date(current);
-        }
-        
-        // Добавляем оставшиеся рабочие дни
+        let daysCounted = 1;
+        if (totalWorkingDays === 1) return new Date(current);
         while (daysCounted < totalWorkingDays) {
           current.setDate(current.getDate() + 1);
-          if (isWeekday(current)) {
-            daysCounted++;
-          }
+          if (isWeekday(current)) daysCounted++;
         }
-        
         return new Date(current);
       }
 
-      // Добавление календарных дней НАЧИНАЯ С САМОЙ ДАТЫ (она считается днём №1)
       function addCalendarDaysFromDate(startDate, totalDays) {
-        // Если нужно 1 день — возвращаем саму дату
-        if (totalDays === 1) {
-          return new Date(startDate);
-        }
-        // Иначе: начальная дата + (totalDays - 1) дней
         let result = new Date(startDate);
-        result.setDate(result.getDate() + (totalDays - 1));
-        return result;
+        if (totalDays > 1) {
+          result.setDate(result.getDate() + (totalDays - 1));
+        }
+        return rollBackToWorkingDay(result);
       }
 
-      // Получить выбранное значение радио
       function getSelectedOption() {
         const checkedRadio = document.querySelector('input[name="dayOption"]:checked');
         return checkedRadio ? checkedRadio.value : null;
       }
 
-      // Подсветка выбранной строки (добавляем класс selected к родительскому .option-row)
       function updateSelectedRowHighlight() {
         const selectedValue = getSelectedOption();
         optionRows.forEach(row => {
           const radio = row.querySelector('input[name="dayOption"]');
-          if (radio && radio.value === selectedValue) {
-            row.classList.add('selected');
-          } else {
-            row.classList.remove('selected');
-          }
+          if (radio && radio.value === selectedValue) row.classList.add('selected');
+          else row.classList.remove('selected');
         });
       }
 
-      // Основная логика расчёта
+      // ===== Отрисовка одного мини-календаря =====
+      function buildMonthCalendar(year, month, startDate, resultDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const todayISO = formatISO(today);
+        const startISO = startDate ? formatISO(startDate) : null;
+        const resultISO = resultDate ? formatISO(resultDate) : null;
+
+        const firstDay = new Date(year, month, 1);
+        // Понедельник = 0 ... Воскресенье = 6
+        let firstDow = firstDay.getDay();
+        firstDow = (firstDow + 6) % 7;
+
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        let html = `<div class="mini-cal-title">${MONTH_NAMES_RU[month]} ${year}</div>`;
+        html += '<div class="mini-cal-grid">';
+
+        DOW_SHORT.forEach(d => {
+          html += `<div class="mini-cal-dow">${d}</div>`;
+        });
+
+        // Пустые ячейки до первого дня
+        for (let i = 0; i < firstDow; i++) {
+          html += '<div class="mini-cal-day empty">·</div>';
+        }
+
+        // Дни месяца
+        for (let d = 1; d <= daysInMonth; d++) {
+          const cur = new Date(year, month, d);
+          const iso = formatISO(cur);
+          const dow = cur.getDay();
+
+          let classes = 'mini-cal-day';
+          const mmdd = iso.slice(5);
+          const isHoliday = BELARUS_HOLIDAYS.includes(mmdd);
+          const isWeekendDay = (dow === 0 || dow === 6);
+
+          if (isHoliday) classes += ' holiday';
+          else if (isWeekendDay && !WORKING_SATURDAYS.includes(iso)) classes += ' weekend';
+
+          if (iso === todayISO) classes += ' today';
+          if (iso === startISO) classes += ' start';
+          if (iso === resultISO) classes += ' result';
+
+          html += `<div class="${classes}">${d}</div>`;
+        }
+
+        html += '</div>';
+
+        // Легенда
+        html += `
+          <div class="mini-cal-legend">
+            <span><i class="dot dot-start"></i>старт</span>
+            <span><i class="dot dot-result"></i>итог</span>
+            <span><i class="dot dot-weekend"></i>вых/празд.</span>
+            <span><i class="dot dot-today"></i>сегодня</span>
+          </div>
+        `;
+
+        return html;
+      }
+
+      function renderMiniCalendars() {
+        const today = new Date();
+        const curYear = today.getFullYear();
+        const curMonth = today.getMonth();
+
+        const prevMonthDate = new Date(curYear, curMonth - 1, 1);
+        const prevYear = prevMonthDate.getFullYear();
+        const prevMonth = prevMonthDate.getMonth();
+
+        const startDateStr = startDateInput.value;
+        const startDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : null;
+
+        prevMonthCalendar.innerHTML = buildMonthCalendar(
+          prevYear, prevMonth, startDate, lastResultDate
+        );
+        currentMonthCalendar.innerHTML = buildMonthCalendar(
+          curYear, curMonth, startDate, lastResultDate
+        );
+      }
+
       function calculateAndDisplay() {
         const startDateStr = startDateInput.value;
         if (!startDateStr) {
           resultDateDisplay.textContent = '—';
           resultDescription.textContent = '⚠️ Укажите начальную дату';
           resultInfo.textContent = '';
+          lastResultDate = null;
+          renderMiniCalendars();
           return;
         }
 
-        const startDate = new Date(startDateStr + 'T00:00:00'); // чтобы избежать сдвигов временной зоны
+        const startDate = new Date(startDateStr + 'T00:00:00');
         if (isNaN(startDate.getTime())) {
           resultDateDisplay.textContent = '—';
           resultDescription.textContent = 'Некорректная дата';
           resultInfo.textContent = '';
+          lastResultDate = null;
+          renderMiniCalendars();
           return;
         }
 
@@ -452,6 +482,8 @@
           resultDateDisplay.textContent = '—';
           resultDescription.textContent = 'Выберите условие';
           resultInfo.textContent = '';
+          lastResultDate = null;
+          renderMiniCalendars();
           return;
         }
 
@@ -459,36 +491,33 @@
         let descriptionText = '';
         let infoText = '';
 
-        // Ветвление по условиям
         switch (option) {
           case '35budget':
-            // 35% бюджет: 5 рабочих дней (с учётом начальной даты)
             resultDate = addWorkingDaysFromDate(startDate, 5);
             descriptionText = '35% бюджет · 5 рабочих дней';
-            infoText = 'Начальная дата — день 1';
+            infoText = 'Начальная дата — день 1 · учтены праздники РБ';
             break;
           case '30percent':
-            // 30%: 10 рабочих дней (с учётом начальной даты)
             resultDate = addWorkingDaysFromDate(startDate, 10);
             descriptionText = '30% · 10 рабочих дней';
-            infoText = 'Начальная дата — день 1';
+            infoText = 'Начальная дата — день 1 · учтены праздники РБ';
             break;
           case 'fact':
-            // Обычные / по факту: 30 календарных дней (с учётом начальной даты)
             resultDate = addCalendarDaysFromDate(startDate, 30);
             descriptionText = 'По факту · 30 календарных дней';
-            infoText = 'Начальная дата — день 1';
+            infoText = 'Начальная дата — день 1 · коррекция на рабочий день';
             break;
           case 'prepaid100':
-            // 100% предоплата: 25 календарных дней с момента оплаты
             resultDate = addCalendarDaysFromDate(startDate, 25);
             descriptionText = '100% предоплата · 25 календарных дней';
-            infoText = 'Начальная дата — день 1 (момент оплаты)';
+            infoText = 'Начальная дата — день 1 · коррекция на рабочий день';
             break;
           default:
             resultDateDisplay.textContent = '—';
             resultDescription.textContent = 'Неизвестный режим';
             resultInfo.textContent = '';
+            lastResultDate = null;
+            renderMiniCalendars();
             return;
         }
 
@@ -496,72 +525,44 @@
           resultDateDisplay.textContent = formatDateRU(resultDate);
           resultDescription.textContent = descriptionText;
           resultInfo.textContent = infoText;
+          lastResultDate = resultDate;
         } else {
           resultDateDisplay.textContent = '—';
           resultDescription.textContent = 'Ошибка расчёта';
           resultInfo.textContent = '';
+          lastResultDate = null;
         }
+
+        renderMiniCalendars();
       }
 
-      // Обработчик клика по строке (для удобства выбора радио)
-      function handleRowClick(e) {
-        const row = e.currentTarget;
-        const radio = row.querySelector('input[name="dayOption"]');
-        if (radio) {
-          radio.checked = true;
-          // Вручную вызываем обновление подсветки и пересчёт
-          updateSelectedRowHighlight();
-          calculateAndDisplay();
-        }
-      }
-
-      // Обработчик изменения радио (на случай клавиатуры или прямого клика по radio)
-      function handleRadioChange() {
-        updateSelectedRowHighlight();
-        calculateAndDisplay();
-      }
-
-      // Привязка событий
       optionRows.forEach(row => {
-        row.addEventListener('click', handleRowClick);
-      });
-
-      radioInputs.forEach(radio => {
-        radio.addEventListener('change', handleRadioChange);
-        // Также предотвращаем всплытие, чтобы не срабатывал двойной вызов при клике на сам radio
-        radio.addEventListener('click', (e) => {
-          e.stopPropagation();
-          // Но всё равно обновим после изменения
-          updateSelectedRowHighlight();
-          calculateAndDisplay();
+        row.addEventListener('click', () => {
+          const radio = row.querySelector('input[name="dayOption"]');
+          if (radio) {
+            radio.checked = true;
+            updateSelectedRowHighlight();
+            calculateAndDisplay();
+          }
         });
       });
 
-      // Кнопка "Рассчитать дату"
-      calculateBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        calculateAndDisplay();
+      radioInputs.forEach(radio => {
+        radio.addEventListener('change', () => {
+          updateSelectedRowHighlight();
+          calculateAndDisplay();
+        });
+        radio.addEventListener('click', (e) => e.stopPropagation());
       });
 
-      // Пересчёт при изменении даты
-      startDateInput.addEventListener('change', () => {
-        calculateAndDisplay();
+      startDateInput.addEventListener('change', calculateAndDisplay);
+
+      startDateInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); calculateAndDisplay(); }
       });
 
-      // Инициализация: подсветка и первичный расчёт
       updateSelectedRowHighlight();
       calculateAndDisplay();
-
-      // Дополнительно: если пользователь вручную вводит дату и нажимает Enter,
-      // предотвратим отправку формы (если бы она была) и пересчитаем
-      startDateInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          calculateAndDisplay();
-        }
-      });
-
-      // Обновление текущей даты раз в минуту (на случай если открыто долго)
       setInterval(updateCurrentDateDisplay, 60000);
     })();
   </script>
