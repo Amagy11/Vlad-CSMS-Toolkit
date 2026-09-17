@@ -19,7 +19,6 @@
       padding-bottom: 5rem;
     }
 
-    /* Верхняя панель */
     .topbar {
       display: flex;
       align-items: center;
@@ -50,6 +49,7 @@
       transition: all 0.15s;
       color: #334155;
       box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      flex-shrink: 0;
     }
     .icon-btn:hover { background: #eff6ff; border-color: #bfdbfe; }
     .icon-btn.active {
@@ -57,7 +57,6 @@
       box-shadow: 0 6px 16px rgba(37,99,235,0.3);
     }
 
-    /* Поиск */
     .search {
       width: 100%;
       padding: 0.75rem 1rem;
@@ -72,7 +71,6 @@
     }
     .search:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
 
-    /* Разделы */
     .section {
       background: #fff;
       border-radius: 1.2rem;
@@ -126,7 +124,6 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Элементы текста */
     .item {
       background: #f8fafc;
       border: 1px solid #eef2f7;
@@ -148,7 +145,14 @@
       flex: 1;
       word-break: break-word;
     }
+
+    .item-content {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+    }
     .item-text {
+      flex: 1;
       font-size: 0.88rem;
       color: #475569;
       line-height: 1.45;
@@ -157,7 +161,7 @@
       max-height: 4.5em;
       overflow: hidden;
       position: relative;
-      margin-bottom: 0.7rem;
+      min-width: 0;
     }
     .item-text.expanded { max-height: none; }
     .item-text::after {
@@ -170,41 +174,31 @@
     }
     .item-text.expanded::after { display: none; }
 
-    .item-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-    .btn {
-      flex: 1;
-      border: none;
+    .copy-sq {
+      flex-shrink: 0;
+      width: 2.2rem;
+      height: 2.2rem;
       border-radius: 0.7rem;
-      padding: 0.6rem 0.9rem;
-      font-size: 0.88rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.15s;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      font-size: 1rem;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 0.35rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 3px 10px rgba(37,99,235,0.28);
+      padding: 0;
+      line-height: 1;
     }
-    .btn-copy {
-      background: #2563eb;
-      color: #fff;
-      box-shadow: 0 3px 10px rgba(37,99,235,0.25);
+    .copy-sq:hover { background: #1d4ed8; }
+    .copy-sq:active { transform: scale(0.92); }
+    .copy-sq.copied {
+      background: #16a34a;
+      box-shadow: 0 3px 10px rgba(22,163,74,0.35);
     }
-    .btn-copy:hover { background: #1d4ed8; }
-    .btn-copy:active { transform: scale(0.97); }
-    .btn-copy.copied { background: #16a34a; box-shadow: 0 3px 10px rgba(22,163,74,0.3); }
 
-    .btn-ghost {
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      color: #475569;
-      flex: 0 0 auto;
-      padding: 0.6rem 0.8rem;
-    }
-    .btn-ghost:hover { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
     .btn-expand {
       background: transparent;
       border: none;
@@ -213,10 +207,9 @@
       font-weight: 700;
       cursor: pointer;
       padding: 0;
-      margin-bottom: 0.6rem;
+      margin-top: 0.5rem;
     }
 
-    /* Пустое состояние */
     .empty {
       text-align: center;
       padding: 2.5rem 1rem;
@@ -225,7 +218,6 @@
     }
     .empty-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
 
-    /* Кнопка добавления */
     .add-bar {
       position: fixed;
       bottom: 1rem; left: 50%;
@@ -250,7 +242,6 @@
     }
     .add-btn:active { transform: scale(0.98); }
 
-    /* Модалка */
     .overlay {
       position: fixed; inset: 0;
       background: rgba(15,23,42,0.55);
@@ -315,9 +306,20 @@
       margin-top: 1.2rem;
     }
     .modal-actions .btn { padding: 0.8rem; }
-    .btn-cancel {
-      background: #f1f5f9; color: #475569; flex: 1;
+    .btn {
+      flex: 1;
+      border: none;
+      border-radius: 0.7rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
     }
+    .btn-cancel { background: #f1f5f9; color: #475569; flex: 1; }
     .btn-cancel:hover { background: #e2e8f0; }
     .btn-save {
       background: #2563eb; color: #fff; flex: 1.5;
@@ -325,7 +327,6 @@
     }
     .btn-save:hover { background: #1d4ed8; }
 
-    /* Тост */
     .toast {
       position: fixed;
       bottom: 6rem; left: 50%;
@@ -347,7 +348,6 @@
       transform: translateX(-50%) translateY(0);
     }
 
-    /* Индикатор соединения */
     .status {
       display: inline-flex;
       align-items: center;
@@ -390,7 +390,6 @@
     </div>
   </div>
 
-  <!-- Модалка -->
   <div class="overlay" id="overlay">
     <div class="modal" id="modal"></div>
   </div>
@@ -400,7 +399,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
-      getDatabase, ref, onValue, push, set, update, remove, serverTimestamp
+      getDatabase, ref, onValue, push, update, remove
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -416,14 +415,12 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // ===== Состояние =====
-    let sections = {};        // {id: {name, order}}
-    let items = {};           // {id: {sectionId, label, text, order}}
+    let sections = {};
+    let items = {};
     let editMode = false;
     let searchQuery = '';
-    const openSections = new Set(); // какие разделы развёрнуты
+    const openSections = new Set();
 
-    // ===== DOM =====
     const sectionsList = document.getElementById('sectionsList');
     const searchInput = document.getElementById('searchInput');
     const editModeBtn = document.getElementById('editModeBtn');
@@ -435,7 +432,6 @@
     const statusEl = document.getElementById('status');
     const statusText = document.getElementById('statusText');
 
-    // ===== Утилиты =====
     function showToast(msg, ms = 1500) {
       toast.textContent = msg;
       toast.classList.add('show');
@@ -448,7 +444,6 @@
         if (navigator.clipboard && window.isSecureContext) {
           await navigator.clipboard.writeText(text);
         } else {
-          // fallback
           const ta = document.createElement('textarea');
           ta.value = text;
           ta.style.position = 'fixed';
@@ -459,13 +454,12 @@
           document.body.removeChild(ta);
         }
         if (btn) {
-          const original = btn.innerHTML;
           btn.classList.add('copied');
-          btn.innerHTML = '✓ Скопировано';
+          btn.innerHTML = '✓';
           setTimeout(() => {
             btn.classList.remove('copied');
-            btn.innerHTML = original;
-          }, 1400);
+            btn.innerHTML = '📋';
+          }, 1200);
         }
         showToast('✓ Скопировано');
       } catch (e) {
@@ -479,7 +473,6 @@
       })[c]);
     }
 
-    // ===== Рендер =====
     function render() {
       const q = searchQuery.trim().toLowerCase();
       const list = Object.entries(sections)
@@ -503,7 +496,6 @@
           .filter(it => it.sectionId === s.id)
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-        // Фильтр по поиску
         const secMatches = s.name.toLowerCase().includes(q);
         const filteredItems = secItems.filter(it =>
           secMatches ||
@@ -541,11 +533,11 @@
                       <button class="icon-btn" style="width:1.9rem;height:1.9rem;font-size:0.8rem;" data-delete-item="${it.id}" title="Удалить">🗑️</button>
                     ` : ''}
                   </div>
-                  <div class="item-text" data-text-id="${it.id}">${escapeHtml(it.text || '')}</div>
-                  <button class="btn-expand" data-expand="${it.id}" style="display:none;">Показать полностью ▾</button>
-                  <div class="item-actions">
-                    <button class="btn btn-copy" data-copy="${it.id}">📋 Копировать</button>
+                  <div class="item-content">
+                    <div class="item-text" data-text-id="${it.id}">${escapeHtml(it.text || '')}</div>
+                    <button class="copy-sq" data-copy="${it.id}" title="Скопировать">📋</button>
                   </div>
+                  <button class="btn-expand" data-expand="${it.id}" style="display:none;">Показать полностью ▾</button>
                 </div>
               `).join('')}
               ${editMode ? `<button class="add-btn" style="margin-top:0.5rem;padding:0.7rem;font-size:0.9rem;box-shadow:none;" data-add-item="${s.id}">＋ Текст</button>` : ''}
@@ -560,10 +552,9 @@
           Ничего не найдено
         </div>`;
 
-      // Разворачиваем тексты, которые не влезли
       requestAnimationFrame(() => {
         document.querySelectorAll('.item-text').forEach(el => {
-          const expandBtn = el.parentElement.querySelector('.btn-expand');
+          const expandBtn = el.parentElement.parentElement.querySelector('.btn-expand');
           if (expandBtn && el.scrollHeight > el.clientHeight + 2) {
             expandBtn.style.display = 'inline-block';
           }
@@ -571,17 +562,14 @@
       });
     }
 
-    // ===== Firebase слушатели =====
     const sectionsRef = ref(db, 'sections');
     const itemsRef = ref(db, 'items');
 
-    let connectedOnce = false;
     onValue(ref(db, '.info/connected'), snap => {
       const online = snap.val() === true;
       statusEl.classList.toggle('online', online);
       statusEl.classList.toggle('offline', !online);
       statusText.textContent = online ? 'online' : 'offline';
-      connectedOnce = true;
     });
 
     onValue(sectionsRef, snap => {
@@ -597,14 +585,11 @@
       render();
     });
 
-    // ===== События =====
-    // Поиск
     searchInput.addEventListener('input', (e) => {
       searchQuery = e.target.value;
       render();
     });
 
-    // Режим редактирования
     editModeBtn.addEventListener('click', () => {
       editMode = !editMode;
       editModeBtn.classList.toggle('active', editMode);
@@ -613,11 +598,9 @@
       showToast(editMode ? 'Режим редактирования включён' : 'Режим просмотра');
     });
 
-    // Клик по контенту
     sectionsList.addEventListener('click', async (e) => {
       const t = e.target;
 
-      // Свернуть/развернуть раздел
       const toggle = t.closest('[data-toggle]');
       if (toggle && !t.closest('[data-edit-section]') && !t.closest('[data-delete-section]')) {
         const id = toggle.dataset.toggle;
@@ -627,7 +610,6 @@
         return;
       }
 
-      // Развернуть текст
       const expand = t.closest('[data-expand]');
       if (expand) {
         const itemEl = expand.closest('.item');
@@ -638,7 +620,6 @@
         return;
       }
 
-      // Копировать
       const copyBtn = t.closest('[data-copy]');
       if (copyBtn) {
         const id = copyBtn.dataset.copy;
@@ -647,14 +628,12 @@
         return;
       }
 
-      // Добавить текст в раздел
       const addItem = t.closest('[data-add-item]');
       if (addItem) {
         openItemModal(null, addItem.dataset.addItem);
         return;
       }
 
-      // Изменить раздел
       const editSec = t.closest('[data-edit-section]');
       if (editSec) {
         const s = sections[editSec.dataset.editSection];
@@ -662,14 +641,12 @@
         return;
       }
 
-      // Удалить раздел
       const delSec = t.closest('[data-delete-section]');
       if (delSec) {
         const id = delSec.dataset.deleteSection;
         const s = sections[id];
         const count = Object.values(items).filter(it => it.sectionId === id).length;
         if (confirm(`Удалить раздел «${s?.name}»?` + (count ? `\nВсе тексты в нём (${count}) тоже удалятся.` : ''))) {
-          // Удаляем и раздел, и его тексты
           const updates = {};
           updates[`sections/${id}`] = null;
           Object.entries(items).forEach(([iid, it]) => {
@@ -682,7 +659,6 @@
         return;
       }
 
-      // Изменить текст
       const editIt = t.closest('[data-edit-item]');
       if (editIt) {
         const it = items[editIt.dataset.editItem];
@@ -690,7 +666,6 @@
         return;
       }
 
-      // Удалить текст
       const delIt = t.closest('[data-delete-item]');
       if (delIt) {
         const id = delIt.dataset.deleteItem;
@@ -703,10 +678,8 @@
       }
     });
 
-    // Добавить раздел
     addBtn.addEventListener('click', () => openSectionModal(null));
 
-    // ===== Модалки =====
     function openSectionModal(id, currentName = '') {
       const isEdit = !!id;
       modal.innerHTML = `
@@ -793,16 +766,13 @@
       };
     }
 
-    // Закрытие модалки по клику на фон
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) overlay.classList.remove('open');
     });
 
-    // Esc закрывает модалку
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') overlay.classList.remove('open');
     });
-
   </script>
 </body>
 </html>
