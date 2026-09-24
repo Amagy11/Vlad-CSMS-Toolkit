@@ -236,7 +236,7 @@
                                 <input type="file" id="table1File" class="form-control" accept=".xlsx,.xls">
                                 <small class="text-muted">
                                     Разделы: <b>[ОБЩАЯ]</b>, <b>[СРОЧНЫЕ]</b>, <b>[БЮДЖЕТ]</b>, <b>[ДОЛГ]</b>.
-                                    Пустая строка сбрасывает раздел. Существующие счета обновляются, статус сохраняется.
+                                    Пустая строка сбрасывает раздел. Совпадение по счёту И прибору — обновление, статус сохраняется.
                                 </small>
                             </div>
 
@@ -407,8 +407,8 @@
                     <li>Название раздела пишется в <b>первой колонке</b>, в скобках или без — регистр не важен.</li>
                     <li>Заголовок таблицы определяется по <b>2+ ключевым словам</b>: «номер счета», «контрагент», «прибор», «сумма» и т.п.</li>
                     <li>Поддерживаются <b>объединённые ячейки</b>: если номер счёта объединён — он протянется вниз, если в строках есть прибор/кол-во/сумма.</li>
-                    <li>Одинаковые номера счёта с <b>разными приборами</b> — разные строки.</li>
-                    <li><b>Повторная загрузка</b> того же счёта с тем же прибором <b>обновляет</b> данные (дата, сумма, кол-во), но <b>не сбрасывает</b> статус.</li>
+                    <li><b>Совпадение по счёту И прибору</b> — данные обновляются, статус сохраняется.</li>
+                    <li><b>Совпал только счёт</b> или <b>только прибор</b> — добавляется как новая строка.</li>
                 </ul>
 
                 <hr>
@@ -428,7 +428,7 @@
 
                 <div class="help-alert">
                     <b>ℹ️ Общие статусы между пользователями</b><br>
-                    Если у разных пользователей в их файлах есть счёт с <b>одинаковым номером и прибором</b> — статус «Выполнено» / «В работе» синхронизируется автоматически. Если у одного пользователя счёт выполнен, у другого он тоже станет выполненным.
+                    Если у разных пользователей в их файлах есть счёт с <b>одинаковым номером и прибором</b> — статус «Выполнено» / «В работе» синхронизируется автоматически.
                 </div>
 
             </div>
@@ -966,6 +966,19 @@
             const sel = document.getElementById('adminUserSelect');
             const uid = sel.value;
 
+            // Отписываемся от предыдущего
+            if (unsubInvoices) { unsubInvoices(); unsubInvoices = null; }
+
+            // Полностью очищаем состояние
+            table1Data = [];
+            table2Data = [];
+            deviceTypes.clear();
+            selectedDevices.clear();
+            selectedSections.clear();
+            selectedStatuses.clear();
+            document.querySelectorAll('.device-tag, .section-btn, .status-btn').forEach(b => b.classList.remove('active'));
+            renderDeviceTags();
+
             if (!uid) {
                 viewingUid = currentUser.uid;
                 viewingName = currentUserName;
@@ -977,10 +990,12 @@
 
             updateAdminModeInfo();
 
-            table1Data = [];
-            table2Data = [];
+            // Загружаем кэш нового пользователя
             loadFromStorage();
+
+            // Подписываемся на нового
             subscribeToUserData(viewingUid);
+
             renderTable();
         }
 
@@ -1012,7 +1027,7 @@
                         ${isSelf ? '' : `<button class="btn btn-sm btn-outline-danger" onclick="deleteUserAdmin('${u.uid}', '${nameSafe}')">🗑 Удалить</button>`}
                     </div>
                 `;
-                container.appendChild(item);
+                container.appendChild(api);
             });
         }
 
@@ -1052,12 +1067,11 @@
         }
 
         // ============================================================
-        // Merge row — обновляет данные, не трогая статус
+        // mergeRow — обновление без сброса статуса
         // ============================================================
         function mergeRow(oldRow, newRow) {
             return {
                 ...oldRow,
-                // Данные из Excel — обновляем из нового файла (если поле непустое)
                 'Дата выписки':              newRow['Дата выписки']              || oldRow['Дата выписки'],
                 'Контрагент (Наименование)': newRow['Контрагент (Наименование)'] || oldRow['Контрагент (Наименование)'],
                 'Кол-во':                    newRow['Кол-во']                    || oldRow['Кол-во'],
@@ -1065,23 +1079,19 @@
                 'Всего по счету':            newRow['Всего по счету']            || oldRow['Всего по счету'],
                 'Дата оплаты':               newRow['Дата оплаты']               || oldRow['Дата оплаты'],
 
-                // Флаги — объединяем через ИЛИ
                 isBudget:  oldRow.isBudget  || newRow.isBudget,
                 isUrgent:  oldRow.isUrgent  || newRow.isUrgent,
                 isDebt:    oldRow.isDebt    || newRow.isDebt,
                 isMatched: oldRow.isMatched || newRow.isMatched,
 
-                // Раздел — приоритет старому, если он не "общая"
                 section: (oldRow.section && oldRow.section !== 'common')
                     ? oldRow.section
                     : (newRow.section || 'common'),
 
-                // ⚠️ СТАТУС НЕ ТРОГАЕМ
                 status: oldRow.status,
                 statusDate: oldRow.statusDate,
                 statusChangedBy: oldRow.statusChangedBy,
 
-                // Оплата из Таблицы 2 — сохраняем старое
                 paymentStatus: oldRow.paymentStatus,
                 urgency: oldRow.urgency || newRow.urgency || ''
             };
@@ -1320,20 +1330,30 @@
         }
 
         // ============================================================
-        // Загрузка Таблицы 1 — с обновлением существующих
+        // Загрузка Таблицы 1 — надёжно, без блокировок
         // ============================================================
         function loadTable1() {
             const fileInput = document.getElementById('table1File');
             if (!fileInput.files[0]) { alert('Выберите файл Таблицы 1'); return; }
 
+            const targetUid = viewingUid;
+            const targetName = viewingName;
+
             readTable1(fileInput.files[0], function(newData) {
+                if (targetUid !== viewingUid) {
+                    console.warn('⚠️ viewingUid изменился во время чтения. Отмена.');
+                    alert('Пользователь переключён — загрузка отменена. Попробуйте снова.');
+                    return;
+                }
+
                 if (newData.length === 0) {
                     alert('Не удалось найти счета. Проверьте формат данных.');
                     return;
                 }
 
-                const existingMap = new Set();
-                table1Data.forEach(row => existingMap.add(rowKey(row)));
+                // Map: ключ → индекс для быстрого поиска
+                const existingMap = new Map();
+                table1Data.forEach((row, idx) => existingMap.set(rowKey(row), idx));
 
                 let addedCount = 0, updatedCount = 0;
 
@@ -1341,18 +1361,17 @@
                     const key = rowKey(newRow);
 
                     if (existingMap.has(key)) {
-                        // Ключ уже есть — обновляем данные, статус не трогаем
-                        const idx = table1Data.findIndex(r => rowKey(r) === key);
-                        if (idx !== -1) {
-                            table1Data[idx] = mergeRow(table1Data[idx], newRow);
-                            updatedCount++;
-                        }
+                        const idx = existingMap.get(key);
+                        table1Data[idx] = mergeRow(table1Data[idx], newRow);
+                        updatedCount++;
                     } else {
                         table1Data.push(newRow);
-                        existingMap.add(key);
+                        existingMap.set(key, table1Data.length - 1);
                         addedCount++;
                     }
                 });
+
+                console.log(`Загрузка Т1: добавлено ${addedCount}, обновлено ${updatedCount}, всего в памяти ${table1Data.length}`);
 
                 applySharedStatuses();
                 matchTables();
@@ -1361,21 +1380,30 @@
 
                 const infoDiv = document.getElementById('table1Info');
                 infoDiv.style.display = 'block';
-                const targetName = (currentIsAdmin && viewingUid !== currentUser.uid)
-                    ? ` в список «${escapeHtml(viewingName)}»` : '';
-                infoDiv.innerHTML = `✅ Добавлено${targetName}: <b>${addedCount}</b>, обновлено: <b>${updatedCount}</b>`;
+                const targetLabel = (currentIsAdmin && targetUid !== currentUser.uid)
+                    ? ` в список «${escapeHtml(targetName)}»` : '';
+                infoDiv.innerHTML = `✅ Добавлено${targetLabel}: <b>${addedCount}</b>, обновлено: <b>${updatedCount}</b>`;
                 setTimeout(() => infoDiv.style.display = 'none', 7000);
             });
         }
 
         // ============================================================
-        // Загрузка Таблицы 2 — с расширенным обновлением
+        // Загрузка Таблицы 2 — надёжно, без блокировок
         // ============================================================
         function loadTable2() {
             const fileInput = document.getElementById('table2File');
             if (!fileInput.files[0]) { alert('Выберите файл Таблицы 2'); return; }
 
+            const targetUid = viewingUid;
+            const targetName = viewingName;
+
             readTable2(fileInput.files[0], function(newData) {
+                if (targetUid !== viewingUid) {
+                    console.warn('⚠️ viewingUid изменился во время чтения. Отмена.');
+                    alert('Пользователь переключён — загрузка отменена. Попробуйте снова.');
+                    return;
+                }
+
                 if (newData.length === 0) {
                     alert('Не удалось найти счета в Таблице 2.');
                     return;
@@ -1419,15 +1447,17 @@
                     }
                 });
 
+                console.log(`Загрузка Т2: добавлено ${addedCount}, обновлено ${updatedCount}`);
+
                 matchTables();
                 saveToStorage();
                 renderTable();
 
                 const infoDiv = document.getElementById('table2Info');
                 infoDiv.style.display = 'block';
-                const targetName = (currentIsAdmin && viewingUid !== currentUser.uid)
-                    ? ` в список «${escapeHtml(viewingName)}»` : '';
-                infoDiv.innerHTML = `✅ Добавлено${targetName}: <b>${addedCount}</b>, обновлено: <b>${updatedCount}</b>, всего: <b>${table2Data.length}</b>`;
+                const targetLabel = (currentIsAdmin && targetUid !== currentUser.uid)
+                    ? ` в список «${escapeHtml(targetName)}»` : '';
+                infoDiv.innerHTML = `✅ Добавлено${targetLabel}: <b>${addedCount}</b>, обновлено: <b>${updatedCount}</b>, всего: <b>${table2Data.length}</b>`;
                 setTimeout(() => infoDiv.style.display = 'none', 7000);
             });
         }
@@ -1509,13 +1539,13 @@
         }
 
         // ============================================================
-        // Сохранение
+        // Сохранение — без блокирующих проверок
         // ============================================================
         function saveToStorage() {
-            if (viewingUid) {
-                localStorage.setItem('cache_' + viewingUid + '_table1', JSON.stringify(table1Data));
-                localStorage.setItem('cache_' + viewingUid + '_table2', JSON.stringify(table2Data));
-            }
+            if (!viewingUid) return;
+
+            localStorage.setItem('cache_' + viewingUid + '_table1', JSON.stringify(table1Data));
+            localStorage.setItem('cache_' + viewingUid + '_table2', JSON.stringify(table2Data));
 
             if (isRemoteUpdate) return;
             if (!currentUser || !userInvoicesRef) return;
@@ -1548,10 +1578,24 @@
 
         function loadFromStorage() {
             if (!viewingUid) return;
+
             const c1 = localStorage.getItem('cache_' + viewingUid + '_table1');
             const c2 = localStorage.getItem('cache_' + viewingUid + '_table2');
-            if (c1) { try { table1Data = JSON.parse(c1); } catch(e) { table1Data = []; } }
-            if (c2) { try { table2Data = JSON.parse(c2); } catch(e) { table2Data = []; } }
+
+            if (c1) {
+                try { table1Data = JSON.parse(c1); }
+                catch(e) { table1Data = []; }
+            } else {
+                table1Data = [];
+            }
+
+            if (c2) {
+                try { table2Data = JSON.parse(c2); }
+                catch(e) { table2Data = []; }
+            } else {
+                table2Data = [];
+            }
+
             table1Data = table1Data.map(r => ({ ...r, section: r.section || 'common' }));
             updateDeviceTypes();
             renderTable();
@@ -1720,12 +1764,13 @@
         }
 
         // ============================================================
-        // Очистка — только текущий просматриваемый список
+        // Очистка
         // ============================================================
         function clearAllData() {
             if (!currentUser) return;
+            if (!viewingUid) return;
 
-            const isOther = viewingUid && viewingUid !== currentUser.uid;
+            const isOther = viewingUid !== currentUser.uid;
             const whoLabel = isOther
                 ? `пользователя «${viewingName}»`
                 : 'свои';
@@ -1737,14 +1782,14 @@
             selectedDevices.clear();
             selectedSections.clear();
             selectedStatuses.clear();
+            document.querySelectorAll('.device-tag, .section-btn, .status-btn').forEach(b => b.classList.remove('active'));
+            renderDeviceTags();
 
-            if (viewingUid) {
-                remove(ref(database, 'invoices/' + viewingUid))
-                    .catch(err => console.error('Ошибка удаления:', err));
+            remove(ref(database, 'invoices/' + viewingUid))
+                .catch(err => console.error('Ошибка удаления:', err));
 
-                localStorage.removeItem('cache_' + viewingUid + '_table1');
-                localStorage.removeItem('cache_' + viewingUid + '_table2');
-            }
+            localStorage.removeItem('cache_' + viewingUid + '_table1');
+            localStorage.removeItem('cache_' + viewingUid + '_table2');
 
             updateDeviceTypes();
             renderTable();
