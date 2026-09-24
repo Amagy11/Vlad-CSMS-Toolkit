@@ -136,6 +136,18 @@
             display: flex; justify-content: space-between; align-items: center;
         }
         .admin-user-item:last-child { border-bottom: none; }
+
+        .admin-mode-banner {
+            background: linear-gradient(90deg, #dc3545 0%, #b02a37 100%);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -192,6 +204,24 @@
 
         <div class="container-fluid mt-4">
             <h1 class="mb-4">📊 Учет счетов</h1>
+
+            <!-- Плашка админа -->
+            <div class="row mb-3" id="adminViewBlock" style="display:none;">
+                <div class="col-12">
+                    <div class="admin-mode-banner">
+                        <div>
+                            🛡 <b>Режим администратора.</b>
+                            <span id="adminViewInfo">Вы работаете со своими данными.</span>
+                        </div>
+                        <div class="d-flex gap-2 align-items-center">
+                            <label class="mb-0 small">Работать как:</label>
+                            <select id="adminUserSelect" class="form-select form-select-sm" style="min-width: 220px;" onchange="onAdminUserChange()">
+                                <option value="">— Свои данные —</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div class="row mb-4">
                 <div class="col-md-6">
@@ -268,25 +298,6 @@
                             <div class="device-filter">
                                 <label class="form-label fw-bold">🏷 Типы приборов (можно несколько):</label>
                                 <div id="deviceTags" class="mt-2"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row mb-3" id="adminViewBlock" style="display:none;">
-                <div class="col-12">
-                    <div class="card border-danger">
-                        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">🛡 Режим администратора — просмотр данных пользователей</h6>
-                            <span class="badge bg-light text-danger" id="adminViewInfo">Свои данные</span>
-                        </div>
-                        <div class="card-body py-2">
-                            <div class="d-flex gap-2 flex-wrap align-items-center">
-                                <label class="mb-0 fw-bold">Просмотр:</label>
-                                <select id="adminUserSelect" class="form-select form-select-sm" style="max-width: 300px;" onchange="onAdminUserChange()">
-                                    <option value="">— Свои данные —</option>
-                                </select>
                             </div>
                         </div>
                     </div>
@@ -571,7 +582,7 @@
         });
 
         // ============================================================
-        // Транслитерация русских букв в латиницу для email
+        // Транслитерация
         // ============================================================
         const TRANSLIT_MAP = {
             'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z',
@@ -593,16 +604,13 @@
             return result;
         }
 
-        // Логин → email для Firebase Auth
         function usernameToEmail(username) {
             const normalized = username.toLowerCase().trim();
             const translit = transliterate(normalized);
-            // Оставляем только разрешённые символы для email
             const clean = translit.replace(/[^a-z0-9._-]/g, '.');
             return clean + EMAIL_DOMAIN;
         }
 
-        // Валидация: 2+ символа, буквы (рус/лат), цифры, пробел, . _ -
         function validateUsername(username) {
             const trimmed = username.trim();
             if (trimmed.length < 2) return false;
@@ -679,7 +687,6 @@
                         createdAt: new Date().toISOString()
                     });
 
-                    // Индекс по нормализованному логину (в нижнем регистре)
                     await set(ref(database, 'usernames/' + normalizedUsername), cred.user.uid);
 
                     if (isFirst) {
@@ -756,6 +763,7 @@
 
                 viewingUid = user.uid;
                 viewingName = currentUserName;
+                updateAdminModeInfo();
 
                 loadFromStorage();
                 subscribeToUserData(viewingUid);
@@ -941,6 +949,18 @@
             sel.value = currentVal || '';
         }
 
+        function updateAdminModeInfo() {
+            const info = document.getElementById('adminViewInfo');
+            if (!info) return;
+            if (!currentIsAdmin) return;
+
+            if (viewingUid === currentUser.uid) {
+                info.innerHTML = 'Вы работаете со <b>своими</b> данными.';
+            } else {
+                info.innerHTML = `Вы работаете как <b>${escapeHtml(viewingName)}</b>. Загружаемый Excel сохранится в его список.`;
+            }
+        }
+
         function onAdminUserChange() {
             const sel = document.getElementById('adminUserSelect');
             const uid = sel.value;
@@ -954,10 +974,7 @@
                 viewingName = u ? (u.name || u.username || uid) : uid;
             }
 
-            const info = document.getElementById('adminViewInfo');
-            info.textContent = (viewingUid === currentUser.uid)
-                ? 'Свои данные'
-                : `Просмотр: ${viewingName}`;
+            updateAdminModeInfo();
 
             table1Data = [];
             table2Data = [];
@@ -1301,7 +1318,9 @@
 
                 const infoDiv = document.getElementById('table1Info');
                 infoDiv.style.display = 'block';
-                infoDiv.innerHTML = `✅ Добавлено: <b>${addedCount}</b>, пропущено: <b>${skippedCount}</b>`;
+                const targetName = (currentIsAdmin && viewingUid !== currentUser.uid)
+                    ? ` в список «${escapeHtml(viewingName)}»` : '';
+                infoDiv.innerHTML = `✅ Добавлено${targetName}: <b>${addedCount}</b>, пропущено: <b>${skippedCount}</b>`;
                 setTimeout(() => infoDiv.style.display = 'none', 7000);
             });
         }
@@ -1351,7 +1370,9 @@
 
                 const infoDiv = document.getElementById('table2Info');
                 infoDiv.style.display = 'block';
-                infoDiv.innerHTML = `✅ Добавлено: <b>${addedCount}</b>, обновлено: <b>${updatedCount}</b>, всего: <b>${table2Data.length}</b>`;
+                const targetName = (currentIsAdmin && viewingUid !== currentUser.uid)
+                    ? ` в список «${escapeHtml(viewingName)}»` : '';
+                infoDiv.innerHTML = `✅ Добавлено${targetName}: <b>${addedCount}</b>, обновлено: <b>${updatedCount}</b>, всего: <b>${table2Data.length}</b>`;
                 setTimeout(() => infoDiv.style.display = 'none', 7000);
             });
         }
@@ -1433,17 +1454,12 @@
         }
 
         // ============================================================
-        // Сохранение
+        // Сохранение — пишет в ветку viewingUid
         // ============================================================
         function saveToStorage() {
             if (viewingUid) {
                 localStorage.setItem('cache_' + viewingUid + '_table1', JSON.stringify(table1Data));
                 localStorage.setItem('cache_' + viewingUid + '_table2', JSON.stringify(table2Data));
-            }
-
-            if (currentIsAdmin && viewingUid !== currentUser.uid) {
-                console.log('Админ просматривает чужие данные — автозапись отключена');
-                return;
             }
 
             if (isRemoteUpdate) return;
@@ -1603,14 +1619,10 @@
         }
 
         // ============================================================
-        // Смена статуса
+        // Смена статуса — работает для viewingUid
         // ============================================================
         async function changeStatus(key, newStatus) {
             if (!currentUser) return;
-            if (currentIsAdmin && viewingUid !== currentUser.uid) {
-                alert('Нельзя менять статус в чужом списке');
-                return;
-            }
 
             const now = new Date().toISOString();
 
@@ -1652,13 +1664,18 @@
             renderTable();
         }
 
+        // ============================================================
+        // Очистка — только текущий просматриваемый список
+        // ============================================================
         function clearAllData() {
             if (!currentUser) return;
-            if (currentIsAdmin && viewingUid !== currentUser.uid) {
-                alert('Нельзя очистить чужой список');
-                return;
-            }
-            if (!confirm('Удалить ВСЕ свои счета? Это действие нельзя отменить.')) return;
+
+            const isOther = viewingUid && viewingUid !== currentUser.uid;
+            const whoLabel = isOther
+                ? `пользователя «${viewingName}»`
+                : 'свои';
+
+            if (!confirm(`Удалить ВСЕ счета ${whoLabel}? Это действие нельзя отменить.`)) return;
 
             table1Data = [];
             table2Data = [];
@@ -1666,12 +1683,13 @@
             selectedSections.clear();
             selectedStatuses.clear();
 
-            if (userInvoicesRef) {
-                remove(userInvoicesRef).catch(err => console.error('Ошибка удаления:', err));
-            }
+            if (viewingUid) {
+                remove(ref(database, 'invoices/' + viewingUid))
+                    .catch(err => console.error('Ошибка удаления:', err));
 
-            localStorage.removeItem('cache_' + currentUser.uid + '_table1');
-            localStorage.removeItem('cache_' + currentUser.uid + '_table2');
+                localStorage.removeItem('cache_' + viewingUid + '_table1');
+                localStorage.removeItem('cache_' + viewingUid + '_table2');
+            }
 
             updateDeviceTypes();
             renderTable();
@@ -1825,8 +1843,6 @@
                     ? `<br><small class="text-muted">${row.statusChangedBy}</small>`
                     : '';
 
-                const canEdit = !(currentIsAdmin && viewingUid !== currentUser.uid);
-
                 tr.innerHTML = `
                     <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong></td>
                     ${showOwnerCol ? `<td><small>${escapeHtml(ownerLabel)}</small></td>` : ''}
@@ -1851,20 +1867,18 @@
                         ${!row.isBudget && !row.isUrgent && !row.isDebt ? '<span class="text-muted">—</span>' : ''}
                     </td>
                     <td>
-                        ${!canEdit ? '<span class="text-muted small">просмотр</span>' : `
-                            ${row.status === 'new' ? `
-                                <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">▶</button>
-                                <button class="btn btn-sm btn-success" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
-                            ` : ''}
-                            ${row.status === 'inwork' ? `
-                                <button class="btn btn-sm btn-success me-1" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
-                                <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
-                            ` : ''}
-                            ${row.status === 'completed' ? `
-                                <button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">↩</button>
-                                <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
-                            ` : ''}
-                        `}
+                        ${row.status === 'new' ? `
+                            <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">▶</button>
+                            <button class="btn btn-sm btn-success" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
+                        ` : ''}
+                        ${row.status === 'inwork' ? `
+                            <button class="btn btn-sm btn-success me-1" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
+                            <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
+                        ` : ''}
+                        ${row.status === 'completed' ? `
+                            <button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">↩</button>
+                            <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
+                        ` : ''}
                     </td>
                 `;
                 tbody.appendChild(tr);
