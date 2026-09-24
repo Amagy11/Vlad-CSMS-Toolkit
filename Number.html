@@ -150,10 +150,10 @@
 
                 <div class="mb-3">
                     <label class="form-label">Логин</label>
-                    <input type="text" id="authUsername" class="form-control" placeholder="Например: ivan"
+                    <input type="text" id="authUsername" class="form-control" placeholder="Например: Иван"
                            maxlength="30" autocomplete="username"
                            onkeydown="if(event.key==='Enter')handleAuthSubmit()">
-                    <small class="text-muted">Только латиница, цифры, точка, дефис, подчёркивание</small>
+                    <small class="text-muted">Русские или латинские буквы, цифры, пробел, . _ - (от 2 символов)</small>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Пароль</label>
@@ -274,7 +274,6 @@
                 </div>
             </div>
 
-            <!-- Блок админа -->
             <div class="row mb-3" id="adminViewBlock" style="display:none;">
                 <div class="col-12">
                     <div class="card border-danger">
@@ -572,14 +571,43 @@
         });
 
         // ============================================================
-        // Авторизация
+        // Транслитерация русских букв в латиницу для email
         // ============================================================
-        function usernameToEmail(username) {
-            return username.toLowerCase().trim() + EMAIL_DOMAIN;
+        const TRANSLIT_MAP = {
+            'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z',
+            'и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r',
+            'с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch',
+            'ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'
+        };
+
+        function transliterate(str) {
+            let result = '';
+            for (const char of str) {
+                const lower = char.toLowerCase();
+                if (TRANSLIT_MAP[lower] !== undefined) {
+                    result += TRANSLIT_MAP[lower];
+                } else {
+                    result += char;
+                }
+            }
+            return result;
         }
 
+        // Логин → email для Firebase Auth
+        function usernameToEmail(username) {
+            const normalized = username.toLowerCase().trim();
+            const translit = transliterate(normalized);
+            // Оставляем только разрешённые символы для email
+            const clean = translit.replace(/[^a-z0-9._-]/g, '.');
+            return clean + EMAIL_DOMAIN;
+        }
+
+        // Валидация: 2+ символа, буквы (рус/лат), цифры, пробел, . _ -
         function validateUsername(username) {
-            return /^[a-z0-9._-]{3,30}$/.test(username.toLowerCase().trim());
+            const trimmed = username.trim();
+            if (trimmed.length < 2) return false;
+            if (trimmed.length > 30) return false;
+            return /^[а-яёa-z0-9\s._-]+$/i.test(trimmed);
         }
 
         function switchAuthMode() {
@@ -612,12 +640,12 @@
         }
 
         async function handleAuthSubmit() {
-            const username = document.getElementById('authUsername').value.trim().toLowerCase();
+            const username = document.getElementById('authUsername').value.trim();
             const password = document.getElementById('authPassword').value;
 
             if (!username || !password) { showAuthError('Заполните логин и пароль'); return; }
             if (!validateUsername(username)) {
-                showAuthError('Логин: 3-30 символов, только латиница, цифры, . _ -');
+                showAuthError('Логин: от 2 до 30 символов. Допустимы русские/латинские буквы, цифры, пробел, . _ -');
                 return;
             }
             if (password.length < 6) { showAuthError('Пароль минимум 6 символов'); return; }
@@ -627,6 +655,7 @@
             btn.textContent = 'Подождите...';
 
             const email = usernameToEmail(username);
+            const normalizedUsername = username.toLowerCase().trim();
 
             try {
                 if (isAuthMode === 'login') {
@@ -634,10 +663,8 @@
                 } else {
                     const cred = await createUserWithEmailAndPassword(auth, email, password);
 
-                    // Отображаемое имя = логин
                     try { await updateProfile(cred.user, { displayName: username }); } catch(e) {}
 
-                    // Проверяем, первый ли это пользователь
                     let isFirst = false;
                     try {
                         const usersSnap = await get(ref(database, 'users'));
@@ -645,13 +672,15 @@
                     } catch(e) {}
 
                     await set(ref(database, 'users/' + cred.user.uid), {
-                        username: username,
+                        username: normalizedUsername,
+                        displayName: username,
                         name: username,
                         isAdmin: isFirst,
                         createdAt: new Date().toISOString()
                     });
 
-                    await set(ref(database, 'usernames/' + username), cred.user.uid);
+                    // Индекс по нормализованному логину (в нижнем регистре)
+                    await set(ref(database, 'usernames/' + normalizedUsername), cred.user.uid);
 
                     if (isFirst) {
                         await set(ref(database, 'admins/' + cred.user.uid), true);
@@ -696,7 +725,7 @@
                     const snap = await get(ref(database, 'users/' + user.uid));
                     if (snap.exists()) {
                         const data = snap.val();
-                        name = data.name || data.username || name;
+                        name = data.name || data.displayName || data.username || name;
                         isAdmin = data.isAdmin === true;
                     }
                     const adminSnap = await get(ref(database, 'admins/' + user.uid));
@@ -953,7 +982,6 @@
                 const item = document.createElement('div');
                 item.className = 'admin-user-item';
                 const isSelf = u.uid === currentUser.uid;
-                const usernameSafe = escapeHtml(u.username || '').replace(/'/g, '');
                 const nameSafe = escapeHtml(u.name || u.username || '').replace(/'/g, '');
                 item.innerHTML = `
                     <div>
