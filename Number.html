@@ -21,6 +21,7 @@
         .badge-new { background-color: #6c757d; color: white; }
         .badge-inwork { background-color: #007bff; color: white; }
         .badge-completed { background-color: #28a745; color: white; }
+        .badge-admin { background-color: #dc3545; color: white; }
         .table-container { max-height: 600px; overflow-y: auto; overflow-x: auto; }
         .table-info { display: none; margin-top: 10px; }
         .device-filter { margin-bottom: 15px; }
@@ -41,7 +42,7 @@
         .col-invoice { min-width: 150px; white-space: nowrap; }
         .col-contractor { min-width: 200px; }
 
-        #invoicesTable { width: 100%; min-width: 1300px; }
+        #invoicesTable { width: 100%; min-width: 1400px; }
         #invoicesTable th, #invoicesTable td { padding: 8px 10px; vertical-align: middle; }
 
         .sort-btn { cursor: pointer; user-select: none; }
@@ -51,7 +52,6 @@
         .section-btn.active { font-weight: bold; box-shadow: 0 0 0 2px #007bff inset; background-color: #007bff; color: white; }
         .status-btn.active { font-weight: bold; box-shadow: 0 0 0 2px #007bff inset; background-color: #007bff; color: white; }
 
-        /* Кнопка "?" в заголовке */
         .help-btn {
             width: 30px; height: 30px; border-radius: 50%; border: none;
             background-color: #ffc107; color: #000; font-weight: bold;
@@ -61,7 +61,6 @@
         }
         .help-btn:hover { background-color: #ffca2c; transform: scale(1.1); box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
 
-        /* Модальное окно */
         .help-modal {
             display: none; position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -130,6 +129,13 @@
         }
         .help-modal-body ul { padding-left: 20px; }
         .help-modal-body ul li { margin-bottom: 5px; }
+
+        .admin-user-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .admin-user-item:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
@@ -143,20 +149,25 @@
                 <div id="authError" class="alert alert-danger" style="display:none;"></div>
 
                 <div class="mb-3">
-                    <label class="form-label">Email</label>
-                    <input type="email" id="authEmail" class="form-control" placeholder="you@mail.com">
+                    <label class="form-label">Логин</label>
+                    <input type="text" id="authUsername" class="form-control" placeholder="Например: ivan"
+                           maxlength="30" autocomplete="username"
+                           onkeydown="if(event.key==='Enter')handleAuthSubmit()">
+                    <small class="text-muted">Только латиница, цифры, точка, дефис, подчёркивание</small>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Пароль</label>
-                    <input type="password" id="authPassword" class="form-control" placeholder="Минимум 6 символов">
-                </div>
-                <div class="mb-3" id="authNameBlock" style="display:none;">
-                    <label class="form-label">Имя</label>
-                    <input type="text" id="authName" class="form-control" placeholder="Иван Иванов">
+                    <input type="password" id="authPassword" class="form-control" placeholder="Минимум 6 символов"
+                           autocomplete="current-password"
+                           onkeydown="if(event.key==='Enter')handleAuthSubmit()">
                 </div>
 
                 <button class="btn btn-success w-100 mb-2" id="authSubmitBtn" onclick="handleAuthSubmit()">Войти</button>
                 <button class="btn btn-link w-100" id="authSwitchBtn" onclick="switchAuthMode()">Нет аккаунта? Зарегистрироваться</button>
+
+                <div id="firstUserHint" class="alert alert-info mt-3" style="display:none;">
+                    💡 Первый зарегистрированный пользователь автоматически становится <b>администратором</b>.
+                </div>
             </div>
         </div>
     </div>
@@ -166,6 +177,8 @@
         <div class="user-status">
             <span class="badge bg-light text-dark border">
                 👤 <span id="currentUserName">—</span>
+                <span id="adminBadge" class="badge badge-admin ms-1" style="display:none;">АДМИН</span>
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="openAdminPanel()" id="adminPanelBtn" style="display:none;">Управление</button>
                 <button class="btn btn-sm btn-outline-danger ms-2" onclick="logout()">Выйти</button>
             </span>
         </div>
@@ -261,6 +274,26 @@
                 </div>
             </div>
 
+            <!-- Блок админа -->
+            <div class="row mb-3" id="adminViewBlock" style="display:none;">
+                <div class="col-12">
+                    <div class="card border-danger">
+                        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">🛡 Режим администратора — просмотр данных пользователей</h6>
+                            <span class="badge bg-light text-danger" id="adminViewInfo">Свои данные</span>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="d-flex gap-2 flex-wrap align-items-center">
+                                <label class="mb-0 fw-bold">Просмотр:</label>
+                                <select id="adminUserSelect" class="form-select form-select-sm" style="max-width: 300px;" onchange="onAdminUserChange()">
+                                    <option value="">— Свои данные —</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="row mb-3">
                 <div class="col-md-2"><div class="card bg-primary text-white"><div class="card-body text-center"><h6>Всего</h6><h3 id="totalCount">0</h3></div></div></div>
                 <div class="col-md-2"><div class="card bg-secondary text-white"><div class="card-body text-center"><h6>Новые</h6><h3 id="newCount">0</h3></div></div></div>
@@ -281,6 +314,7 @@
                             <thead class="table-dark">
                                 <tr>
                                     <th class="col-invoice">Квитанция/Счет</th>
+                                    <th id="ownerColHeader" style="display:none;">Владелец</th>
                                     <th>Раздел</th>
                                     <th>Дата выписки</th>
                                     <th class="col-contractor">Контрагент</th>
@@ -393,6 +427,25 @@
         </div>
     </div>
 
+    <!-- Модальное окно админа -->
+    <div id="adminModal" class="help-modal" onclick="if(event.target===this)closeAdminPanel()">
+        <div class="help-modal-content">
+            <div class="help-modal-header" style="background-color: #dc3545;">
+                <h4>🛡 Управление пользователями</h4>
+                <button class="help-close" onclick="closeAdminPanel()">×</button>
+            </div>
+            <div class="help-modal-body">
+                <p class="text-muted">Здесь вы можете видеть всех пользователей и удалять их вместе с их данными.</p>
+                <div id="adminUserList" style="border: 1px solid #dee2e6; border-radius: 6px;">
+                    <div class="text-muted text-center py-3">Загрузка...</div>
+                </div>
+            </div>
+            <div class="help-modal-footer">
+                <button class="btn btn-secondary" onclick="closeAdminPanel()">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         // ============================================================
         // Firebase
@@ -421,6 +474,8 @@
             measurementId: "G-MD79ZVT24Z"
         };
 
+        const EMAIL_DOMAIN = "@invoice.local";
+
         let app, database, auth;
         try {
             app = initializeApp(firebaseConfig);
@@ -445,12 +500,18 @@
 
         let currentUser = null;
         let currentUserName = '';
+        let currentIsAdmin = false;
         let isAuthMode = 'login';
+
+        let viewingUid = null;
+        let viewingName = '';
+
         let userInvoicesRef = null;
         let sharedStatusesRef = null;
         let sharedStatuses = {};
         let unsubInvoices = null;
         let unsubShared = null;
+        let allUsersCache = {};
 
         window.handleAuthSubmit = handleAuthSubmit;
         window.switchAuthMode = switchAuthMode;
@@ -468,6 +529,10 @@
         window.exportToExcel = exportToExcel;
         window.openHelp = openHelp;
         window.closeHelp = closeHelp;
+        window.openAdminPanel = openAdminPanel;
+        window.closeAdminPanel = closeAdminPanel;
+        window.deleteUserAdmin = deleteUserAdmin;
+        window.onAdminUserChange = onAdminUserChange;
 
         // ============================================================
         // Индикатор
@@ -483,27 +548,40 @@
         }
 
         // ============================================================
-        // Модальное окно помощи
+        // Модальные окна
         // ============================================================
         function openHelp() {
-            const modal = document.getElementById('helpModal');
-            if (modal) modal.classList.add('open');
+            document.getElementById('helpModal').classList.add('open');
             document.body.style.overflow = 'hidden';
         }
-
         function closeHelp() {
-            const modal = document.getElementById('helpModal');
-            if (modal) modal.classList.remove('open');
+            document.getElementById('helpModal').classList.remove('open');
             document.body.style.overflow = '';
         }
-
+        function openAdminPanel() {
+            document.getElementById('adminModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+            renderAdminUserList();
+        }
+        function closeAdminPanel() {
+            document.getElementById('adminModal').classList.remove('open');
+            document.body.style.overflow = '';
+        }
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeHelp();
+            if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); }
         });
 
         // ============================================================
         // Авторизация
         // ============================================================
+        function usernameToEmail(username) {
+            return username.toLowerCase().trim() + EMAIL_DOMAIN;
+        }
+
+        function validateUsername(username) {
+            return /^[a-z0-9._-]{3,30}$/.test(username.toLowerCase().trim());
+        }
+
         function switchAuthMode() {
             isAuthMode = isAuthMode === 'login' ? 'register' : 'login';
             document.getElementById('authTitle').textContent = isAuthMode === 'login' ? 'Вход' : 'Регистрация';
@@ -511,8 +589,8 @@
             document.getElementById('authSwitchBtn').textContent = isAuthMode === 'login'
                 ? 'Нет аккаунта? Зарегистрироваться'
                 : 'Уже есть аккаунт? Войти';
-            document.getElementById('authNameBlock').style.display = isAuthMode === 'register' ? 'block' : 'none';
             document.getElementById('authError').style.display = 'none';
+            checkIfFirstUser();
         }
 
         function showAuthError(msg) {
@@ -521,40 +599,73 @@
             el.style.display = 'block';
         }
 
-        async function handleAuthSubmit() {
-            const email = document.getElementById('authEmail').value.trim();
-            const password = document.getElementById('authPassword').value;
-            const name = document.getElementById('authName').value.trim();
+        async function checkIfFirstUser() {
+            try {
+                const snap = await get(ref(database, 'users'));
+                const hint = document.getElementById('firstUserHint');
+                if (!snap.exists() || Object.keys(snap.val() || {}).length === 0) {
+                    hint.style.display = 'block';
+                } else {
+                    hint.style.display = 'none';
+                }
+            } catch(e) {}
+        }
 
-            if (!email || !password) { showAuthError('Заполните email и пароль'); return; }
+        async function handleAuthSubmit() {
+            const username = document.getElementById('authUsername').value.trim().toLowerCase();
+            const password = document.getElementById('authPassword').value;
+
+            if (!username || !password) { showAuthError('Заполните логин и пароль'); return; }
+            if (!validateUsername(username)) {
+                showAuthError('Логин: 3-30 символов, только латиница, цифры, . _ -');
+                return;
+            }
             if (password.length < 6) { showAuthError('Пароль минимум 6 символов'); return; }
 
             const btn = document.getElementById('authSubmitBtn');
             btn.disabled = true;
             btn.textContent = 'Подождите...';
 
+            const email = usernameToEmail(username);
+
             try {
                 if (isAuthMode === 'login') {
                     await signInWithEmailAndPassword(auth, email, password);
                 } else {
                     const cred = await createUserWithEmailAndPassword(auth, email, password);
-                    if (name) {
-                        try { await updateProfile(cred.user, { displayName: name }); } catch(e) {}
-                    }
+
+                    // Отображаемое имя = логин
+                    try { await updateProfile(cred.user, { displayName: username }); } catch(e) {}
+
+                    // Проверяем, первый ли это пользователь
+                    let isFirst = false;
+                    try {
+                        const usersSnap = await get(ref(database, 'users'));
+                        isFirst = !usersSnap.exists() || Object.keys(usersSnap.val() || {}).length === 0;
+                    } catch(e) {}
+
                     await set(ref(database, 'users/' + cred.user.uid), {
-                        email: email,
-                        name: name || email,
+                        username: username,
+                        name: username,
+                        isAdmin: isFirst,
                         createdAt: new Date().toISOString()
                     });
+
+                    await set(ref(database, 'usernames/' + username), cred.user.uid);
+
+                    if (isFirst) {
+                        await set(ref(database, 'admins/' + cred.user.uid), true);
+                        console.log('🎉 Первый пользователь — администратор');
+                    }
                 }
             } catch (err) {
                 console.error('Auth error:', err);
                 const messages = {
-                    'auth/invalid-email': 'Некорректный email',
                     'auth/user-not-found': 'Пользователь не найден',
                     'auth/wrong-password': 'Неверный пароль',
-                    'auth/invalid-credential': 'Неверный email или пароль',
-                    'auth/email-already-in-use': 'Email уже используется',
+                    'auth/invalid-credential': 'Неверный логин или пароль',
+                    'auth/invalid-email': 'Некорректный логин',
+                    'auth/email-already-in-use': 'Такой логин уже занят',
                     'auth/weak-password': 'Слабый пароль (минимум 6 символов)',
                     'auth/operation-not-allowed': 'Включите Email/Password в Firebase Authentication'
                 };
@@ -572,41 +683,61 @@
             try { await signOut(auth); } catch(e) { console.error(e); }
         }
 
+        // ============================================================
+        // Состояние авторизации
+        // ============================================================
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
 
-                let name = user.displayName || '';
+                let name = user.displayName || user.email.split('@')[0];
+                let isAdmin = false;
                 try {
                     const snap = await get(ref(database, 'users/' + user.uid));
-                    if (snap.exists() && snap.val().name) {
-                        name = snap.val().name;
-                    } else {
-                        name = name || user.email;
-                        await set(ref(database, 'users/' + user.uid), {
-                            email: user.email,
-                            name: name,
-                            createdAt: new Date().toISOString()
-                        });
+                    if (snap.exists()) {
+                        const data = snap.val();
+                        name = data.name || data.username || name;
+                        isAdmin = data.isAdmin === true;
                     }
+                    const adminSnap = await get(ref(database, 'admins/' + user.uid));
+                    if (adminSnap.exists() && adminSnap.val() === true) isAdmin = true;
                 } catch(e) {
                     console.warn('Профиль:', e);
-                    name = name || user.email;
                 }
                 currentUserName = name;
+                currentIsAdmin = isAdmin;
 
                 document.getElementById('authScreen').style.display = 'none';
                 document.getElementById('appScreen').style.display = 'block';
-                document.getElementById('currentUserName').textContent = `${currentUserName} (${user.email})`;
+                document.getElementById('currentUserName').textContent = currentUserName;
+
+                if (currentIsAdmin) {
+                    document.getElementById('adminBadge').style.display = 'inline-block';
+                    document.getElementById('adminPanelBtn').style.display = 'inline-block';
+                    document.getElementById('adminViewBlock').style.display = 'block';
+                    document.getElementById('ownerColHeader').style.display = 'table-cell';
+                    subscribeToAllUsersForAdmin();
+                    updateAdminUserSelect();
+                } else {
+                    document.getElementById('adminBadge').style.display = 'none';
+                    document.getElementById('adminPanelBtn').style.display = 'none';
+                    document.getElementById('adminViewBlock').style.display = 'none';
+                    document.getElementById('ownerColHeader').style.display = 'none';
+                }
+
+                viewingUid = user.uid;
+                viewingName = currentUserName;
 
                 loadFromStorage();
-                subscribeToUserData(user.uid);
+                subscribeToUserData(viewingUid);
                 subscribeToSharedStatuses();
 
                 setSyncStatus('syncing', 'Подключение...');
             } else {
                 currentUser = null;
                 currentUserName = '';
+                currentIsAdmin = false;
+                viewingUid = null;
                 table1Data = [];
                 table2Data = [];
                 sharedStatuses = {};
@@ -616,6 +747,7 @@
                 document.getElementById('authScreen').style.display = 'block';
                 document.getElementById('appScreen').style.display = 'none';
                 setSyncStatus('offline', 'Не подключено');
+                checkIfFirstUser();
             }
         });
 
@@ -731,13 +863,11 @@
             });
             renderTable();
         }
-
         function clearStatus() {
             selectedStatuses.clear();
             document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
             renderTable();
         }
-
         function toggleSection(section) {
             if (selectedSections.has(section)) selectedSections.delete(section);
             else selectedSections.add(section);
@@ -746,11 +876,133 @@
             });
             renderTable();
         }
-
         function clearSections() {
             selectedSections.clear();
             document.querySelectorAll('.section-btn').forEach(b => b.classList.remove('active'));
             renderTable();
+        }
+
+        // ============================================================
+        // Админ
+        // ============================================================
+        let unsubAdminUsers = null;
+        function subscribeToAllUsersForAdmin() {
+            if (unsubAdminUsers) unsubAdminUsers();
+            unsubAdminUsers = onValue(ref(database, 'users'), (snapshot) => {
+                allUsersCache = snapshot.val() || {};
+                updateAdminUserSelect();
+                renderAdminUserList();
+            });
+        }
+
+        function updateAdminUserSelect() {
+            const sel = document.getElementById('adminUserSelect');
+            if (!sel) return;
+            const currentVal = sel.value;
+            sel.innerHTML = '<option value="">— Свои данные —</option>';
+            const arr = Object.entries(allUsersCache).map(([uid, u]) => ({ uid, ...u }));
+            arr.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+            arr.forEach(u => {
+                if (u.uid === currentUser.uid) return;
+                const opt = document.createElement('option');
+                opt.value = u.uid;
+                opt.textContent = `👤 ${u.name || u.username || u.uid}`;
+                sel.appendChild(opt);
+            });
+            sel.value = currentVal || '';
+        }
+
+        function onAdminUserChange() {
+            const sel = document.getElementById('adminUserSelect');
+            const uid = sel.value;
+
+            if (!uid) {
+                viewingUid = currentUser.uid;
+                viewingName = currentUserName;
+            } else {
+                const u = allUsersCache[uid];
+                viewingUid = uid;
+                viewingName = u ? (u.name || u.username || uid) : uid;
+            }
+
+            const info = document.getElementById('adminViewInfo');
+            info.textContent = (viewingUid === currentUser.uid)
+                ? 'Свои данные'
+                : `Просмотр: ${viewingName}`;
+
+            table1Data = [];
+            table2Data = [];
+            loadFromStorage();
+            subscribeToUserData(viewingUid);
+            renderTable();
+        }
+
+        function renderAdminUserList() {
+            const container = document.getElementById('adminUserList');
+            if (!container) return;
+
+            const arr = Object.entries(allUsersCache).map(([uid, u]) => ({ uid, ...u }));
+            if (arr.length === 0) {
+                container.innerHTML = '<div class="text-muted text-center py-3">Нет пользователей.</div>';
+                return;
+            }
+            arr.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+
+            container.innerHTML = '';
+            arr.forEach(u => {
+                const item = document.createElement('div');
+                item.className = 'admin-user-item';
+                const isSelf = u.uid === currentUser.uid;
+                const usernameSafe = escapeHtml(u.username || '').replace(/'/g, '');
+                const nameSafe = escapeHtml(u.name || u.username || '').replace(/'/g, '');
+                item.innerHTML = `
+                    <div>
+                        <b>${escapeHtml(u.name || u.username || u.uid)}</b>
+                        ${u.username ? `<span class="text-muted small ms-2">@${escapeHtml(u.username)}</span>` : ''}
+                        ${u.isAdmin ? '<span class="badge badge-admin ms-2">АДМИН</span>' : ''}
+                        ${isSelf ? '<span class="badge bg-secondary ms-2">это вы</span>' : ''}
+                    </div>
+                    <div>
+                        ${isSelf ? '' : `<button class="btn btn-sm btn-outline-danger" onclick="deleteUserAdmin('${u.uid}', '${nameSafe}')">🗑 Удалить</button>`}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function escapeHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        async function deleteUserAdmin(uid, name) {
+            if (!currentIsAdmin) { alert('Только админ может удалять пользователей'); return; }
+            if (uid === currentUser.uid) { alert('Нельзя удалить себя'); return; }
+            if (!confirm(`Удалить пользователя "${name}"?\nВсе его счета и данные будут удалены безвозвратно.`)) return;
+
+            try {
+                await remove(ref(database, 'users/' + uid));
+                const u = allUsersCache[uid];
+                if (u && u.username) {
+                    await remove(ref(database, 'usernames/' + u.username));
+                }
+                await remove(ref(database, 'invoices/' + uid));
+                await remove(ref(database, 'admins/' + uid));
+
+                if (viewingUid === uid) {
+                    document.getElementById('adminUserSelect').value = '';
+                    onAdminUserChange();
+                }
+
+                alert('Пользователь и все его данные удалены.');
+            } catch (e) {
+                console.error('Ошибка удаления:', e);
+                alert('Не удалось удалить: ' + e.message);
+            }
         }
 
         // ============================================================
@@ -1156,9 +1408,14 @@
         // Сохранение
         // ============================================================
         function saveToStorage() {
-            if (currentUser) {
-                localStorage.setItem('cache_' + currentUser.uid + '_table1', JSON.stringify(table1Data));
-                localStorage.setItem('cache_' + currentUser.uid + '_table2', JSON.stringify(table2Data));
+            if (viewingUid) {
+                localStorage.setItem('cache_' + viewingUid + '_table1', JSON.stringify(table1Data));
+                localStorage.setItem('cache_' + viewingUid + '_table2', JSON.stringify(table2Data));
+            }
+
+            if (currentIsAdmin && viewingUid !== currentUser.uid) {
+                console.log('Админ просматривает чужие данные — автозапись отключена');
+                return;
             }
 
             if (isRemoteUpdate) return;
@@ -1191,9 +1448,9 @@
         }
 
         function loadFromStorage() {
-            if (!currentUser) return;
-            const c1 = localStorage.getItem('cache_' + currentUser.uid + '_table1');
-            const c2 = localStorage.getItem('cache_' + currentUser.uid + '_table2');
+            if (!viewingUid) return;
+            const c1 = localStorage.getItem('cache_' + viewingUid + '_table1');
+            const c2 = localStorage.getItem('cache_' + viewingUid + '_table2');
             if (c1) { try { table1Data = JSON.parse(c1); } catch(e) { table1Data = []; } }
             if (c2) { try { table2Data = JSON.parse(c2); } catch(e) { table2Data = []; } }
             table1Data = table1Data.map(r => ({ ...r, section: r.section || 'common' }));
@@ -1222,6 +1479,11 @@
                     updateDeviceTypes();
                     renderTable();
                     isRemoteUpdate = false;
+                } else {
+                    table1Data = [];
+                    table2Data = [];
+                    updateDeviceTypes();
+                    renderTable();
                 }
                 setSyncStatus('online', 'Онлайн');
             }, (err) => {
@@ -1317,6 +1579,10 @@
         // ============================================================
         async function changeStatus(key, newStatus) {
             if (!currentUser) return;
+            if (currentIsAdmin && viewingUid !== currentUser.uid) {
+                alert('Нельзя менять статус в чужом списке');
+                return;
+            }
 
             const now = new Date().toISOString();
 
@@ -1360,6 +1626,10 @@
 
         function clearAllData() {
             if (!currentUser) return;
+            if (currentIsAdmin && viewingUid !== currentUser.uid) {
+                alert('Нельзя очистить чужой список');
+                return;
+            }
             if (!confirm('Удалить ВСЕ свои счета? Это действие нельзя отменить.')) return;
 
             table1Data = [];
@@ -1385,6 +1655,11 @@
         function renderTable() {
             const tbody = document.getElementById('tableBody');
             const searchQuery = document.getElementById('search').value.trim().toLowerCase();
+
+            const ownerHeader = document.getElementById('ownerColHeader');
+            const showOwnerCol = currentIsAdmin;
+
+            ownerHeader.style.display = showOwnerCol ? 'table-cell' : 'none';
 
             let filteredData = [...table1Data];
 
@@ -1469,6 +1744,9 @@
                 'highlighted': 'С пометками', 'matched': 'Совпавшие'
             };
             let title = 'Все счета';
+            if (currentIsAdmin && viewingUid !== currentUser.uid) {
+                title = `[${viewingName}] Все счета`;
+            }
             if (selectedStatuses.size > 0) {
                 title = Array.from(selectedStatuses).map(s => statusLabels[s]).join(' + ');
             }
@@ -1488,9 +1766,14 @@
             tbody.innerHTML = '';
 
             if (filteredData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Нет данных. Измените фильтры или поиск.</td></tr>';
+                const cols = showOwnerCol ? 14 : 13;
+                tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center text-muted">Нет данных. Измените фильтры или поиск.</td></tr>`;
                 return;
             }
+
+            const ownerLabel = currentIsAdmin
+                ? (viewingUid === currentUser.uid ? currentUserName + ' (вы)' : viewingName)
+                : '';
 
             filteredData.forEach(row => {
                 const tr = document.createElement('tr');
@@ -1514,8 +1797,11 @@
                     ? `<br><small class="text-muted">${row.statusChangedBy}</small>`
                     : '';
 
+                const canEdit = !(currentIsAdmin && viewingUid !== currentUser.uid);
+
                 tr.innerHTML = `
                     <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong></td>
+                    ${showOwnerCol ? `<td><small>${escapeHtml(ownerLabel)}</small></td>` : ''}
                     <td><span class="badge ${sectionBadgeClass(sec)}">${sectionLabel(sec)}</span></td>
                     <td>${row['Дата выписки'] || ''}</td>
                     <td class="col-contractor">${row['Контрагент (Наименование)'] || ''}</td>
@@ -1537,18 +1823,20 @@
                         ${!row.isBudget && !row.isUrgent && !row.isDebt ? '<span class="text-muted">—</span>' : ''}
                     </td>
                     <td>
-                        ${row.status === 'new' ? `
-                            <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">▶</button>
-                            <button class="btn btn-sm btn-success" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
-                        ` : ''}
-                        ${row.status === 'inwork' ? `
-                            <button class="btn btn-sm btn-success me-1" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
-                            <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
-                        ` : ''}
-                        ${row.status === 'completed' ? `
-                            <button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">↩</button>
-                            <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
-                        ` : ''}
+                        ${!canEdit ? '<span class="text-muted small">просмотр</span>' : `
+                            ${row.status === 'new' ? `
+                                <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">▶</button>
+                                <button class="btn btn-sm btn-success" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
+                            ` : ''}
+                            ${row.status === 'inwork' ? `
+                                <button class="btn btn-sm btn-success me-1" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
+                                <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
+                            ` : ''}
+                            ${row.status === 'completed' ? `
+                                <button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">↩</button>
+                                <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
+                            ` : ''}
+                        `}
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1608,6 +1896,7 @@
 
             const exportData = dataToExport.map(row => ({
                 'Квитанция/Счет': row['Номер счета'],
+                'Владелец': (currentIsAdmin && viewingUid !== currentUser.uid) ? viewingName : '',
                 'Раздел': sectionLabel(row.section || 'common'),
                 'Дата выписки': row['Дата выписки'],
                 'Контрагент': row['Контрагент (Наименование)'],
@@ -1626,6 +1915,7 @@
             XLSX.utils.book_append_sheet(wb, ws, 'Счета');
 
             const parts = ['счета'];
+            if (currentIsAdmin && viewingUid !== currentUser.uid) parts.push(viewingName);
             if (selectedSections.size > 0) parts.push(Array.from(selectedSections).join('-'));
             if (selectedDevices.size > 0) parts.push('приборы');
             if (selectedStatuses.size > 0) parts.push(Array.from(selectedStatuses).join('-'));
@@ -1633,6 +1923,8 @@
 
             XLSX.writeFile(wb, parts.join('_') + '.xlsx');
         }
+
+        setTimeout(checkIfFirstUser, 1000);
     </script>
 </body>
 </html>
