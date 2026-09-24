@@ -236,7 +236,7 @@
                                 <input type="file" id="table1File" class="form-control" accept=".xlsx,.xls">
                                 <small class="text-muted">
                                     Разделы: <b>[ОБЩАЯ]</b>, <b>[СРОЧНЫЕ]</b>, <b>[БЮДЖЕТ]</b>, <b>[ДОЛГ]</b>.
-                                    Пустая строка сбрасывает раздел.
+                                    Пустая строка сбрасывает раздел. Существующие счета обновляются, статус сохраняется.
                                 </small>
                             </div>
 
@@ -408,6 +408,7 @@
                     <li>Заголовок таблицы определяется по <b>2+ ключевым словам</b>: «номер счета», «контрагент», «прибор», «сумма» и т.п.</li>
                     <li>Поддерживаются <b>объединённые ячейки</b>: если номер счёта объединён — он протянется вниз, если в строках есть прибор/кол-во/сумма.</li>
                     <li>Одинаковые номера счёта с <b>разными приборами</b> — разные строки.</li>
+                    <li><b>Повторная загрузка</b> того же счёта с тем же прибором <b>обновляет</b> данные (дата, сумма, кол-во), но <b>не сбрасывает</b> статус.</li>
                 </ul>
 
                 <hr>
@@ -1051,6 +1052,42 @@
         }
 
         // ============================================================
+        // Merge row — обновляет данные, не трогая статус
+        // ============================================================
+        function mergeRow(oldRow, newRow) {
+            return {
+                ...oldRow,
+                // Данные из Excel — обновляем из нового файла (если поле непустое)
+                'Дата выписки':              newRow['Дата выписки']              || oldRow['Дата выписки'],
+                'Контрагент (Наименование)': newRow['Контрагент (Наименование)'] || oldRow['Контрагент (Наименование)'],
+                'Кол-во':                    newRow['Кол-во']                    || oldRow['Кол-во'],
+                'Сумма':                     newRow['Сумма']                     || oldRow['Сумма'],
+                'Всего по счету':            newRow['Всего по счету']            || oldRow['Всего по счету'],
+                'Дата оплаты':               newRow['Дата оплаты']               || oldRow['Дата оплаты'],
+
+                // Флаги — объединяем через ИЛИ
+                isBudget:  oldRow.isBudget  || newRow.isBudget,
+                isUrgent:  oldRow.isUrgent  || newRow.isUrgent,
+                isDebt:    oldRow.isDebt    || newRow.isDebt,
+                isMatched: oldRow.isMatched || newRow.isMatched,
+
+                // Раздел — приоритет старому, если он не "общая"
+                section: (oldRow.section && oldRow.section !== 'common')
+                    ? oldRow.section
+                    : (newRow.section || 'common'),
+
+                // ⚠️ СТАТУС НЕ ТРОГАЕМ
+                status: oldRow.status,
+                statusDate: oldRow.statusDate,
+                statusChangedBy: oldRow.statusChangedBy,
+
+                // Оплата из Таблицы 2 — сохраняем старое
+                paymentStatus: oldRow.paymentStatus,
+                urgency: oldRow.urgency || newRow.urgency || ''
+            };
+        }
+
+        // ============================================================
         // Чтение Таблицы 1
         // ============================================================
         function readTable1(file, callback) {
@@ -1283,7 +1320,7 @@
         }
 
         // ============================================================
-        // Загрузка
+        // Загрузка Таблицы 1 — с обновлением существующих
         // ============================================================
         function loadTable1() {
             const fileInput = document.getElementById('table1File');
@@ -1298,12 +1335,18 @@
                 const existingMap = new Set();
                 table1Data.forEach(row => existingMap.add(rowKey(row)));
 
-                let addedCount = 0, skippedCount = 0;
+                let addedCount = 0, updatedCount = 0;
 
                 newData.forEach(newRow => {
                     const key = rowKey(newRow);
+
                     if (existingMap.has(key)) {
-                        skippedCount++;
+                        // Ключ уже есть — обновляем данные, статус не трогаем
+                        const idx = table1Data.findIndex(r => rowKey(r) === key);
+                        if (idx !== -1) {
+                            table1Data[idx] = mergeRow(table1Data[idx], newRow);
+                            updatedCount++;
+                        }
                     } else {
                         table1Data.push(newRow);
                         existingMap.add(key);
@@ -1320,11 +1363,14 @@
                 infoDiv.style.display = 'block';
                 const targetName = (currentIsAdmin && viewingUid !== currentUser.uid)
                     ? ` в список «${escapeHtml(viewingName)}»` : '';
-                infoDiv.innerHTML = `✅ Добавлено${targetName}: <b>${addedCount}</b>, пропущено: <b>${skippedCount}</b>`;
+                infoDiv.innerHTML = `✅ Добавлено${targetName}: <b>${addedCount}</b>, обновлено: <b>${updatedCount}</b>`;
                 setTimeout(() => infoDiv.style.display = 'none', 7000);
             });
         }
 
+        // ============================================================
+        // Загрузка Таблицы 2 — с расширенным обновлением
+        // ============================================================
         function loadTable2() {
             const fileInput = document.getElementById('table2File');
             if (!fileInput.files[0]) { alert('Выберите файл Таблицы 2'); return; }
@@ -1347,14 +1393,23 @@
                     const key = rowKey(newRow);
                     if (existingMap[key]) {
                         const existing = existingMap[key];
-                        if (existing['Б'] !== newRow['Б'] ||
+                        const changed =
+                            existing['Б'] !== newRow['Б'] ||
                             existing['С'] !== newRow['С'] ||
                             existing['Дата оплаты'] !== newRow['Дата оплаты'] ||
-                            existing['Наличие оплаты'] !== newRow['Наличие оплаты']) {
-                            existing['Б'] = newRow['Б'];
-                            existing['С'] = newRow['С'];
-                            existing['Дата оплаты'] = newRow['Дата оплаты'];
-                            existing['Наличие оплаты'] = newRow['Наличие оплаты'];
+                            existing['Наличие оплаты'] !== newRow['Наличие оплаты'] ||
+                            existing['Прибор'] !== newRow['Прибор'] ||
+                            existing['Сумма'] !== newRow['Сумма'] ||
+                            existing['Контрагент'] !== newRow['Контрагент'];
+
+                        if (changed) {
+                            existing['Б'] = newRow['Б'] || existing['Б'];
+                            existing['С'] = newRow['С'] || existing['С'];
+                            existing['Дата оплаты'] = newRow['Дата оплаты'] || existing['Дата оплаты'];
+                            existing['Наличие оплаты'] = newRow['Наличие оплаты'] || existing['Наличие оплаты'];
+                            existing['Прибор'] = newRow['Прибор'] || existing['Прибор'];
+                            existing['Сумма'] = newRow['Сумма'] || existing['Сумма'];
+                            existing['Контрагент'] = newRow['Контрагент'] || existing['Контрагент'];
                             updatedCount++;
                         }
                     } else {
@@ -1454,7 +1509,7 @@
         }
 
         // ============================================================
-        // Сохранение — пишет в ветку viewingUid
+        // Сохранение
         // ============================================================
         function saveToStorage() {
             if (viewingUid) {
@@ -1619,7 +1674,7 @@
         }
 
         // ============================================================
-        // Смена статуса — работает для viewingUid
+        // Смена статуса
         // ============================================================
         async function changeStatus(key, newStatus) {
             if (!currentUser) return;
