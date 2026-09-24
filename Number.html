@@ -54,7 +54,6 @@
     </style>
 </head>
 <body>
-    <!-- Индикатор синхронизации -->
     <div class="sync-status">
         <span class="badge bg-light text-dark border">
             <span class="sync-indicator sync-offline" id="syncIndicator"></span>
@@ -65,7 +64,6 @@
     <div class="container-fluid mt-4">
         <h1 class="mb-4">📊 Учет счетов</h1>
 
-        <!-- Загрузка файлов -->
         <div class="row mb-4">
             <div class="col-md-6">
                 <div class="card">
@@ -78,14 +76,13 @@
                             <input type="file" id="table1File" class="form-control" accept=".xlsx,.xls">
                             <small class="text-muted">
                                 Разделы: <b>[ОБЩАЯ]</b>, <b>[СРОЧНЫЕ]</b>, <b>[БЮДЖЕТ]</b>, <b>[ДОЛГ]</b>.
-                                Пустая строка сбрасывает раздел на «общая». Поддерживаются объединённые ячейки.
+                                Пустая строка сбрасывает раздел на «общая».
                             </small>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Таблица 2 (квитанции с пометками):</label>
                             <input type="file" id="table2File" class="form-control" accept=".xlsx,.xls">
-                            <small class="text-muted">Колонки: N - квитанции, K - дата оплаты, R - бюджет, S - срочность</small>
                         </div>
 
                         <button class="btn btn-success" onclick="loadBothTables()">📥 Загрузить</button>
@@ -120,15 +117,15 @@
                             <button class="btn btn-outline-primary section-btn" data-section="debt" onclick="setSection('debt')">Долг</button>
                         </div>
 
-                        <input type="text" id="search" class="form-control mb-3" placeholder="🔎 Поиск по номеру, контрагенту, прибору, дате..." oninput="renderTable()">
+                        <input type="text" id="search" class="form-control mb-3" placeholder="🔎 Поиск..." oninput="renderTable()">
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">📅 Сортировка по дате оплаты:</label>
                             <div class="btn-group" role="group">
                                 <button class="btn btn-outline-secondary" onclick="setSortByDate('none')">Без сортировки</button>
-                                <button class="btn btn-outline-danger" onclick="setSortByDate('earliest')">↑ Сначала ранние</button>
-                                <button class="btn btn-outline-success" onclick="setSortByDate('latest')">↓ Сначала поздние</button>
-                                <button class="btn btn-outline-warning" onclick="setSortByDate('noDate')">Без даты оплаты</button>
+                                <button class="btn btn-outline-danger" onclick="setSortByDate('earliest')">↑ Ранние</button>
+                                <button class="btn btn-outline-success" onclick="setSortByDate('latest')">↓ Поздние</button>
+                                <button class="btn btn-outline-warning" onclick="setSortByDate('noDate')">Без даты</button>
                             </div>
                         </div>
 
@@ -141,41 +138,15 @@
             </div>
         </div>
 
-        <!-- Статистика -->
         <div class="row mb-3">
-            <div class="col-md-2">
-                <div class="card bg-primary text-white">
-                    <div class="card-body text-center"><h6>Всего</h6><h3 id="totalCount">0</h3></div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card bg-secondary text-white">
-                    <div class="card-body text-center"><h6>Новые</h6><h3 id="newCount">0</h3></div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card bg-info text-white">
-                    <div class="card-body text-center"><h6>В работе</h6><h3 id="inworkCount">0</h3></div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card bg-success text-white">
-                    <div class="card-body text-center"><h6>Выполнено</h6><h3 id="completedCount">0</h3></div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card bg-warning text-white">
-                    <div class="card-body text-center"><h6>С пометками</h6><h3 id="highlightedCount">0</h3></div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card bg-danger text-white">
-                    <div class="card-body text-center"><h6>Срочные</h6><h3 id="urgentCount">0</h3></div>
-                </div>
-            </div>
+            <div class="col-md-2"><div class="card bg-primary text-white"><div class="card-body text-center"><h6>Всего</h6><h3 id="totalCount">0</h3></div></div></div>
+            <div class="col-md-2"><div class="card bg-secondary text-white"><div class="card-body text-center"><h6>Новые</h6><h3 id="newCount">0</h3></div></div></div>
+            <div class="col-md-2"><div class="card bg-info text-white"><div class="card-body text-center"><h6>В работе</h6><h3 id="inworkCount">0</h3></div></div></div>
+            <div class="col-md-2"><div class="card bg-success text-white"><div class="card-body text-center"><h6>Выполнено</h6><h3 id="completedCount">0</h3></div></div></div>
+            <div class="col-md-2"><div class="card bg-warning text-white"><div class="card-body text-center"><h6>С пометками</h6><h3 id="highlightedCount">0</h3></div></div></div>
+            <div class="col-md-2"><div class="card bg-danger text-white"><div class="card-body text-center"><h6>Срочные</h6><h3 id="urgentCount">0</h3></div></div></div>
         </div>
 
-        <!-- Таблица -->
         <div class="card">
             <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                 <h5 id="tableTitle">📋 Все счета</h5>
@@ -230,9 +201,14 @@
             measurementId: "G-MD79ZVT24Z"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        console.log('✅ Firebase Realtime Database подключён');
+        let app, database;
+        try {
+            app = initializeApp(firebaseConfig);
+            database = getDatabase(app);
+            console.log('✅ Firebase Realtime Database подключён');
+        } catch (err) {
+            console.error('❌ Firebase init error:', err);
+        }
 
         // ============================================================
         // Глобальные переменные
@@ -257,17 +233,21 @@
         window.exportToExcel = exportToExcel;
 
         // ============================================================
-        // Утилиты
+        // Индикатор
         // ============================================================
         function setSyncStatus(status, text) {
             const indicator = document.getElementById('syncIndicator');
             const textEl = document.getElementById('syncText');
+            if (!indicator || !textEl) return;
             indicator.className = 'sync-indicator ' +
                 (status === 'online' ? 'sync-online' :
                  status === 'syncing' ? 'sync-syncing' : 'sync-offline');
             textEl.textContent = text;
         }
 
+        // ============================================================
+        // Утилиты
+        // ============================================================
         function normalizeKey(v) {
             return (v || '').toString().trim().replace(/\s+/g, ' ').toLowerCase();
         }
@@ -282,7 +262,14 @@
         }
 
         function parseDate(dateStr) {
-            if (!dateStr || dateStr === '' || dateStr === '-') return null;
+            if (!dateStr && dateStr !== 0) return null;
+            if (dateStr === '' || dateStr === '-') return null;
+            if (typeof dateStr === 'number') {
+                try {
+                    const d = XLSX.SSF.parse_date_code(dateStr);
+                    return new Date(d.y, d.m - 1, d.d);
+                } catch(e) { return null; }
+            }
             const str = dateStr.toString().trim();
             const parts = str.split('.');
             if (parts.length === 3) {
@@ -294,8 +281,10 @@
 
         function detectSectionMarker(row) {
             if (!row || !row.length) return null;
-            const cell = (row[0] || '').toString().trim().toUpperCase().replace(/[\[\]]/g, '');
+            let cell = (row[0] || '').toString().trim().toUpperCase().replace(/[\[\]]/g, '');
             if (!cell) return null;
+            if (/[0-9\-]/.test(cell)) return null;
+            if (!/^[А-ЯЁA-Z\s]+$/.test(cell)) return null;
             if (/^(ОБЩ|ВСЕ|ALL|COMMON)/.test(cell)) return 'common';
             if (/^(СРОЧН|URGENT)/.test(cell))        return 'urgent';
             if (/^(БЮДЖЕТ|BUDGET)/.test(cell))       return 'budget';
@@ -308,13 +297,19 @@
         }
 
         function isHeaderRow(row) {
-            return row.some(c => {
-                if (!c) return false;
-                const s = c.toString().toLowerCase();
-                return (s.includes('номер') && (s.includes('счет') || s.includes('счёт') || s.includes('квитанц')))
-                    || s.includes('контрагент')
-                    || s.includes('прибор');
+            const keywords = [
+                'номер счета', 'номер счёта', 'номер квитанции',
+                'контрагент', 'наименование',
+                'прибор', 'кол-во', 'количество',
+                'сумма', 'всего', 'дата выписки'
+            ];
+            let hits = 0;
+            row.forEach(c => {
+                if (!c) return;
+                const s = c.toString().toLowerCase().trim();
+                if (keywords.some(k => s === k || s.startsWith(k))) hits++;
             });
+            return hits >= 2;
         }
 
         function sectionLabel(section) {
@@ -382,9 +377,9 @@
                         for (let i = 0; i < jsonData.length; i++) {
                             const row = jsonData[i];
 
-                            // Пустая строка — сброс раздела и протяжки
                             if (isEmptyRow(row)) {
                                 section = 'common';
+                                headers = null;
                                 lastInvoiceNumber = '';
                                 lastInvoiceDate = '';
                                 lastContractor = '';
@@ -392,7 +387,6 @@
                                 continue;
                             }
 
-                            // Маркер раздела
                             const marker = detectSectionMarker(row);
                             if (marker) {
                                 section = marker;
@@ -404,7 +398,6 @@
                                 continue;
                             }
 
-                            // Заголовок
                             if (isHeaderRow(row)) {
                                 headers = row.map(h => h ? h.toString().trim() : '');
                                 lastInvoiceNumber = '';
@@ -415,11 +408,8 @@
                                 continue;
                             }
 
-                            if (!headers) {
-                                continue;
-                            }
+                            if (!headers) continue;
 
-                            // Разбор строки
                             let invoiceNumber = '', invoiceDate = '', contractor = '';
                             let device = '', quantity = '', amount = '';
                             let totalAmount = '', paymentDate = '';
@@ -446,7 +436,6 @@
                                 }
                             });
 
-                            // Протяжка номера счёта вниз (объединённые ячейки)
                             if (!invoiceNumber && lastInvoiceNumber) {
                                 const hasData = device || quantity || amount;
                                 if (hasData) {
@@ -456,24 +445,16 @@
                                 }
                             }
 
-                            // Протяжка прибора вниз (если прибор в объединённой ячейке)
                             if (!device && lastDevice && (quantity || amount)) {
                                 device = lastDevice;
                             }
 
-                            // Запоминаем последние значения
                             if (invoiceNumber) lastInvoiceNumber = invoiceNumber;
                             if (invoiceDate)   lastInvoiceDate = invoiceDate;
                             if (contractor)    lastContractor = contractor;
                             if (device)        lastDevice = device;
 
-                            // Проверка на номер счёта
-                            if (!invoiceNumber) {
-                                if (device || quantity || amount || contractor) {
-                                    console.log(`Строка ${i}: нет номера счёта.`, {invoiceNumber, device, quantity, amount, contractor});
-                                }
-                                continue;
-                            }
+                            if (!invoiceNumber) continue;
 
                             allData.push({
                                 'Номер счета': invoiceNumber,
@@ -530,19 +511,8 @@
 
                         for (let i = 0; i < jsonData.length; i++) {
                             const row = jsonData[i];
-                            const hasNumber = row.some(cell =>
-                                cell && cell.toString().includes('-') && /\d/.test(cell.toString())
-                            );
-                            const hasHeader = row.some(cell =>
-                                cell && (
-                                    cell.toString().toLowerCase().includes('номер') ||
-                                    cell.toString().toLowerCase().includes('квитанц') ||
-                                    cell.toString().toLowerCase().includes('счет') ||
-                                    cell.toString().toLowerCase().includes('бюджет') ||
-                                    cell.toString().toLowerCase().includes('срочн')
-                                )
-                            );
-                            if (hasHeader && !hasNumber) {
+                            if (isEmptyRow(row)) continue;
+                            if (isHeaderRow(row)) {
                                 headerRowIndex = i;
                                 headers = row.map(h => h ? h.toString().trim() : '');
                                 break;
@@ -580,7 +550,6 @@
                                 if (h.includes('сумм')) amount = cellValue;
                             });
 
-                            // Протяжка номера
                             if (!invoiceNumber && lastInvoiceNumber) {
                                 if (device || amount || urgency || paymentStatus) {
                                     invoiceNumber = lastInvoiceNumber;
@@ -615,7 +584,7 @@
         }
 
         // ============================================================
-        // Загрузка Таблицы 1
+        // Загрузка
         // ============================================================
         function loadTable1() {
             const fileInput = document.getElementById('table1File');
@@ -649,28 +618,25 @@
 
                 const infoDiv = document.getElementById('table1Info');
                 infoDiv.style.display = 'block';
-                infoDiv.innerHTML = `✅ Добавлено новых позиций: <b>${addedCount}</b>, пропущено (уже в базе): <b>${skippedCount}</b>`;
+                infoDiv.innerHTML = `✅ Добавлено: <b>${addedCount}</b>, пропущено: <b>${skippedCount}</b>`;
                 setTimeout(() => infoDiv.style.display = 'none', 7000);
             });
         }
 
-        // ============================================================
-        // Загрузка Таблицы 2
-        // ============================================================
         function loadTable2() {
             const fileInput = document.getElementById('table2File');
             if (!fileInput.files[0]) { alert('Выберите файл Таблицы 2'); return; }
 
             readTable2(fileInput.files[0], function(newData) {
                 if (newData.length === 0) {
-                    alert('Не удалось найти счета в Таблице 2. Проверьте формат данных.');
+                    alert('Не удалось найти счета в Таблице 2.');
                     return;
                 }
 
                 const existingMap = {};
                 table2Data.forEach(row => {
                     const key = rowKey(row);
-                    if (key !== '||__no_device__||') existingMap[key] = row;
+                    if (!key.startsWith('||')) existingMap[key] = row;
                 });
 
                 let addedCount = 0, updatedCount = 0;
@@ -791,6 +757,10 @@
             localStorage.setItem('table2Data', JSON.stringify(table2Data));
 
             if (isRemoteUpdate) return;
+            if (!database) {
+                setSyncStatus('offline', 'Firebase не готов');
+                return;
+            }
 
             setSyncStatus('syncing', 'Синхронизация...');
 
@@ -804,8 +774,8 @@
                 setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000);
             })
             .catch(err => {
-                console.error('Firebase error:', err);
-                setSyncStatus('offline', 'Оффлайн');
+                console.error('❌ Firebase write error:', err);
+                setSyncStatus('offline', 'Ошибка записи');
             });
 
             updateDeviceTypes();
@@ -823,7 +793,16 @@
             renderTable();
         }
 
+        // ============================================================
+        // Firebase — подписка
+        // ============================================================
         function subscribeToFirebase() {
+            if (!database) {
+                console.error('❌ database не инициализирован');
+                setSyncStatus('offline', 'Firebase не готов');
+                return;
+            }
+
             setSyncStatus('syncing', 'Подключение...');
 
             const invoicesRef = ref(database, 'invoices');
@@ -843,7 +822,13 @@
                         const k = rowKey(remote);
                         const local = localMap[k];
                         const section = remote.section || (local && local.section) || 'common';
-                        if (local && local.status && local.status !== 'new') {
+
+                        const localTime = local?.statusDate ? new Date(local.statusDate).getTime() : 0;
+                        const remoteTime = remote?.statusDate ? new Date(remote.statusDate).getTime() : 0;
+
+                        const useLocal = local && local.status && local.status !== 'new' && localTime >= remoteTime;
+
+                        if (useLocal) {
                             return { ...remote, section, status: local.status, statusDate: local.statusDate };
                         }
                         return { ...remote, section };
@@ -862,22 +847,29 @@
 
                 setSyncStatus('online', 'Онлайн');
             }, (error) => {
-                console.error('Firebase subscribe error:', error);
-                setSyncStatus('offline', 'Оффлайн');
+                console.error('❌ Firebase subscribe error:', error);
+                setSyncStatus('offline', 'Ошибка доступа');
             });
 
-            window.addEventListener('online', () => setSyncStatus('online', 'О 'нлайн'));
-            window.addEventListener('offtextline', () => setSyncStatus('-whiteoffline', 'Оффлайн'));
+            window.addEventListener('online', () => setSyncStatus('online', 'Онлайн'));
+            window.addEventListener('offline', () => setSyncStatus('offline', 'Оффлайн'));
 
-');
-            const connectedRef = ref(d                }
-atabase, '.info/connected');
+            const connectedRef = ref(database, '.info/connected');
             onValue(connectedRef, (snap) => {
-                setSyncStatus(snap.val() === true ? 'online' : 'offline',
-                              snap.val() === true ? 'Онлайн' : 'Оффлайн');
+                if (snap.val() === true) {
+                    setSyncStatus('online', 'Онлайн');
+                } else {
+                    setSyncStatus('offline', 'Оффлайн');
+                }
+            }, (error) => {
+                console.error('❌ Connection check error:', error);
+                setSyncStatus('offline', 'Нет связи');
             });
         }
 
+        // ============================================================
+        // Приборы
+        // ============================================================
         function updateDeviceTypes() {
             deviceTypes.clear();
             table1Data.forEach(row => {
@@ -898,7 +890,9 @@ atabase, '.info/connected');
                 if (selectedDevice === device) {
                     tag.classList.add('active');
                     tag.classList.remove('bg-light');
-                    tag.classList.add('bg-primary',                tag.textContent = device;
+                    tag.classList.add('bg-primary', 'text-white');
+                }
+                tag.textContent = device;
                 tag.onclick = () => {
                     selectedDevice = selectedDevice === device ? null : device;
                     renderDeviceTags();
@@ -908,6 +902,9 @@ atabase, '.info/connected');
             });
         }
 
+        // ============================================================
+        // Фильтры / статус
+        // ============================================================
         function setFilter(filter) { currentFilter = filter; renderTable(); }
 
         function changeStatus(key, newStatus) {
@@ -929,8 +926,10 @@ atabase, '.info/connected');
                 localStorage.removeItem('table1Data');
                 localStorage.removeItem('table2Data');
 
-                remove(ref(database, 'invoices'))
-                    .catch(err => console.error('Firebase remove error:', err));
+                if (database) {
+                    remove(ref(database, 'invoices'))
+                        .catch(err => console.error('Firebase remove error:', err));
+                }
 
                 updateDeviceTypes();
                 renderTable();
