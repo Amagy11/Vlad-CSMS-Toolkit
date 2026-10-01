@@ -560,6 +560,24 @@
         }
 
         // ============================================================
+        // Хелпер: убирает undefined из объекта перед записью в Firebase
+        // ============================================================
+        function stripUndefined(obj) {
+            const clean = {};
+            Object.keys(obj).forEach(k => {
+                const v = obj[k];
+                if (v === undefined) {
+                    clean[k] = '';
+                } else if (v === null) {
+                    clean[k] = null;
+                } else {
+                    clean[k] = v;
+                }
+            });
+            return clean;
+        }
+
+        // ============================================================
         // Праздники РБ 2026
         // ============================================================
         const HOLIDAYS_RB_2026 = [
@@ -1220,7 +1238,7 @@
                 ...oldRow,
                 'Дата выписки':              newRow['Дата выписки']              || oldRow['Дата выписки'],
                 'Контрагент (Наименование)': newRow['Контрагент (Наименование)'] || oldRow['Контрагент (Наименование)'],
-                'Контингент':                newRow['Контингент']                || oldRow['Контингент'],
+                'Контингент':                newRow['Контингент']                || oldRow['Контингент'] || '',
                 'Кол-во':                    newRow['Кол-во']                    || oldRow['Кол-во'],
                 'Сумма':                     newRow['Сумма']                     || oldRow['Сумма'],
                 'Всего по счету':            newRow['Всего по счету']            || oldRow['Всего по счету'],
@@ -1375,16 +1393,16 @@
                             if (!invoiceNumber) continue;
 
                             allData.push({
-                                'Номер счета': invoiceNumber,
-                                'Дата выписки': invoiceDate,
-                                'Контрагент (Наименование)': contractor,
-                                'Контингент': contingent,
-                                'Прибор': device,
-                                'Кол-во': quantity,
-                                'Сумма': amount,
-                                'Всего по счету': totalAmount || amount,
+                                'Номер счета': invoiceNumber || '',
+                                'Дата выписки': invoiceDate || '',
+                                'Контрагент (Наименование)': contractor || '',
+                                'Контингент': contingent || '',   // ← всегда строка, никогда undefined
+                                'Прибор': device || '',
+                                'Кол-во': quantity || '',
+                                'Сумма': amount || '',
+                                'Всего по счету': totalAmount || amount || '',
                                 'Оплата': '',
-                                'Дата оплаты': paymentDate,
+                                'Дата оплаты': paymentDate || '',
                                 section: section,
                                 isBudget: section === 'budget',
                                 isUrgent: section === 'urgent',
@@ -1478,15 +1496,15 @@
 
                             if (invoiceNumber && invoiceNumber.includes('-')) {
                                 allData.push({
-                                    'Номер счета': invoiceNumber,
-                                    'Прибор': device,
-                                    'Дата оплаты': paymentDate,
+                                    'Номер счета': invoiceNumber || '',
+                                    'Прибор': device || '',
+                                    'Дата оплаты': paymentDate || '',
                                     'Б': isBudget ? 'Да' : '',
-                                    'С': urgency,
+                                    'С': urgency || '',
                                     'З': '',
-                                    'Наличие оплаты': paymentStatus,
-                                    'Контрагент': contractor,
-                                    'Сумма': amount
+                                    'Наличие оплаты': paymentStatus || '',
+                                    'Контрагент': contractor || '',
+                                    'Сумма': amount || ''
                                 });
                             }
                         }
@@ -1714,7 +1732,7 @@
         }
 
         // ============================================================
-        // Сохранение
+        // Сохранение — с очисткой от undefined
         // ============================================================
         function saveToStorage() {
             if (!viewingUid) return;
@@ -1725,18 +1743,24 @@
             if (isRemoteUpdate) return;
             if (!currentUser || !userInvoicesRef) return;
 
-            const cleanTable1 = table1Data.map(row => ({
-                ...row,
-                status: 'new',
-                statusDate: null,
-                statusChangedBy: ''
-            }));
+            // Чистим каждую строку от undefined — Firebase не принимает undefined
+            const cleanTable1 = table1Data.map(row => {
+                const withDefaults = {
+                    ...row,
+                    status: 'new',
+                    statusDate: null,
+                    statusChangedBy: ''
+                };
+                return stripUndefined(withDefaults);
+            });
+
+            const cleanTable2 = table2Data.map(row => stripUndefined(row));
 
             setSyncStatus('syncing', 'Синхронизация...');
 
             set(userInvoicesRef, {
                 table1Data: cleanTable1,
-                table2Data: table2Data,
+                table2Data: cleanTable2,
                 updatedAt: new Date().toISOString()
             })
             .then(() => {
@@ -1913,15 +1937,19 @@
             });
 
             if (userInvoicesRef) {
-                const cleanTable1 = table1Data.map(row => ({
-                    ...row,
-                    status: 'new',
-                    statusDate: null,
-                    statusChangedBy: ''
-                }));
+                const cleanTable1 = table1Data.map(row => {
+                    const withDefaults = {
+                        ...row,
+                        status: 'new',
+                        statusDate: null,
+                        statusChangedBy: ''
+                    };
+                    return stripUndefined(withDefaults);
+                });
+                const cleanTable2 = table2Data.map(row => stripUndefined(row));
                 set(userInvoicesRef, {
                     table1Data: cleanTable1,
-                    table2Data: table2Data,
+                    table2Data: cleanTable2,
                     updatedAt: now
                 }).catch(err => console.error('Ошибка записи своих данных:', err));
             }
