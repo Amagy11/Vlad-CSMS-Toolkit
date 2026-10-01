@@ -49,18 +49,21 @@
             border-radius: 7px;
         }
 
-        /* ЛИПКАЯ ШАПКА ТАБЛИЦЫ — с отступом сверху */
+        /* ЛИПКАЯ ШАПКА ТАБЛИЦЫ */
         #invoicesTable thead th {
             position: sticky;
-            top: 24px;                 /* отступ от верхнего скролла */
+            top: 24px;
             z-index: 50;
             background-color: #212529 !important;
             white-space: nowrap;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #495057;
         }
 
-        /* НЕБОЛЬШОЙ ОТСТУП МЕЖДУ ШАПКОЙ И ПЕРВОЙ СТРОКОЙ */
-        #invoicesTable tbody tr:first-child td {
-            padding-top: 10px !important;
+        /* ОТСТУП МЕЖДУ ШАПКОЙ И ПЕРВОЙ СТРОКОЙ */
+        #invoicesTable tbody tr:first-child > td {
+            padding-top: 14px !important;
+            border-top: none;
         }
 
         .table-container {
