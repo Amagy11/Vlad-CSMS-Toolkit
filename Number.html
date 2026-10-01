@@ -30,7 +30,7 @@
             overflow-x: auto;
             overflow-y: hidden;
             height: 16px;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
             border: 1px solid #dee2e6;
             border-radius: 4px;
             background: #f8f9fa;
@@ -49,13 +49,18 @@
             border-radius: 7px;
         }
 
-        /* ЛИПКАЯ ШАПКА ТАБЛИЦЫ */
+        /* ЛИПКАЯ ШАПКА ТАБЛИЦЫ — с отступом сверху */
         #invoicesTable thead th {
             position: sticky;
-            top: 20px;
+            top: 24px;                 /* отступ от верхнего скролла */
             z-index: 50;
             background-color: #212529 !important;
             white-space: nowrap;
+        }
+
+        /* НЕБОЛЬШОЙ ОТСТУП МЕЖДУ ШАПКОЙ И ПЕРВОЙ СТРОКОЙ */
+        #invoicesTable tbody tr:first-child td {
+            padding-top: 10px !important;
         }
 
         .table-container {
@@ -105,7 +110,6 @@
             padding-bottom: 3px !important;
         }
 
-        /* Только номер счёта и цифровые колонки — без переносов */
         #invoicesTable td.col-invoice,
         #invoicesTable td.col-qty,
         #invoicesTable td.col-sum,
@@ -113,7 +117,6 @@
             white-space: nowrap;
         }
 
-        /* Контингент и Контрагент — можно переносить, но с ограничением */
         .col-contractor { max-width: 180px; }
         .col-contingent { max-width: 220px; }
         .col-invoice { max-width: 130px; }
@@ -640,9 +643,6 @@
             return clean;
         }
 
-        // ============================================================
-        // Праздники РБ 2026
-        // ============================================================
         const HOLIDAYS_RB_2026 = [
             '2026-01-01', '2026-01-02',
             '2026-01-07',
@@ -724,9 +724,6 @@
             return s;
         }
 
-        // ============================================================
-        // Глобальные переменные
-        // ============================================================
         let table1Data = [];
         let table2Data = [];
         let selectedStatuses = new Set();
@@ -779,9 +776,6 @@
         window.performAutoClean = performAutoClean;
         window.dismissAutoClean = dismissAutoClean;
 
-        // ============================================================
-        // Индикатор
-        // ============================================================
         function setSyncStatus(status, text) {
             const indicator = document.getElementById('syncIndicator');
             const textEl = document.getElementById('syncText');
@@ -792,9 +786,6 @@
             textEl.textContent = text;
         }
 
-        // ============================================================
-        // Модальные окна
-        // ============================================================
         function openHelp() {
             document.getElementById('helpModal').classList.add('open');
             document.body.style.overflow = 'hidden';
@@ -816,9 +807,6 @@
             if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); }
         });
 
-        // ============================================================
-        // Транслитерация
-        // ============================================================
         const TRANSLIT_MAP = {
             'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z',
             'и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r',
@@ -954,9 +942,6 @@
             try { await signOut(auth); } catch(e) { console.error(e); }
         }
 
-        // ============================================================
-        // Состояние авторизации
-        // ============================================================
         onAuthStateChanged(auth, async (user) => {
             document.getElementById('loadingScreen').style.display = 'none';
 
@@ -1030,9 +1015,6 @@
             }
         });
 
-        // ============================================================
-        // Утилиты
-        // ============================================================
         function normalizeKey(v) {
             return (v || '').toString().trim().replace(/\s+/g, ' ').toLowerCase();
         }
@@ -1138,9 +1120,6 @@
             renderTable();
         }
 
-        // ============================================================
-        // Мультивыбор
-        // ============================================================
         function toggleStatus(status) {
             if (selectedStatuses.has(status)) selectedStatuses.delete(status);
             else selectedStatuses.add(status);
@@ -1168,9 +1147,6 @@
             renderTable();
         }
 
-        // ============================================================
-        // Админ
-        // ============================================================
         let unsubAdminUsers = null;
         function subscribeToAllUsersForAdmin() {
             if (unsubAdminUsers) unsubAdminUsers();
@@ -1312,9 +1288,6 @@
             }
         }
 
-        // ============================================================
-        // mergeRow
-        // ============================================================
         function mergeRow(oldRow, newRow) {
             return {
                 ...oldRow,
@@ -1344,9 +1317,6 @@
             };
         }
 
-        // ============================================================
-        // Чтение Таблицы 1
-        // ============================================================
         function readTable1(file, callback) {
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -1517,9 +1487,6 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // ============================================================
-        // Чтение Таблицы 2
-        // ============================================================
         function readTable2(file, callback) {
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -1611,9 +1578,6 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // ============================================================
-        // Загрузка Таблицы 1
-        // ============================================================
         function loadTable1() {
             const fileInput = document.getElementById('table1File');
             if (!fileInput.files[0]) { alert('Выберите файл Таблицы 1'); return; }
@@ -1672,9 +1636,6 @@
             });
         }
 
-        // ============================================================
-        // Загрузка Таблицы 2
-        // ============================================================
         function loadTable2() {
             const fileInput = document.getElementById('table2File');
             if (!fileInput.files[0]) { alert('Выберите файл Таблицы 2'); return; }
@@ -1763,9 +1724,6 @@
             }
         }
 
-        // ============================================================
-        // Сопоставление
-        // ============================================================
         function matchTables() {
             if (!table1Data.length || !table2Data.length) return;
 
@@ -1822,9 +1780,6 @@
             console.log(`Совпадений: ${matchCount}`);
         }
 
-        // ============================================================
-        // Сохранение
-        // ============================================================
         function saveToStorage() {
             if (!viewingUid) return;
 
@@ -1890,9 +1845,6 @@
             renderTable();
         }
 
-        // ============================================================
-        // Firebase — подписки
-        // ============================================================
         function subscribeToUserData(uid) {
             if (unsubInvoices) unsubInvoices();
 
@@ -1967,9 +1919,6 @@
             });
         }
 
-        // ============================================================
-        // Приборы
-        // ============================================================
         function updateDeviceTypes() {
             deviceTypes.clear();
             table1Data.forEach(row => {
@@ -2011,9 +1960,6 @@
             }
         }
 
-        // ============================================================
-        // Смена статуса
-        // ============================================================
         async function changeStatus(key, newStatus) {
             if (!currentUser) return;
 
@@ -2064,9 +2010,6 @@
             renderTable();
         }
 
-        // ============================================================
-        // Переключение пометки «Выездной»
-        // ============================================================
         async function toggleOnsite(key) {
             if (!currentUser) return;
 
@@ -2101,9 +2044,6 @@
             renderTable();
         }
 
-        // ============================================================
-        // Очистка
-        // ============================================================
         function clearAllData() {
             if (!currentUser) return;
             if (!viewingUid) return;
@@ -2134,9 +2074,6 @@
             renderTable();
         }
 
-        // ============================================================
-        // Расчёт срока
-        // ============================================================
         function calculateTerm(row) {
             const dateStr = row['Дата выписки'];
             if (!dateStr) return { date: null, label: '' };
@@ -2151,9 +2088,6 @@
             }
         }
 
-        // ============================================================
-        // Автоочистка
-        // ============================================================
         function getCleanCandidates() {
             const threshold = new Date();
             threshold.setMonth(threshold.getMonth() - 2);
@@ -2283,9 +2217,6 @@
             console.log(`🧹 Автоочистка: удалено ${count} счетов.`);
         }
 
-        // ============================================================
-        // Синхронизация верхнего и нижнего скролл-баров
-        // ============================================================
         function setupScrollSync() {
             const topScroll = document.getElementById('topScroll');
             const topScrollInner = document.getElementById('topScrollInner');
@@ -2314,9 +2245,6 @@
 
         window.addEventListener('load', setupScrollSync);
 
-        // ============================================================
-        // Рендер
-        // ============================================================
         function renderTable() {
             const tbody = document.getElementById('tableBody');
             const searchQuery = document.getElementById('search').value.trim().toLowerCase();
@@ -2529,9 +2457,6 @@
             }
         }
 
-        // ============================================================
-        // Экспорт
-        // ============================================================
         function exportToExcel() {
             if (!table1Data.length) { alert('Нет данных'); return; }
 
