@@ -21,7 +21,49 @@
         .badge-completed { background-color: #28a745; color: white; }
         .badge-admin { background-color: #dc3545; color: white; }
         .badge-onsite { background-color: #0d6efd; color: white; }
-        .table-container { max-height: 600px; overflow-y: auto; overflow-x: hidden; }
+
+        /* ВЕРХНИЙ СКРОЛЛ-БАР — ВСЕГДА ВИДЕН */
+        .top-scroll {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            overflow-x: auto;
+            overflow-y: hidden;
+            height: 16px;
+            margin-bottom: 4px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: #f8f9fa;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .top-scroll-inner { height: 1px; }
+        .top-scroll::-webkit-scrollbar { height: 14px; }
+        .top-scroll::-webkit-scrollbar-thumb {
+            background: #adb5bd;
+            border-radius: 7px;
+            border: 2px solid #f8f9fa;
+        }
+        .top-scroll::-webkit-scrollbar-thumb:hover { background: #6c757d; }
+        .top-scroll::-webkit-scrollbar-track {
+            background: #e9ecef;
+            border-radius: 7px;
+        }
+
+        /* ЛИПКАЯ ШАПКА ТАБЛИЦЫ — тоже виден заголовок при скролле */
+        #invoicesTable thead th {
+            position: sticky;
+            top: 20px;
+            z-index: 50;
+            background-color: #212529 !important;
+        }
+
+        .table-container {
+            max-height: 620px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-top: 0;
+        }
+
         .table-info { display: none; margin-top: 10px; }
         .device-filter { margin-bottom: 15px; }
         .device-tag {
@@ -38,7 +80,7 @@
         .sync-offline { background-color: #dc3545; }
         .sync-syncing { background-color: #ffc107; }
 
-        /* ========== КОМПАКТНАЯ ТАБЛИЦА ========== */
+        /* КОМПАКТНАЯ ТАБЛИЦА */
         #invoicesTable {
             width: auto;
             min-width: 100%;
@@ -60,7 +102,6 @@
             padding-bottom: 3px !important;
         }
 
-        /* Особые колонки — можно переносить, чтобы не растягивали */
         .col-contractor,
         .col-contingent {
             white-space: normal;
@@ -68,21 +109,6 @@
         }
         .col-contractor { max-width: 200px; }
         .col-contingent { max-width: 240px; }
-
-        /* ========== СКРОЛЛ-БАР СВЕРХУ ========== */
-        .top-scroll {
-            overflow-x: auto;
-            overflow-y: hidden;
-            height: 14px;
-            margin-bottom: 2px;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            background: #f8f9fa;
-        }
-        .top-scroll-inner { height: 1px; }
-        .top-scroll::-webkit-scrollbar { height: 12px; }
-        .top-scroll::-webkit-scrollbar-thumb { background: #adb5bd; border-radius: 6px; }
-        .top-scroll::-webkit-scrollbar-track { background: #e9ecef; }
 
         .sort-btn { cursor: pointer; user-select: none; }
         .sort-btn:hover { color: #ffc107; }
@@ -415,7 +441,6 @@
                                     <th>Прибор</th>
                                     <th>Кол-во</th>
                                     <th>Сумма</th>
-                                    <th>Оплата</th>
                                     <th class="sort-btn" onclick="sortByPaymentDate()">
                                         Дата оплаты <span id="dateSortIndicator" class="sort-indicator"></span>
                                     </th>
@@ -596,7 +621,6 @@
                 '<div class="alert alert-danger">Ошибка инициализации Firebase: ' + err.message + '</div>';
         }
 
-        // Хелпер: убирает undefined из объекта перед записью в Firebase
         function stripUndefined(obj) {
             const clean = {};
             Object.keys(obj).forEach(k => {
@@ -681,6 +705,15 @@
             const m = String(d.getMonth() + 1).padStart(2, '0');
             const y = d.getFullYear();
             return `${day}.${m}.${y}`;
+        }
+
+        function formatQty(v) {
+            if (v === undefined || v === null || v === '') return '';
+            const s = String(v).trim().replace(',', '.');
+            const num = parseFloat(s);
+            if (isNaN(num)) return s;
+            if (num === Math.floor(num)) return String(Math.floor(num));
+            return s;
         }
 
         // ============================================================
@@ -1062,6 +1095,19 @@
             return hits >= threshold;
         }
 
+        // Нормализация заголовка: умное удаление переносов
+        function normalizeHeader(h) {
+            if (!h) return '';
+            let s = h.toString();
+            // Перенос после дефиса → убираем без пробела (Кол-\nво → Кол-во)
+            s = s.replace(/-\s*[\r\n]+\s*/g, '-');
+            // Остальные переносы → пробел (Номер\nсчета → Номер счета)
+            s = s.replace(/[\r\n]+/g, ' ');
+            // Множественные пробелы → один
+            s = s.replace(/\s+/g, ' ').trim();
+            return s;
+        }
+
         function sectionLabel(section) {
             switch (section) {
                 case 'urgent': return 'Срочные';
@@ -1345,7 +1391,6 @@
                             if (isHeaderRow(row)) {
                                 let headerRow = row;
                                 const next = jsonData[i + 1];
-                                // Вторая строка — «продолжение шапки» с порогом 1
                                 if (next && !isEmptyRow(next) && !detectSectionMarker(next) && isHeaderRow(next, 1)) {
                                     const maxLen = Math.max(row.length, next.length);
                                     const merged = [];
@@ -1360,7 +1405,8 @@
                                     headerRow = merged;
                                     i++;
                                 }
-                                headers = headerRow.map(h => h ? h.toString().trim() : '');
+                                // НОРМАЛИЗУЕМ заголовки — убираем переносы строк правильно
+                                headers = headerRow.map(h => normalizeHeader(h));
                                 console.log('📋 Заголовки:', headers);
                                 lastInvoiceNumber = '';
                                 lastInvoiceDate = '';
@@ -1380,7 +1426,6 @@
                                 const value = row[index] || '';
                                 const h = header.toLowerCase();
 
-                                // Код и Наименование — отдельно
                                 if (h.includes('код')) {
                                     contingentCode = value.toString().trim();
                                     return;
@@ -1398,7 +1443,7 @@
                                     contractor = value.toString().trim();
                                 } else if (h.includes('прибор')) {
                                     device = value.toString().trim();
-                                } else if (h.includes('кол-во') || h.includes('колич')) {
+                                } else if (h.includes('кол-во') || h.includes('колич') || h.includes('кол.') || h === 'кол' || h.includes('шт') || h.includes('количество')) {
                                     quantity = value.toString().trim();
                                 } else if (h.includes('сумм') || h.includes('всего')) {
                                     amount = value.toString().trim();
@@ -1408,7 +1453,6 @@
                                 }
                             });
 
-                            // Код + Наименование
                             let contingent = '';
                             if (contingentCode && contingentName) {
                                 contingent = contingentCode + ' ' + contingentName;
@@ -1495,7 +1539,7 @@
                             if (isEmptyRow(row)) continue;
                             if (isHeaderRow(row)) {
                                 headerRowIndex = i;
-                                headers = row.map(h => h ? h.toString().trim() : '');
+                                headers = row.map(h => normalizeHeader(h));
                                 break;
                             }
                         }
@@ -2388,7 +2432,7 @@
             tbody.innerHTML = '';
 
             if (filteredData.length === 0) {
-                const cols = showOwnerCol ? 16 : 15;
+                const cols = showOwnerCol ? 15 : 14;
                 tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center text-muted">Нет данных. Измените фильтры или поиск.</td></tr>`;
             } else {
                 const ownerLabel = currentIsAdmin
@@ -2441,9 +2485,8 @@
                         <td class="col-contractor">${row['Контрагент (Наименование)'] || ''}</td>
                         <td class="col-contingent">${row['Контингент'] || ''}</td>
                         <td>${row['Прибор'] || ''}</td>
-                        <td>${row['Кол-во'] || ''}</td>
+                        <td>${formatQty(row['Кол-во'])}</td>
                         <td>${row['Всего по счету'] || row['Сумма'] || ''}</td>
-                        <td>${row.paymentStatus ? `<span class="badge ${row.paymentStatus === 'Оплачено' ? 'bg-success' : 'bg-secondary'}">${row.paymentStatus}</span>` : '—'}</td>
                         <td>${paymentDate ? `<strong>${paymentDate}</strong>` : '—'}</td>
                         <td>${termHtml}</td>
                         <td>${row.urgency ? `<span class="badge badge-urgent">${row.urgency} дн.</span>` : '—'}</td>
@@ -2478,7 +2521,6 @@
                 });
             }
 
-            // Обновить ширину верхнего скролла
             if (typeof window.__updateTopScrollWidth === 'function') {
                 setTimeout(window.__updateTopScrollWidth, 0);
             }
