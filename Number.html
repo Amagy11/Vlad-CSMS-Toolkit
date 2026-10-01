@@ -178,7 +178,6 @@
     </style>
 </head>
 <body>
-    <!-- Экран загрузки -->
     <div id="loadingScreen" class="container mt-5" style="max-width: 500px;">
         <div class="text-center">
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
@@ -186,7 +185,6 @@
         </div>
     </div>
 
-    <!-- Экран авторизации -->
     <div id="authScreen" class="container mt-5" style="max-width: 500px; display: none;">
         <div class="card">
             <div class="card-header bg-primary text-white">
@@ -219,7 +217,6 @@
         </div>
     </div>
 
-    <!-- Основное приложение -->
     <div id="appScreen" style="display:none;">
         <div class="user-status">
             <span class="badge bg-light text-dark border">
@@ -395,7 +392,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно помощи -->
     <div id="helpModal" class="help-modal" onclick="if(event.target===this)closeHelp()">
         <div class="help-modal-content">
             <div class="help-modal-header">
@@ -444,10 +440,10 @@
                 <ul>
                     <li>Между таблицами — <b>пустая строка</b>. Она сбрасывает раздел обратно на «Общую».</li>
                     <li>Название раздела пишется в <b>первой колонке</b>, в скобках или без — регистр не важен.</li>
-                    <li>Заголовок таблицы определяется по <b>2+ ключевым словам</b>: «номер счета», «контрагент», «прибор», «сумма» и т.п.</li>
+                    <li>Заголовок таблицы определяется по <b>ключевым словам</b>: «номер счета», «контрагент», «прибор», «сумма», «код», «наименование» и т.п.</li>
                     <li>Поддерживаются <b>объединённые ячейки</b>: если номер счёта объединён — он протянется вниз, если в строках есть прибор/кол-во/сумма.</li>
-                    <li>Поддерживается <b>двухуровневая шапка</b>: строка 2 имеет приоритет — оттуда берётся «Наименование» в «Контингент».</li>
-                    <li>Колонка <b>«Наименование»</b> (под шапкой «Контрагент») попадает в столбец <b>«Контингент»</b>.</li>
+                    <li>Поддерживается <b>двухуровневая шапка</b>: строка 2 имеет приоритет — оттуда берётся «Код» и «Наименование».</li>
+                    <li>Колонки <b>«Код»</b> и <b>«Наименование»</b> под шапкой «Контрагент» объединяются в столбец <b>«Контингент»</b>.</li>
                     <li><b>Совпадение по счёту И прибору</b> — данные обновляются, статус сохраняется.</li>
                 </ul>
 
@@ -498,7 +494,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно админа -->
     <div id="adminModal" class="help-modal" onclick="if(event.target===this)closeAdminPanel()">
         <div class="help-modal-content">
             <div class="help-modal-header" style="background-color: #dc3545;">
@@ -559,20 +554,14 @@
                 '<div class="alert alert-danger">Ошибка инициализации Firebase: ' + err.message + '</div>';
         }
 
-        // ============================================================
         // Хелпер: убирает undefined из объекта перед записью в Firebase
-        // ============================================================
         function stripUndefined(obj) {
             const clean = {};
             Object.keys(obj).forEach(k => {
                 const v = obj[k];
-                if (v === undefined) {
-                    clean[k] = '';
-                } else if (v === null) {
-                    clean[k] = null;
-                } else {
-                    clean[k] = v;
-                }
+                if (v === undefined) clean[k] = '';
+                else if (v === null) clean[k] = null;
+                else clean[k] = v;
             });
             return clean;
         }
@@ -1014,10 +1003,11 @@
             return !row || row.every(c => !c || c.toString().trim() === '');
         }
 
-        function isHeaderRow(row) {
+        // isHeaderRow с настраиваемым порогом (по умолчанию 2)
+        function isHeaderRow(row, minHits) {
             const keywords = [
                 'номер счета', 'номер счёта', 'номер квитанции',
-                'контрагент', 'наименование',
+                'контрагент', 'наименование', 'код',
                 'прибор', 'кол-во', 'количество',
                 'сумма', 'всего', 'дата выписки'
             ];
@@ -1027,7 +1017,8 @@
                 const s = c.toString().toLowerCase().trim();
                 if (keywords.some(k => s === k || s.startsWith(k))) hits++;
             });
-            return hits >= 2;
+            const threshold = (minHits !== undefined) ? minHits : 2;
+            return hits >= threshold;
         }
 
         function sectionLabel(section) {
@@ -1313,14 +1304,14 @@
                             if (isHeaderRow(row)) {
                                 let headerRow = row;
                                 const next = jsonData[i + 1];
-                                if (next && !isEmptyRow(next) && !detectSectionMarker(next) && isHeaderRow(next)) {
+                                // Вторая строка — «продолжение шапки» с порогом 1 (достаточно «Код» или «Наименование»)
+                                if (next && !isEmptyRow(next) && !detectSectionMarker(next) && isHeaderRow(next, 1)) {
                                     const maxLen = Math.max(row.length, next.length);
                                     const merged = [];
                                     for (let c = 0; c < maxLen; c++) {
                                         const a = (row[c] || '').toString().trim();
                                         const b = (next[c] || '').toString().trim();
-                                        // ПРИОРИТЕТ СТРОКИ 2 — оттуда берём точные подписи («Код», «Наименование»)
-                                        // Если строка 2 пуста — используем строку 1 («Номер счета», «Прибор» и т.д.)
+                                        // ПРИОРИТЕТ СТРОКИ 2
                                         let value = '';
                                         if (b) value = b;
                                         else if (a) value = a;
@@ -1340,7 +1331,8 @@
 
                             if (!headers) continue;
 
-                            let invoiceNumber = '', invoiceDate = '', contractor = '', contingent = '';
+                            let invoiceNumber = '', invoiceDate = '', contractor = '';
+                            let contingentCode = '', contingentName = '';
                             let device = '', quantity = '', amount = '';
                             let totalAmount = '', paymentDate = '';
 
@@ -1348,9 +1340,13 @@
                                 const value = row[index] || '';
                                 const h = header.toLowerCase();
 
-                                // КОНТИНГЕНТ — колонка с «Наименование», БЕЗ «Код»
-                                if (h.includes('наименование') && !h.includes('код')) {
-                                    contingent = value.toString().trim();
+                                // Код и Наименование собираем ОТДЕЛЬНО
+                                if (h.includes('код')) {
+                                    contingentCode = value.toString().trim();
+                                    return;
+                                }
+                                if (h.includes('наименование') || h.includes('контингент')) {
+                                    contingentName = value.toString().trim();
                                     return;
                                 }
 
@@ -1371,6 +1367,14 @@
                                     paymentDate = value.toString().trim();
                                 }
                             });
+
+                            // Объединяем: если есть и код, и наименование → «код наименование»
+                            let contingent = '';
+                            if (contingentCode && contingentName) {
+                                contingent = contingentCode + ' ' + contingentName;
+                            } else {
+                                contingent = contingentCode || contingentName || '';
+                            }
 
                             if (!invoiceNumber && lastInvoiceNumber) {
                                 const hasData = device || quantity || amount;
@@ -1396,7 +1400,7 @@
                                 'Номер счета': invoiceNumber || '',
                                 'Дата выписки': invoiceDate || '',
                                 'Контрагент (Наименование)': contractor || '',
-                                'Контингент': contingent || '',   // ← всегда строка, никогда undefined
+                                'Контингент': contingent || '',
                                 'Прибор': device || '',
                                 'Кол-во': quantity || '',
                                 'Сумма': amount || '',
@@ -1732,7 +1736,7 @@
         }
 
         // ============================================================
-        // Сохранение — с очисткой от undefined
+        // Сохранение
         // ============================================================
         function saveToStorage() {
             if (!viewingUid) return;
@@ -1743,7 +1747,6 @@
             if (isRemoteUpdate) return;
             if (!currentUser || !userInvoicesRef) return;
 
-            // Чистим каждую строку от undefined — Firebase не принимает undefined
             const cleanTable1 = table1Data.map(row => {
                 const withDefaults = {
                     ...row,
@@ -2062,7 +2065,7 @@
         }
 
         // ============================================================
-        // Автоочистка старых выполненных
+        // Автоочистка
         // ============================================================
         function getCleanCandidates() {
             const threshold = new Date();
