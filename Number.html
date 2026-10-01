@@ -21,7 +21,7 @@
         .badge-completed { background-color: #28a745; color: white; }
         .badge-admin { background-color: #dc3545; color: white; }
         .badge-onsite { background-color: #0d6efd; color: white; }
-        .table-container { max-height: 600px; overflow-y: auto; overflow-x: auto; }
+        .table-container { max-height: 600px; overflow-y: auto; overflow-x: hidden; }
         .table-info { display: none; margin-top: 10px; }
         .device-filter { margin-bottom: 15px; }
         .device-tag {
@@ -38,12 +38,51 @@
         .sync-offline { background-color: #dc3545; }
         .sync-syncing { background-color: #ffc107; }
 
-        .col-invoice { min-width: 150px; white-space: nowrap; }
-        .col-contractor { min-width: 200px; }
-        .col-contingent { min-width: 250px; max-width: 400px; white-space: normal; word-break: break-word; }
+        /* ========== КОМПАКТНАЯ ТАБЛИЦА ========== */
+        #invoicesTable {
+            width: auto;
+            min-width: 100%;
+            font-size: 0.85em;
+            table-layout: auto;
+            margin-bottom: 0;
+        }
+        #invoicesTable th, #invoicesTable td {
+            padding: 4px 6px;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        #invoicesTable th {
+            font-size: 0.92em;
+            padding: 5px 6px;
+        }
+        #invoicesTable tbody tr td {
+            padding-top: 3px !important;
+            padding-bottom: 3px !important;
+        }
 
-        #invoicesTable { width: 100%; min-width: 1800px; }
-        #invoicesTable th, #invoicesTable td { padding: 8px 10px; vertical-align: middle; }
+        /* Особые колонки — можно переносить, чтобы не растягивали */
+        .col-contractor,
+        .col-contingent {
+            white-space: normal;
+            word-break: break-word;
+        }
+        .col-contractor { max-width: 200px; }
+        .col-contingent { max-width: 240px; }
+
+        /* ========== СКРОЛЛ-БАР СВЕРХУ ========== */
+        .top-scroll {
+            overflow-x: auto;
+            overflow-y: hidden;
+            height: 14px;
+            margin-bottom: 2px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: #f8f9fa;
+        }
+        .top-scroll-inner { height: 1px; }
+        .top-scroll::-webkit-scrollbar { height: 12px; }
+        .top-scroll::-webkit-scrollbar-thumb { background: #adb5bd; border-radius: 6px; }
+        .top-scroll::-webkit-scrollbar-track { background: #e9ecef; }
 
         .sort-btn { cursor: pointer; user-select: none; }
         .sort-btn:hover { color: #ffc107; }
@@ -360,7 +399,10 @@
                     <button class="btn btn-sm btn-light" onclick="exportToExcel()">📊 Экспорт</button>
                 </div>
                 <div class="card-body table-container">
-                    <div class="table-responsive">
+                    <div class="top-scroll" id="topScroll">
+                        <div class="top-scroll-inner" id="topScrollInner"></div>
+                    </div>
+                    <div class="table-responsive" id="bottomScroll">
                         <table class="table table-hover" id="invoicesTable">
                             <thead class="table-dark">
                                 <tr>
@@ -1003,7 +1045,6 @@
             return !row || row.every(c => !c || c.toString().trim() === '');
         }
 
-        // isHeaderRow с настраиваемым порогом (по умолчанию 2)
         function isHeaderRow(row, minHits) {
             const keywords = [
                 'номер счета', 'номер счёта', 'номер квитанции',
@@ -1304,14 +1345,13 @@
                             if (isHeaderRow(row)) {
                                 let headerRow = row;
                                 const next = jsonData[i + 1];
-                                // Вторая строка — «продолжение шапки» с порогом 1 (достаточно «Код» или «Наименование»)
+                                // Вторая строка — «продолжение шапки» с порогом 1
                                 if (next && !isEmptyRow(next) && !detectSectionMarker(next) && isHeaderRow(next, 1)) {
                                     const maxLen = Math.max(row.length, next.length);
                                     const merged = [];
                                     for (let c = 0; c < maxLen; c++) {
                                         const a = (row[c] || '').toString().trim();
                                         const b = (next[c] || '').toString().trim();
-                                        // ПРИОРИТЕТ СТРОКИ 2
                                         let value = '';
                                         if (b) value = b;
                                         else if (a) value = a;
@@ -1340,7 +1380,7 @@
                                 const value = row[index] || '';
                                 const h = header.toLowerCase();
 
-                                // Код и Наименование собираем ОТДЕЛЬНО
+                                // Код и Наименование — отдельно
                                 if (h.includes('код')) {
                                     contingentCode = value.toString().trim();
                                     return;
@@ -1368,7 +1408,7 @@
                                 }
                             });
 
-                            // Объединяем: если есть и код, и наименование → «код наименование»
+                            // Код + Наименование
                             let contingent = '';
                             if (contingentCode && contingentName) {
                                 contingent = contingentCode + ' ' + contingentName;
@@ -2197,6 +2237,37 @@
         }
 
         // ============================================================
+        // Синхронизация верхнего и нижнего скролл-баров
+        // ============================================================
+        function setupScrollSync() {
+            const topScroll = document.getElementById('topScroll');
+            const topScrollInner = document.getElementById('topScrollInner');
+            const bottomScroll = document.getElementById('bottomScroll');
+            const table = document.getElementById('invoicesTable');
+
+            if (!topScroll || !bottomScroll || !table) return;
+
+            function updateTopWidth() {
+                if (topScrollInner && table) {
+                    topScrollInner.style.width = table.scrollWidth + 'px';
+                }
+            }
+            updateTopWidth();
+
+            topScroll.addEventListener('scroll', () => {
+                bottomScroll.scrollLeft = topScroll.scrollLeft;
+            });
+            bottomScroll.addEventListener('scroll', () => {
+                topScroll.scrollLeft = bottomScroll.scrollLeft;
+            });
+
+            window.addEventListener('resize', updateTopWidth);
+            window.__updateTopScrollWidth = updateTopWidth;
+        }
+
+        window.addEventListener('load', setupScrollSync);
+
+        // ============================================================
         // Рендер
         // ============================================================
         function renderTable() {
@@ -2319,94 +2390,98 @@
             if (filteredData.length === 0) {
                 const cols = showOwnerCol ? 16 : 15;
                 tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center text-muted">Нет данных. Измените фильтры или поиск.</td></tr>`;
-                return;
-            }
-
-            const ownerLabel = currentIsAdmin
-                ? (viewingUid === currentUser.uid ? currentUserName + ' (вы)' : viewingName)
-                : '';
-
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            filteredData.forEach(row => {
-                const tr = document.createElement('tr');
-                if (row.status === 'inwork') tr.classList.add('status-inwork');
-                if (row.status === 'completed') tr.classList.add('status-completed');
-
-                const sec = row.section || 'common';
-                if (sec === 'budget') tr.classList.add('budget');
-                else if (sec === 'urgent') tr.classList.add('urgent');
-
-                if (row.isBudget || row.isUrgent) tr.classList.add('highlighted');
-
-                const paymentDate = row.paymentDate || row['Дата оплаты'] || '';
-                const key = rowKey(row)
-                    .replace(/\\/g, '\\\\')
-                    .replace(/'/g, "\\'")
-                    .replace(/"/g, '&quot;');
-
-                const changedBy = row.statusChangedBy
-                    ? `<br><small class="text-muted">${row.statusChangedBy}</small>`
+            } else {
+                const ownerLabel = currentIsAdmin
+                    ? (viewingUid === currentUser.uid ? currentUserName + ' (вы)' : viewingName)
                     : '';
 
-                const term = calculateTerm(row);
-                let termHtml = '—';
-                if (term.date) {
-                    const diffDays = Math.ceil((term.date.getTime() - today.getTime()) / (1000*60*60*24));
-                    let cls = 'term-ok';
-                    if (diffDays < 0) cls = 'term-expired';
-                    else if (diffDays <= 3) cls = 'term-soon';
-                    termHtml = `<span class="${cls}" title="${term.label}">${formatDate(term.date)}</span>`;
-                }
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
 
-                const onsiteBtn = row.isOnsite
-                    ? `<button class="btn btn-sm btn-primary me-1" onclick="toggleOnsite('${key}')" title="Снять пометку Выездной">🚗</button>`
-                    : `<button class="btn btn-sm btn-outline-primary me-1" onclick="toggleOnsite('${key}')" title="Отметить как Выездной">🚗</button>`;
+                filteredData.forEach(row => {
+                    const tr = document.createElement('tr');
+                    if (row.status === 'inwork') tr.classList.add('status-inwork');
+                    if (row.status === 'completed') tr.classList.add('status-completed');
 
-                tr.innerHTML = `
-                    <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong></td>
-                    ${showOwnerCol ? `<td><small>${escapeHtml(ownerLabel)}</small></td>` : ''}
-                    <td><span class="badge ${sectionBadgeClass(sec)}">${sectionLabel(sec)}</span></td>
-                    <td>${row['Дата выписки'] || ''}</td>
-                    <td class="col-contractor">${row['Контрагент (Наименование)'] || ''}</td>
-                    <td class="col-contingent">${row['Контингент'] || ''}</td>
-                    <td>${row['Прибор'] || ''}</td>
-                    <td>${row['Кол-во'] || ''}</td>
-                    <td>${row['Всего по счету'] || row['Сумма'] || ''}</td>
-                    <td>${row.paymentStatus ? `<span class="badge ${row.paymentStatus === 'Оплачено' ? 'bg-success' : 'bg-secondary'}">${row.paymentStatus}</span>` : '—'}</td>
-                    <td>${paymentDate ? `<strong>${paymentDate}</strong>` : '—'}</td>
-                    <td>${termHtml}</td>
-                    <td>${row.urgency ? `<span class="badge badge-urgent">${row.urgency} дн.</span>` : '—'}</td>
-                    <td>
-                        ${row.status === 'new' ? '<span class="badge badge-new">Новый</span>' : ''}
-                        ${row.status === 'inwork' ? `<span class="badge badge-inwork">В работе</span>${changedBy}` : ''}
-                        ${row.status === 'completed' ? `<span class="badge badge-completed">✓ Выполнен</span>${changedBy}` : ''}
-                    </td>
-                    <td>
-                        ${row.isBudget ? '<span class="badge badge-budget me-1">Бюджет</span>' : ''}
-                        ${row.isUrgent ? '<span class="badge badge-urgent me-1">Срочно</span>' : ''}
-                        ${row.isOnsite ? '<span class="badge badge-onsite me-1">🚗 Выездной</span>' : ''}
-                        ${!row.isBudget && !row.isUrgent && !row.isOnsite ? '<span class="text-muted">—</span>' : ''}
-                    </td>
-                    <td>
-                        ${onsiteBtn}
-                        ${row.status === 'new' ? `
-                            <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">▶</button>
-                            <button class="btn btn-sm btn-success" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
-                        ` : ''}
-                        ${row.status === 'inwork' ? `
-                            <button class="btn btn-sm btn-success me-1" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
-                            <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
-                        ` : ''}
-                        ${row.status === 'completed' ? `
-                            <button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">↩</button>
-                            <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
-                        ` : ''}
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+                    const sec = row.section || 'common';
+                    if (sec === 'budget') tr.classList.add('budget');
+                    else if (sec === 'urgent') tr.classList.add('urgent');
+
+                    if (row.isBudget || row.isUrgent) tr.classList.add('highlighted');
+
+                    const paymentDate = row.paymentDate || row['Дата оплаты'] || '';
+                    const key = rowKey(row)
+                        .replace(/\\/g, '\\\\')
+                        .replace(/'/g, "\\'")
+                        .replace(/"/g, '&quot;');
+
+                    const changedBy = row.statusChangedBy
+                        ? `<br><small class="text-muted">${row.statusChangedBy}</small>`
+                        : '';
+
+                    const term = calculateTerm(row);
+                    let termHtml = '—';
+                    if (term.date) {
+                        const diffDays = Math.ceil((term.date.getTime() - today.getTime()) / (1000*60*60*24));
+                        let cls = 'term-ok';
+                        if (diffDays < 0) cls = 'term-expired';
+                        else if (diffDays <= 3) cls = 'term-soon';
+                        termHtml = `<span class="${cls}" title="${term.label}">${formatDate(term.date)}</span>`;
+                    }
+
+                    const onsiteBtn = row.isOnsite
+                        ? `<button class="btn btn-sm btn-primary me-1" onclick="toggleOnsite('${key}')" title="Снять пометку Выездной">🚗</button>`
+                        : `<button class="btn btn-sm btn-outline-primary me-1" onclick="toggleOnsite('${key}')" title="Отметить как Выездной">🚗</button>`;
+
+                    tr.innerHTML = `
+                        <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong></td>
+                        ${showOwnerCol ? `<td><small>${escapeHtml(ownerLabel)}</small></td>` : ''}
+                        <td><span class="badge ${sectionBadgeClass(sec)}">${sectionLabel(sec)}</span></td>
+                        <td>${row['Дата выписки'] || ''}</td>
+                        <td class="col-contractor">${row['Контрагент (Наименование)'] || ''}</td>
+                        <td class="col-contingent">${row['Контингент'] || ''}</td>
+                        <td>${row['Прибор'] || ''}</td>
+                        <td>${row['Кол-во'] || ''}</td>
+                        <td>${row['Всего по счету'] || row['Сумма'] || ''}</td>
+                        <td>${row.paymentStatus ? `<span class="badge ${row.paymentStatus === 'Оплачено' ? 'bg-success' : 'bg-secondary'}">${row.paymentStatus}</span>` : '—'}</td>
+                        <td>${paymentDate ? `<strong>${paymentDate}</strong>` : '—'}</td>
+                        <td>${termHtml}</td>
+                        <td>${row.urgency ? `<span class="badge badge-urgent">${row.urgency} дн.</span>` : '—'}</td>
+                        <td>
+                            ${row.status === 'new' ? '<span class="badge badge-new">Новый</span>' : ''}
+                            ${row.status === 'inwork' ? `<span class="badge badge-inwork">В работе</span>${changedBy}` : ''}
+                            ${row.status === 'completed' ? `<span class="badge badge-completed">✓ Выполнен</span>${changedBy}` : ''}
+                        </td>
+                        <td>
+                            ${row.isBudget ? '<span class="badge badge-budget me-1">Бюджет</span>' : ''}
+                            ${row.isUrgent ? '<span class="badge badge-urgent me-1">Срочно</span>' : ''}
+                            ${row.isOnsite ? '<span class="badge badge-onsite me-1">🚗 Выездной</span>' : ''}
+                            ${!row.isBudget && !row.isUrgent && !row.isOnsite ? '<span class="text-muted">—</span>' : ''}
+                        </td>
+                        <td>
+                            ${onsiteBtn}
+                            ${row.status === 'new' ? `
+                                <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">▶</button>
+                                <button class="btn btn-sm btn-success" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
+                            ` : ''}
+                            ${row.status === 'inwork' ? `
+                                <button class="btn btn-sm btn-success me-1" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
+                                <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
+                            ` : ''}
+                            ${row.status === 'completed' ? `
+                                <button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">↩</button>
+                                <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
+                            ` : ''}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Обновить ширину верхнего скролла
+            if (typeof window.__updateTopScrollWidth === 'function') {
+                setTimeout(window.__updateTopScrollWidth, 0);
+            }
         }
 
         // ============================================================
