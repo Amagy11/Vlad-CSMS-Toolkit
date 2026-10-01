@@ -10,18 +10,17 @@
     <style>
         .budget { background-color: #fff3cd; }
         .urgent { background-color: #f8d7da; }
-        .debt { background-color: #ffe5d0; }
         .highlighted { border-left: 5px solid #dc3545; }
         .status-inwork { background-color: #cce5ff; }
         .status-completed { opacity: 0.6; text-decoration: line-through; background-color: #d4edda; }
         .badge-budget { background-color: #ffc107; color: #000; }
         .badge-urgent { background-color: #dc3545; color: white; }
-        .badge-debt { background-color: #fd7e14; color: white; }
         .badge-common { background-color: #6c757d; color: white; }
         .badge-new { background-color: #6c757d; color: white; }
         .badge-inwork { background-color: #007bff; color: white; }
         .badge-completed { background-color: #28a745; color: white; }
         .badge-admin { background-color: #dc3545; color: white; }
+        .badge-onsite { background-color: #0d6efd; color: white; }
         .table-container { max-height: 600px; overflow-y: auto; overflow-x: auto; }
         .table-info { display: none; margin-top: 10px; }
         .device-filter { margin-bottom: 15px; }
@@ -41,8 +40,9 @@
 
         .col-invoice { min-width: 150px; white-space: nowrap; }
         .col-contractor { min-width: 200px; }
+        .col-contingent { min-width: 250px; max-width: 400px; white-space: normal; word-break: break-word; }
 
-        #invoicesTable { width: 100%; min-width: 1400px; }
+        #invoicesTable { width: 100%; min-width: 1800px; }
         #invoicesTable th, #invoicesTable td { padding: 8px 10px; vertical-align: middle; }
 
         .sort-btn { cursor: pointer; user-select: none; }
@@ -148,11 +148,48 @@
             align-items: center;
             box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
         }
+
+        .term-expired { color: #dc3545; font-weight: bold; }
+        .term-soon { color: #fd7e14; font-weight: bold; }
+        .term-ok { color: #198754; }
+
+        /* Экран загрузки — пока проверяется сессия */
+        #loadingScreen {
+            display: block;
+            text-align: center;
+            padding-top: 100px;
+        }
+
+        /* Баннер автоочистки */
+        #cleanBanner {
+            display: none;
+            background: linear-gradient(90deg, #fff3cd 0%, #ffe69c 100%);
+            border-left: 5px solid #ffc107;
+            color: #664d03;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+        }
+        #cleanBanner.open { display: flex; }
+        #cleanBanner .clean-text { font-size: 1em; }
+        #cleanBanner .clean-text b { color: #996a00; }
+        #cleanBanner .clean-actions { display: flex; gap: 8px; }
     </style>
 </head>
 <body>
+    <!-- Экран загрузки (пока Firebase не ответил) -->
+    <div id="loadingScreen" class="container mt-5" style="max-width: 500px;">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+            <p class="mt-3 text-muted">Подключение...</p>
+        </div>
+    </div>
+
     <!-- Экран авторизации -->
-    <div id="authScreen" class="container mt-5" style="max-width: 500px;">
+    <div id="authScreen" class="container mt-5" style="max-width: 500px; display: none;">
         <div class="card">
             <div class="card-header bg-primary text-white">
                 <h4 id="authTitle">Вход</h4>
@@ -205,6 +242,18 @@
         <div class="container-fluid mt-4">
             <h1 class="mb-4">📊 Учет счетов</h1>
 
+            <!-- Баннер автоочистки -->
+            <div id="cleanBanner">
+                <div class="clean-text">
+                    🧹 Найдено <b id="cleanCount">0</b> <span id="cleanWord">счетов</span> со статусом <b>«Выполнен»</b> старше 2 месяцев
+                    (<span id="cleanPeriod"></span>). Удалить?
+                </div>
+                <div class="clean-actions">
+                    <button class="btn btn-sm btn-warning" onclick="performAutoClean()">Удалить</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="dismissAutoClean()">Отложить</button>
+                </div>
+            </div>
+
             <!-- Плашка админа -->
             <div class="row mb-3" id="adminViewBlock" style="display:none;">
                 <div class="col-12">
@@ -235,7 +284,7 @@
                                 <label class="form-label fw-bold">Таблица 1 (счета с приборами):</label>
                                 <input type="file" id="table1File" class="form-control" accept=".xlsx,.xls">
                                 <small class="text-muted">
-                                    Разделы: <b>[ОБЩАЯ]</b>, <b>[СРОЧНЫЕ]</b>, <b>[БЮДЖЕТ]</b>, <b>[ДОЛГ]</b>.
+                                    Разделы: <b>[ОБЩАЯ]</b>, <b>[СРОЧНЫЕ]</b>, <b>[БЮДЖЕТ]</b>.
                                     Пустая строка сбрасывает раздел. Совпадение по счёту И прибору — обновление, статус сохраняется.
                                 </small>
                             </div>
@@ -278,7 +327,6 @@
                                     <button class="btn btn-outline-dark section-btn" data-section="common" onclick="toggleSection('common')">Общие</button>
                                     <button class="btn btn-outline-danger section-btn" data-section="urgent" onclick="toggleSection('urgent')">Срочные</button>
                                     <button class="btn btn-outline-warning section-btn" data-section="budget" onclick="toggleSection('budget')">Бюджет</button>
-                                    <button class="btn btn-outline-primary section-btn" data-section="debt" onclick="toggleSection('debt')">Долг</button>
                                     <button class="btn btn-outline-secondary" onclick="clearSections()">Сбросить</button>
                                 </div>
                             </div>
@@ -328,6 +376,7 @@
                                     <th>Раздел</th>
                                     <th>Дата выписки</th>
                                     <th class="col-contractor">Контрагент</th>
+                                    <th class="col-contingent">Контингент</th>
                                     <th>Прибор</th>
                                     <th>Кол-во</th>
                                     <th>Сумма</th>
@@ -335,6 +384,7 @@
                                     <th class="sort-btn" onclick="sortByPaymentDate()">
                                         Дата оплаты <span id="dateSortIndicator" class="sort-indicator"></span>
                                     </th>
+                                    <th>Срок</th>
                                     <th>Срочность</th>
                                     <th>Статус</th>
                                     <th>Пометки</th>
@@ -392,13 +442,6 @@
 300-01      | 01.03.2026   | ООО ...    | ...    | 1      | 7000</pre>
                 </div>
 
-                <div class="help-section">
-                    <div class="help-section-title">
-                        <span class="badge badge-debt">Долг</span>
-                    </div>
-                    <p>Над шапкой таблицы напиши: <code>[ДОЛГ]</code> (или <code>[ЗАДОЛЖ]</code>).</p>
-                </div>
-
                 <hr>
 
                 <h6>🔹 Правила:</h6>
@@ -407,8 +450,9 @@
                     <li>Название раздела пишется в <b>первой колонке</b>, в скобках или без — регистр не важен.</li>
                     <li>Заголовок таблицы определяется по <b>2+ ключевым словам</b>: «номер счета», «контрагент», «прибор», «сумма» и т.п.</li>
                     <li>Поддерживаются <b>объединённые ячейки</b>: если номер счёта объединён — он протянется вниз, если в строках есть прибор/кол-во/сумма.</li>
+                    <li>Поддерживается <b>двухуровневая шапка</b> — две строки заголовков объединяются автоматически.</li>
+                    <li>Колонка <b>«Наименование»</b> (под шапкой «Контрагент») попадает в столбец <b>«Контингент»</b>.</li>
                     <li><b>Совпадение по счёту И прибору</b> — данные обновляются, статус сохраняется.</li>
-                    <li><b>Совпал только счёт</b> или <b>только прибор</b> — добавляется как новая строка.</li>
                 </ul>
 
                 <hr>
@@ -426,9 +470,29 @@
 
                 <hr>
 
+                <h5>📅 Колонка «Срок»</h5>
+                <ul>
+                    <li><b>Обычные счета</b> — 30 календарных дней от «Даты выписки».</li>
+                    <li><b>Бюджет и Срочные</b> — 5 рабочих дней от «Даты выписки».</li>
+                    <li>Рабочие дни — без выходных (сб, вс) и <b>без официальных праздников РБ</b>.</li>
+                    <li>Если последний день попадает на выходной — берётся предыдущий рабочий.</li>
+                </ul>
+
+                <hr>
+
+                <h5>🚗 Пометка «Выездной»</h5>
+                <p>Ставится вручную в приложении кнопкой <b>🚗</b> в колонке «Действия». Общая для всех пользователей — кто поставил, у всех видно.</p>
+
+                <hr>
+
+                <h5>🧹 Автоочистка</h5>
+                <p>При входе приложение проверяет счета со статусом <b>«Выполнен»</b>. Если счёт был выполнен <b>2+ месяца назад</b> — появится баннер с предложением удалить. Ты сам решаешь: удалить или отложить.</p>
+
+                <hr>
+
                 <div class="help-alert">
                     <b>ℹ️ Общие статусы между пользователями</b><br>
-                    Если у разных пользователей в их файлах есть счёт с <b>одинаковым номером и прибором</b> — статус «Выполнено» / «В работе» синхронизируется автоматически.
+                    Если у разных пользователей в их файлах есть счёт с <b>одинаковым номером и прибором</b> — статус «Выполнено» / «В работе» и пометка «Выездной» синхронизируются автоматически.
                 </div>
 
             </div>
@@ -495,6 +559,83 @@
             console.log('✅ Firebase подключён');
         } catch (err) {
             console.error('❌ Firebase init error:', err);
+            document.getElementById('loadingScreen').innerHTML =
+                '<div class="alert alert-danger">Ошибка инициализации Firebase: ' + err.message + '</div>';
+        }
+
+        // ============================================================
+        // Праздники РБ 2026
+        // ============================================================
+        const HOLIDAYS_RB_2026 = [
+            '2026-01-01', '2026-01-02',
+            '2026-01-07',
+            '2026-03-08',
+            '2026-04-21',
+            '2026-05-01',
+            '2026-05-09',
+            '2026-07-03',
+            '2026-11-07',
+            '2026-12-25'
+        ];
+
+        const WORKDAY_TRANSFERS_RB_2026 = {
+            '2026-04-20': true,
+            '2026-04-25': true
+        };
+
+        function toISO(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        function isHoliday(date) {
+            return HOLIDAYS_RB_2026.includes(toISO(date));
+        }
+
+        function isWeekend(date) {
+            const dow = date.getDay();
+            const iso = toISO(date);
+            if (WORKDAY_TRANSFERS_RB_2026[iso] === true) return false;
+            return dow === 0 || dow === 6;
+        }
+
+        function isNonWorkingDay(date) {
+            const iso = toISO(date);
+            if (WORKDAY_TRANSFERS_RB_2026[iso] === true && date.getDay() === 1) return true;
+            return isWeekend(date) || isHoliday(date);
+        }
+
+        function addCalendarDays(dateStr, n) {
+            const d = parseDate(dateStr);
+            if (!d) return null;
+            const result = new Date(d);
+            result.setDate(result.getDate() + n);
+            return result;
+        }
+
+        function addWorkingDays(dateStr, n) {
+            const d = parseDate(dateStr);
+            if (!d) return null;
+            const result = new Date(d);
+            let added = 0;
+            while (added < n) {
+                result.setDate(result.getDate() + 1);
+                if (!isNonWorkingDay(result)) added++;
+            }
+            while (isNonWorkingDay(result)) {
+                result.setDate(result.getDate() - 1);
+            }
+            return result;
+        }
+
+        function formatDate(d) {
+            if (!d || !(d instanceof Date) || isNaN(d.getTime())) return '';
+            const day = String(d.getDate()).padStart(2, '0');
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const y = d.getFullYear();
+            return `${day}.${m}.${y}`;
         }
 
         // ============================================================
@@ -524,6 +665,12 @@
         let unsubShared = null;
         let allUsersCache = {};
 
+        // Кандидаты на автоудаление
+        let pendingCleanRows = [];
+        let cleanDismissedThisSession = false;
+        // Флаг: проверку автоочистки делаем только один раз за сессию просмотра uid
+        let autoCleanChecked = false;
+
         window.handleAuthSubmit = handleAuthSubmit;
         window.switchAuthMode = switchAuthMode;
         window.logout = logout;
@@ -537,6 +684,7 @@
         window.sortByPaymentDate = sortByPaymentDate;
         window.renderTable = renderTable;
         window.changeStatus = changeStatus;
+        window.toggleOnsite = toggleOnsite;
         window.exportToExcel = exportToExcel;
         window.openHelp = openHelp;
         window.closeHelp = closeHelp;
@@ -544,6 +692,8 @@
         window.closeAdminPanel = closeAdminPanel;
         window.deleteUserAdmin = deleteUserAdmin;
         window.onAdminUserChange = onAdminUserChange;
+        window.performAutoClean = performAutoClean;
+        window.dismissAutoClean = dismissAutoClean;
 
         // ============================================================
         // Индикатор
@@ -724,6 +874,9 @@
         // Состояние авторизации
         // ============================================================
         onAuthStateChanged(auth, async (user) => {
+            // Скрываем экран загрузки — Firebase ответил
+            document.getElementById('loadingScreen').style.display = 'none';
+
             if (user) {
                 currentUser = user;
 
@@ -766,6 +919,10 @@
                 viewingName = currentUserName;
                 updateAdminModeInfo();
 
+                cleanDismissedThisSession = false;
+                autoCleanChecked = false;
+                hideCleanBanner();
+
                 loadFromStorage();
                 subscribeToUserData(viewingUid);
                 subscribeToSharedStatuses();
@@ -786,6 +943,7 @@
                 document.getElementById('appScreen').style.display = 'none';
                 setSyncStatus('offline', 'Не подключено');
                 checkIfFirstUser();
+                hideCleanBanner();
             }
         });
 
@@ -838,7 +996,6 @@
             if (/^(ОБЩ|ВСЕ|ALL|COMMON)/.test(cell)) return 'common';
             if (/^(СРОЧН|URGENT)/.test(cell))        return 'urgent';
             if (/^(БЮДЖЕТ|BUDGET)/.test(cell))       return 'budget';
-            if (/^(ДОЛГ|ЗАДОЛЖ|DEBT)/.test(cell))    return 'debt';
             return null;
         }
 
@@ -866,7 +1023,6 @@
             switch (section) {
                 case 'urgent': return 'Срочные';
                 case 'budget': return 'Бюджет';
-                case 'debt':   return 'Долг';
                 default:       return 'Общая';
             }
         }
@@ -875,7 +1031,6 @@
             switch (section) {
                 case 'urgent': return 'badge-urgent';
                 case 'budget': return 'badge-budget';
-                case 'debt':   return 'badge-debt';
                 default:       return 'badge-common';
             }
         }
@@ -966,10 +1121,8 @@
             const sel = document.getElementById('adminUserSelect');
             const uid = sel.value;
 
-            // Отписываемся от предыдущего
             if (unsubInvoices) { unsubInvoices(); unsubInvoices = null; }
 
-            // Полностью очищаем состояние
             table1Data = [];
             table2Data = [];
             deviceTypes.clear();
@@ -990,12 +1143,13 @@
 
             updateAdminModeInfo();
 
-            // Загружаем кэш нового пользователя
+            // Сбрасываем флаги автоочистки для нового uid
+            cleanDismissedThisSession = false;
+            autoCleanChecked = false;
+            hideCleanBanner();
+
             loadFromStorage();
-
-            // Подписываемся на нового
             subscribeToUserData(viewingUid);
-
             renderTable();
         }
 
@@ -1027,7 +1181,7 @@
                         ${isSelf ? '' : `<button class="btn btn-sm btn-outline-danger" onclick="deleteUserAdmin('${u.uid}', '${nameSafe}')">🗑 Удалить</button>`}
                     </div>
                 `;
-                container.appendChild(api);
+                container.appendChild(item);
             });
         }
 
@@ -1067,13 +1221,14 @@
         }
 
         // ============================================================
-        // mergeRow — обновление без сброса статуса
+        // mergeRow
         // ============================================================
         function mergeRow(oldRow, newRow) {
             return {
                 ...oldRow,
                 'Дата выписки':              newRow['Дата выписки']              || oldRow['Дата выписки'],
                 'Контрагент (Наименование)': newRow['Контрагент (Наименование)'] || oldRow['Контрагент (Наименование)'],
+                'Контингент':                newRow['Контингент']                || oldRow['Контингент'],
                 'Кол-во':                    newRow['Кол-во']                    || oldRow['Кол-во'],
                 'Сумма':                     newRow['Сумма']                     || oldRow['Сумма'],
                 'Всего по счету':            newRow['Всего по счету']            || oldRow['Всего по счету'],
@@ -1081,7 +1236,7 @@
 
                 isBudget:  oldRow.isBudget  || newRow.isBudget,
                 isUrgent:  oldRow.isUrgent  || newRow.isUrgent,
-                isDebt:    oldRow.isDebt    || newRow.isDebt,
+                isOnsite:  oldRow.isOnsite  || newRow.isOnsite,
                 isMatched: oldRow.isMatched || newRow.isMatched,
 
                 section: (oldRow.section && oldRow.section !== 'common')
@@ -1146,7 +1301,20 @@
                             }
 
                             if (isHeaderRow(row)) {
-                                headers = row.map(h => h ? h.toString().trim() : '');
+                                let headerRow = row;
+                                const next = jsonData[i + 1];
+                                if (next && !isEmptyRow(next) && !detectSectionMarker(next) && isHeaderRow(next)) {
+                                    const maxLen = Math.max(row.length, next.length);
+                                    const merged = [];
+                                    for (let c = 0; c < maxLen; c++) {
+                                        const a = (row[c] || '').toString().trim();
+                                        const b = (next[c] || '').toString().trim();
+                                        merged.push((a + ' ' + b).trim());
+                                    }
+                                    headerRow = merged;
+                                    i++;
+                                }
+                                headers = headerRow.map(h => h ? h.toString().trim() : '');
                                 lastInvoiceNumber = '';
                                 lastInvoiceDate = '';
                                 lastContractor = '';
@@ -1156,7 +1324,7 @@
 
                             if (!headers) continue;
 
-                            let invoiceNumber = '', invoiceDate = '', contractor = '';
+                            let invoiceNumber = '', invoiceDate = '', contractor = '', contingent = '';
                             let device = '', quantity = '', amount = '';
                             let totalAmount = '', paymentDate = '';
 
@@ -1164,11 +1332,13 @@
                                 const value = row[index] || '';
                                 const h = header.toLowerCase();
 
-                                if (h.includes('номер') && (h.includes('счет') || h.includes('счёт') || h.includes('квитанц'))) {
+                                if (h.includes('наименование') || h.includes('контингент')) {
+                                    contingent = value.toString().trim();
+                                } else if (h.includes('номер') && (h.includes('счет') || h.includes('счёт') || h.includes('квитанц'))) {
                                     invoiceNumber = value.toString().trim();
                                 } else if (h.includes('дата') && h.includes('выписк')) {
                                     invoiceDate = value.toString().trim();
-                                } else if (h.includes('контрагент') || h.includes('наименование')) {
+                                } else if (h.includes('контрагент')) {
                                     contractor = value.toString().trim();
                                 } else if (h.includes('прибор')) {
                                     device = value.toString().trim();
@@ -1206,6 +1376,7 @@
                                 'Номер счета': invoiceNumber,
                                 'Дата выписки': invoiceDate,
                                 'Контрагент (Наименование)': contractor,
+                                'Контингент': contingent,
                                 'Прибор': device,
                                 'Кол-во': quantity,
                                 'Сумма': amount,
@@ -1215,7 +1386,7 @@
                                 section: section,
                                 isBudget: section === 'budget',
                                 isUrgent: section === 'urgent',
-                                isDebt:   section === 'debt',
+                                isOnsite: false,
                                 isMatched: false,
                                 status: 'new',
                                 statusDate: null,
@@ -1330,7 +1501,7 @@
         }
 
         // ============================================================
-        // Загрузка Таблицы 1 — надёжно, без блокировок
+        // Загрузка Таблицы 1
         // ============================================================
         function loadTable1() {
             const fileInput = document.getElementById('table1File');
@@ -1351,7 +1522,6 @@
                     return;
                 }
 
-                // Map: ключ → индекс для быстрого поиска
                 const existingMap = new Map();
                 table1Data.forEach((row, idx) => existingMap.set(rowKey(row), idx));
 
@@ -1377,6 +1547,11 @@
                 matchTables();
                 saveToStorage();
                 renderTable();
+                // Автоочистку проверяем только один раз при первой загрузке
+                if (!autoCleanChecked) {
+                    autoCleanChecked = true;
+                    checkAutoClean();
+                }
 
                 const infoDiv = document.getElementById('table1Info');
                 infoDiv.style.display = 'block';
@@ -1388,7 +1563,7 @@
         }
 
         // ============================================================
-        // Загрузка Таблицы 2 — надёжно, без блокировок
+        // Загрузка Таблицы 2
         // ============================================================
         function loadTable2() {
             const fileInput = document.getElementById('table2File');
@@ -1524,7 +1699,6 @@
                         section: row.section || 'common',
                         isBudget: row.isBudget || isBudget2,
                         isUrgent: row.isUrgent || isUrgent2,
-                        isDebt:   row.isDebt || false,
                         isMatched: true,
                         urgency: matched['С'] || row.urgency || '',
                         paymentStatus: matched['Наличие оплаты'] || row.paymentStatus || '',
@@ -1539,7 +1713,7 @@
         }
 
         // ============================================================
-        // Сохранение — без блокирующих проверок
+        // Сохранение
         // ============================================================
         function saveToStorage() {
             if (!viewingUid) return;
@@ -1628,6 +1802,13 @@
                     updateDeviceTypes();
                     renderTable();
                 }
+
+                // Автоочистку проверяем один раз — при первой загрузке данных
+                if (!autoCleanChecked) {
+                    autoCleanChecked = true;
+                    checkAutoClean();
+                }
+
                 setSyncStatus('online', 'Онлайн');
             }, (err) => {
                 console.error('Ошибка подписки на счета:', err);
@@ -1653,23 +1834,22 @@
             table1Data = table1Data.map(row => {
                 const key = fbKey(rowKey(row));
                 const shared = sharedStatuses[key];
+
+                let result = { ...row };
+
                 if (shared && shared.status) {
-                    return {
-                        ...row,
-                        status: shared.status,
-                        statusDate: shared.statusDate,
-                        statusChangedBy: shared.changedByName || shared.changedByEmail || ''
-                    };
+                    result.status = shared.status;
+                    result.statusDate = shared.statusDate;
+                    result.statusChangedBy = shared.changedByName || shared.changedByEmail || '';
+                } else if (row.status !== 'new') {
+                    result.status = 'new';
+                    result.statusDate = null;
+                    result.statusChangedBy = '';
                 }
-                if (row.status !== 'new') {
-                    return {
-                        ...row,
-                        status: 'new',
-                        statusDate: null,
-                        statusChangedBy: ''
-                    };
-                }
-                return row;
+
+                result.isOnsite = !!(shared && shared.isOnsite);
+
+                return result;
             });
         }
 
@@ -1747,7 +1927,9 @@
             }
 
             const sKey = fbKey(key);
-            if (newStatus === 'new') {
+            const existing = sharedStatuses[sKey] || {};
+
+            if (newStatus === 'new' && !existing.isOnsite) {
                 remove(ref(database, 'sharedStatuses/' + sKey))
                     .catch(err => console.error('Ошибка удаления общего статуса:', err));
             } else {
@@ -1756,7 +1938,45 @@
                     statusDate: now,
                     changedBy: currentUser.uid,
                     changedByEmail: currentUser.email,
-                    changedByName: currentUserName
+                    changedByName: currentUserName,
+                    isOnsite: !!existing.isOnsite
+                }).catch(err => console.error('Ошибка записи общего статуса:', err));
+            }
+
+            renderTable();
+        }
+
+        // ============================================================
+        // Переключение пометки «Выездной»
+        // ============================================================
+        async function toggleOnsite(key) {
+            if (!currentUser) return;
+
+            const now = new Date().toISOString();
+            const sKey = fbKey(key);
+            const existing = sharedStatuses[sKey] || {};
+            const newOnsite = !existing.isOnsite;
+
+            table1Data = table1Data.map(row => {
+                if (rowKey(row) === key) {
+                    return { ...row, isOnsite: newOnsite };
+                }
+                return row;
+            });
+
+            const currentStatus = existing.status || 'new';
+
+            if (!newOnsite && currentStatus === 'new') {
+                remove(ref(database, 'sharedStatuses/' + sKey))
+                    .catch(err => console.error('Ошибка удаления общего статуса:', err));
+            } else {
+                set(ref(database, 'sharedStatuses/' + sKey), {
+                    status: currentStatus,
+                    statusDate: existing.statusDate || now,
+                    changedBy: existing.changedBy || currentUser.uid,
+                    changedByEmail: existing.changedByEmail || currentUser.email,
+                    changedByName: existing.changedByName || currentUserName,
+                    isOnsite: newOnsite
                 }).catch(err => console.error('Ошибка записи общего статуса:', err));
             }
 
@@ -1784,6 +2004,7 @@
             selectedStatuses.clear();
             document.querySelectorAll('.device-tag, .section-btn, .status-btn').forEach(b => b.classList.remove('active'));
             renderDeviceTags();
+            hideCleanBanner();
 
             remove(ref(database, 'invoices/' + viewingUid))
                 .catch(err => console.error('Ошибка удаления:', err));
@@ -1793,6 +2014,155 @@
 
             updateDeviceTypes();
             renderTable();
+        }
+
+        // ============================================================
+        // Расчёт срока
+        // ============================================================
+        function calculateTerm(row) {
+            const dateStr = row['Дата выписки'];
+            if (!dateStr) return { date: null, label: '' };
+
+            const isFast = row.isBudget === true || row.isUrgent === true;
+            if (isFast) {
+                const d = addWorkingDays(dateStr, 5);
+                return { date: d, label: '5 раб.' };
+            } else {
+                const d = addCalendarDays(dateStr, 30);
+                return { date: d, label: '30 кал.' };
+            }
+        }
+
+        // ============================================================
+        // Автоочистка старых выполненных
+        // ============================================================
+        function getCleanCandidates() {
+            const threshold = new Date();
+            threshold.setMonth(threshold.getMonth() - 2);
+            threshold.setHours(0, 0, 0, 0);
+
+            const candidates = [];
+
+            table1Data.forEach(row => {
+                if (row.status !== 'completed') return;
+
+                let refDate = null;
+                if (row.statusDate) {
+                    refDate = new Date(row.statusDate);
+                } else if (row['Дата выписки']) {
+                    refDate = parseDate(row['Дата выписки']);
+                }
+
+                if (!refDate || isNaN(refDate.getTime())) return;
+
+                if (refDate < threshold) {
+                    candidates.push(row);
+                }
+            });
+
+            return candidates;
+        }
+
+        function checkAutoClean() {
+            if (cleanDismissedThisSession) return;
+            if (!table1Data.length) {
+                hideCleanBanner();
+                return;
+            }
+
+            pendingCleanRows = getCleanCandidates();
+
+            if (pendingCleanRows.length === 0) {
+                hideCleanBanner();
+                return;
+            }
+
+            const banner = document.getElementById('cleanBanner');
+            const countEl = document.getElementById('cleanCount');
+            const wordEl = document.getElementById('cleanWord');
+            const periodEl = document.getElementById('cleanPeriod');
+
+            countEl.textContent = pendingCleanRows.length;
+
+            const n = pendingCleanRows.length;
+            const nMod10 = n % 10;
+            const nMod100 = n % 100;
+            let word = 'счетов';
+            if (nMod10 === 1 && nMod100 !== 11) word = 'счет';
+            else if (nMod10 >= 2 && nMod10 <= 4 && (nMod100 < 10 || nMod100 >= 20)) word = 'счета';
+            wordEl.textContent = word;
+
+            let earliest = null;
+            let latest = null;
+            pendingCleanRows.forEach(r => {
+                const d = r.statusDate ? new Date(r.statusDate) : parseDate(r['Дата выписки']);
+                if (!d || isNaN(d.getTime())) return;
+                if (!earliest || d < earliest) earliest = d;
+                if (!latest || d > latest) latest = d;
+            });
+
+            if (earliest && latest) {
+                const fmt = (d) => {
+                    const months = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+                    return `${months[d.getMonth()]} ${d.getFullYear()}`;
+                };
+                const eStr = fmt(earliest);
+                const lStr = fmt(latest);
+                periodEl.textContent = (eStr === lStr) ? eStr : `${eStr} — ${lStr}`;
+            } else {
+                periodEl.textContent = 'старше 2 месяцев';
+            }
+
+            banner.classList.add('open');
+        }
+
+        function hideCleanBanner() {
+            const banner = document.getElementById('cleanBanner');
+            if (banner) banner.classList.remove('open');
+        }
+
+        function dismissAutoClean() {
+            cleanDismissedThisSession = true;
+            hideCleanBanner();
+        }
+
+        async function performAutoClean() {
+            if (!pendingCleanRows.length) {
+                hideCleanBanner();
+                return;
+            }
+
+            const count = pendingCleanRows.length;
+            if (!confirm(`Удалить ${count} выполненных счетов старше 2 месяцев? Это действие нельзя отменить.`)) return;
+
+            const keysToRemove = new Set();
+            pendingCleanRows.forEach(row => {
+                keysToRemove.add(rowKey(row));
+            });
+
+            table1Data = table1Data.filter(row => {
+                const key = rowKey(row);
+                return !pendingCleanRows.some(p => rowKey(p) === key);
+            });
+
+            const fbKeysToRemove = Array.from(keysToRemove).map(fbKey);
+
+            saveToStorage();
+
+            for (const fk of fbKeysToRemove) {
+                try {
+                    await remove(ref(database, 'sharedStatuses/' + fk));
+                } catch(e) {
+                    console.warn('Не удалось удалить sharedStatus:', fk, e);
+                }
+            }
+
+            pendingCleanRows = [];
+            hideCleanBanner();
+            renderTable();
+
+            alert(`🧹 Удалено ${count} старых выполненных счетов.`);
+            console.log(`🧹 Автоочистка: удалено ${count} счетов.`);
         }
 
         // ============================================================
@@ -1815,7 +2185,7 @@
                         if (st === 'new' && row.status === 'new') return true;
                         if (st === 'inwork' && row.status === 'inwork') return true;
                         if (st === 'completed' && row.status === 'completed') return true;
-                        if (st === 'highlighted' && (row.isBudget || row.isUrgent || row.isDebt)) return true;
+                        if (st === 'highlighted' && (row.isBudget || row.isUrgent || row.isOnsite)) return true;
                         if (st === 'matched' && row.isMatched) return true;
                     }
                     return false;
@@ -1839,17 +2209,21 @@
                 filteredData = filteredData.filter(row => {
                     const invoiceNumber = safeString(row['Номер счета']);
                     const contractor    = safeString(row['Контрагент (Наименование)']);
+                    const contingent    = safeString(row['Контингент']);
                     const device        = safeString(row['Прибор']);
                     const paymentDate   = safeString(row.paymentDate || row['Дата оплаты']);
                     const urgency       = safeString(row.urgency);
                     const section       = safeString(sectionLabel(row.section));
+                    const onsite        = row.isOnsite ? 'выездной выезд' : '';
 
                     return invoiceNumber.includes(searchQuery) ||
                            contractor.includes(searchQuery) ||
+                           contingent.includes(searchQuery) ||
                            device.includes(searchQuery) ||
                            paymentDate.includes(searchQuery) ||
                            urgency.includes(searchQuery) ||
-                           section.includes(searchQuery);
+                           section.includes(searchQuery) ||
+                           onsite.includes(searchQuery);
                 });
             }
 
@@ -1882,7 +2256,7 @@
             document.getElementById('newCount').textContent = table1Data.filter(r => r.status === 'new').length;
             document.getElementById('inworkCount').textContent = table1Data.filter(r => r.status === 'inwork').length;
             document.getElementById('completedCount').textContent = table1Data.filter(r => r.status === 'completed').length;
-            document.getElementById('highlightedCount').textContent = table1Data.filter(r => r.isBudget || r.isUrgent || r.isDebt).length;
+            document.getElementById('highlightedCount').textContent = table1Data.filter(r => r.isBudget || r.isUrgent || r.isOnsite).length;
             document.getElementById('urgentCount').textContent = table1Data.filter(r => r.isUrgent).length;
 
             const statusLabels = {
@@ -1912,7 +2286,7 @@
             tbody.innerHTML = '';
 
             if (filteredData.length === 0) {
-                const cols = showOwnerCol ? 14 : 13;
+                const cols = showOwnerCol ? 16 : 15;
                 tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center text-muted">Нет данных. Измените фильтры или поиск.</td></tr>`;
                 return;
             }
@@ -1920,6 +2294,9 @@
             const ownerLabel = currentIsAdmin
                 ? (viewingUid === currentUser.uid ? currentUserName + ' (вы)' : viewingName)
                 : '';
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
             filteredData.forEach(row => {
                 const tr = document.createElement('tr');
@@ -1929,9 +2306,8 @@
                 const sec = row.section || 'common';
                 if (sec === 'budget') tr.classList.add('budget');
                 else if (sec === 'urgent') tr.classList.add('urgent');
-                else if (sec === 'debt') tr.classList.add('debt');
 
-                if (row.isBudget || row.isUrgent || row.isDebt) tr.classList.add('highlighted');
+                if (row.isBudget || row.isUrgent) tr.classList.add('highlighted');
 
                 const paymentDate = row.paymentDate || row['Дата оплаты'] || '';
                 const key = rowKey(row)
@@ -1943,17 +2319,33 @@
                     ? `<br><small class="text-muted">${row.statusChangedBy}</small>`
                     : '';
 
+                const term = calculateTerm(row);
+                let termHtml = '—';
+                if (term.date) {
+                    const diffDays = Math.ceil((term.date.getTime() - today.getTime()) / (1000*60*60*24));
+                    let cls = 'term-ok';
+                    if (diffDays < 0) cls = 'term-expired';
+                    else if (diffDays <= 3) cls = 'term-soon';
+                    termHtml = `<span class="${cls}" title="${term.label}">${formatDate(term.date)}</span>`;
+                }
+
+                const onsiteBtn = row.isOnsite
+                    ? `<button class="btn btn-sm btn-primary me-1" onclick="toggleOnsite('${key}')" title="Снять пометку Выездной">🚗</button>`
+                    : `<button class="btn btn-sm btn-outline-primary me-1" onclick="toggleOnsite('${key}')" title="Отметить как Выездной">🚗</button>`;
+
                 tr.innerHTML = `
                     <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong></td>
                     ${showOwnerCol ? `<td><small>${escapeHtml(ownerLabel)}</small></td>` : ''}
                     <td><span class="badge ${sectionBadgeClass(sec)}">${sectionLabel(sec)}</span></td>
                     <td>${row['Дата выписки'] || ''}</td>
                     <td class="col-contractor">${row['Контрагент (Наименование)'] || ''}</td>
+                    <td class="col-contingent">${row['Контингент'] || ''}</td>
                     <td>${row['Прибор'] || ''}</td>
                     <td>${row['Кол-во'] || ''}</td>
                     <td>${row['Всего по счету'] || row['Сумма'] || ''}</td>
                     <td>${row.paymentStatus ? `<span class="badge ${row.paymentStatus === 'Оплачено' ? 'bg-success' : 'bg-secondary'}">${row.paymentStatus}</span>` : '—'}</td>
                     <td>${paymentDate ? `<strong>${paymentDate}</strong>` : '—'}</td>
+                    <td>${termHtml}</td>
                     <td>${row.urgency ? `<span class="badge badge-urgent">${row.urgency} дн.</span>` : '—'}</td>
                     <td>
                         ${row.status === 'new' ? '<span class="badge badge-new">Новый</span>' : ''}
@@ -1963,10 +2355,11 @@
                     <td>
                         ${row.isBudget ? '<span class="badge badge-budget me-1">Бюджет</span>' : ''}
                         ${row.isUrgent ? '<span class="badge badge-urgent me-1">Срочно</span>' : ''}
-                        ${row.isDebt ? '<span class="badge badge-debt me-1">Задолж.</span>' : ''}
-                        ${!row.isBudget && !row.isUrgent && !row.isDebt ? '<span class="text-muted">—</span>' : ''}
+                        ${row.isOnsite ? '<span class="badge badge-onsite me-1">🚗 Выездной</span>' : ''}
+                        ${!row.isBudget && !row.isUrgent && !row.isOnsite ? '<span class="text-muted">—</span>' : ''}
                     </td>
                     <td>
+                        ${onsiteBtn}
                         ${row.status === 'new' ? `
                             <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">▶</button>
                             <button class="btn btn-sm btn-success" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
@@ -1999,7 +2392,7 @@
                         if (st === 'new' && row.status === 'new') return true;
                         if (st === 'inwork' && row.status === 'inwork') return true;
                         if (st === 'completed' && row.status === 'completed') return true;
-                        if (st === 'highlighted' && (row.isBudget || row.isUrgent || row.isDebt)) return true;
+                        if (st === 'highlighted' && (row.isBudget || row.isUrgent || row.isOnsite)) return true;
                         if (st === 'matched' && row.isMatched) return true;
                     }
                     return false;
@@ -2022,35 +2415,45 @@
                 dataToExport = dataToExport.filter(row => {
                     const invoiceNumber = safeString(row['Номер счета']);
                     const contractor    = safeString(row['Контрагент (Наименование)']);
+                    const contingent    = safeString(row['Контингент']);
                     const device        = safeString(row['Прибор']);
                     const paymentDate   = safeString(row.paymentDate || row['Дата оплаты']);
                     const urgency       = safeString(row.urgency);
                     const section       = safeString(sectionLabel(row.section));
+                    const onsite        = row.isOnsite ? 'выездной выезд' : '';
 
                     return invoiceNumber.includes(searchQuery) ||
                            contractor.includes(searchQuery) ||
+                           contingent.includes(searchQuery) ||
                            device.includes(searchQuery) ||
                            paymentDate.includes(searchQuery) ||
                            urgency.includes(searchQuery) ||
-                           section.includes(searchQuery);
+                           section.includes(searchQuery) ||
+                           onsite.includes(searchQuery);
                 });
             }
 
-            const exportData = dataToExport.map(row => ({
-                'Квитанция/Счет': row['Номер счета'],
-                'Владелец': (currentIsAdmin && viewingUid !== currentUser.uid) ? viewingName : '',
-                'Раздел': sectionLabel(row.section || 'common'),
-                'Дата выписки': row['Дата выписки'],
-                'Контрагент': row['Контрагент (Наименование)'],
-                'Прибор': row['Прибор'],
-                'Кол-во': row['Кол-во'],
-                'Сумма': row['Всего по счету'],
-                'Дата оплаты': row.paymentDate || row['Дата оплаты'],
-                'Срочность': row.urgency,
-                'Статус': row.status,
-                'Изменил': row.statusChangedBy || '',
-                'Бюджет': row.isBudget ? 'Да' : ''
-            }));
+            const exportData = dataToExport.map(row => {
+                const term = calculateTerm(row);
+                return {
+                    'Квитанция/Счет': row['Номер счета'],
+                    'Владелец': (currentIsAdmin && viewingUid !== currentUser.uid) ? viewingName : '',
+                    'Раздел': sectionLabel(row.section || 'common'),
+                    'Дата выписки': row['Дата выписки'],
+                    'Контрагент': row['Контрагент (Наименование)'],
+                    'Контингент': row['Контингент'] || '',
+                    'Прибор': row['Прибор'],
+                    'Кол-во': row['Кол-во'],
+                    'Сумма': row['Всего по счету'],
+                    'Дата оплаты': row.paymentDate || row['Дата оплаты'],
+                    'Срок': term.date ? formatDate(term.date) : '',
+                    'Срочность': row.urgency,
+                    'Статус': row.status,
+                    'Изменил': row.statusChangedBy || '',
+                    'Бюджет': row.isBudget ? 'Да' : '',
+                    'Выездной': row.isOnsite ? 'Да' : ''
+                };
+            });
 
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
