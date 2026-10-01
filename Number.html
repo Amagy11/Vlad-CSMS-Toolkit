@@ -153,14 +153,12 @@
         .term-soon { color: #fd7e14; font-weight: bold; }
         .term-ok { color: #198754; }
 
-        /* Экран загрузки — пока проверяется сессия */
         #loadingScreen {
             display: block;
             text-align: center;
             padding-top: 100px;
         }
 
-        /* Баннер автоочистки */
         #cleanBanner {
             display: none;
             background: linear-gradient(90deg, #fff3cd 0%, #ffe69c 100%);
@@ -180,7 +178,7 @@
     </style>
 </head>
 <body>
-    <!-- Экран загрузки (пока Firebase не ответил) -->
+    <!-- Экран загрузки -->
     <div id="loadingScreen" class="container mt-5" style="max-width: 500px;">
         <div class="text-center">
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
@@ -242,7 +240,6 @@
         <div class="container-fluid mt-4">
             <h1 class="mb-4">📊 Учет счетов</h1>
 
-            <!-- Баннер автоочистки -->
             <div id="cleanBanner">
                 <div class="clean-text">
                     🧹 Найдено <b id="cleanCount">0</b> <span id="cleanWord">счетов</span> со статусом <b>«Выполнен»</b> старше 2 месяцев
@@ -254,7 +251,6 @@
                 </div>
             </div>
 
-            <!-- Плашка админа -->
             <div class="row mb-3" id="adminViewBlock" style="display:none;">
                 <div class="col-12">
                     <div class="admin-mode-banner">
@@ -450,7 +446,7 @@
                     <li>Название раздела пишется в <b>первой колонке</b>, в скобках или без — регистр не важен.</li>
                     <li>Заголовок таблицы определяется по <b>2+ ключевым словам</b>: «номер счета», «контрагент», «прибор», «сумма» и т.п.</li>
                     <li>Поддерживаются <b>объединённые ячейки</b>: если номер счёта объединён — он протянется вниз, если в строках есть прибор/кол-во/сумма.</li>
-                    <li>Поддерживается <b>двухуровневая шапка</b> — две строки заголовков объединяются автоматически.</li>
+                    <li>Поддерживается <b>двухуровневая шапка</b>: строка 2 имеет приоритет — оттуда берётся «Наименование» в «Контингент».</li>
                     <li>Колонка <b>«Наименование»</b> (под шапкой «Контрагент») попадает в столбец <b>«Контингент»</b>.</li>
                     <li><b>Совпадение по счёту И прибору</b> — данные обновляются, статус сохраняется.</li>
                 </ul>
@@ -665,10 +661,8 @@
         let unsubShared = null;
         let allUsersCache = {};
 
-        // Кандидаты на автоудаление
         let pendingCleanRows = [];
         let cleanDismissedThisSession = false;
-        // Флаг: проверку автоочистки делаем только один раз за сессию просмотра uid
         let autoCleanChecked = false;
 
         window.handleAuthSubmit = handleAuthSubmit;
@@ -874,7 +868,6 @@
         // Состояние авторизации
         // ============================================================
         onAuthStateChanged(auth, async (user) => {
-            // Скрываем экран загрузки — Firebase ответил
             document.getElementById('loadingScreen').style.display = 'none';
 
             if (user) {
@@ -1143,7 +1136,6 @@
 
             updateAdminModeInfo();
 
-            // Сбрасываем флаги автоочистки для нового uid
             cleanDismissedThisSession = false;
             autoCleanChecked = false;
             hideCleanBanner();
@@ -1309,12 +1301,18 @@
                                     for (let c = 0; c < maxLen; c++) {
                                         const a = (row[c] || '').toString().trim();
                                         const b = (next[c] || '').toString().trim();
-                                        merged.push((a + ' ' + b).trim());
+                                        // ПРИОРИТЕТ СТРОКИ 2 — оттуда берём точные подписи («Код», «Наименование»)
+                                        // Если строка 2 пуста — используем строку 1 («Номер счета», «Прибор» и т.д.)
+                                        let value = '';
+                                        if (b) value = b;
+                                        else if (a) value = a;
+                                        merged.push(value);
                                     }
                                     headerRow = merged;
                                     i++;
                                 }
                                 headers = headerRow.map(h => h ? h.toString().trim() : '');
+                                console.log('📋 Заголовки:', headers);
                                 lastInvoiceNumber = '';
                                 lastInvoiceDate = '';
                                 lastContractor = '';
@@ -1332,9 +1330,13 @@
                                 const value = row[index] || '';
                                 const h = header.toLowerCase();
 
-                                if (h.includes('наименование') || h.includes('контингент')) {
+                                // КОНТИНГЕНТ — колонка с «Наименование», БЕЗ «Код»
+                                if (h.includes('наименование') && !h.includes('код')) {
                                     contingent = value.toString().trim();
-                                } else if (h.includes('номер') && (h.includes('счет') || h.includes('счёт') || h.includes('квитанц'))) {
+                                    return;
+                                }
+
+                                if (h.includes('номер') && (h.includes('счет') || h.includes('счёт') || h.includes('квитанц'))) {
                                     invoiceNumber = value.toString().trim();
                                 } else if (h.includes('дата') && h.includes('выписк')) {
                                     invoiceDate = value.toString().trim();
@@ -1547,7 +1549,6 @@
                 matchTables();
                 saveToStorage();
                 renderTable();
-                // Автоочистку проверяем только один раз при первой загрузке
                 if (!autoCleanChecked) {
                     autoCleanChecked = true;
                     checkAutoClean();
@@ -1803,7 +1804,6 @@
                     renderTable();
                 }
 
-                // Автоочистку проверяем один раз — при первой загрузке данных
                 if (!autoCleanChecked) {
                     autoCleanChecked = true;
                     checkAutoClean();
