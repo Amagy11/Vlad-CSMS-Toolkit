@@ -49,12 +49,13 @@
             border-radius: 7px;
         }
 
-        /* ЛИПКАЯ ШАПКА ТАБЛИЦЫ — тоже виден заголовок при скролле */
+        /* ЛИПКАЯ ШАПКА ТАБЛИЦЫ */
         #invoicesTable thead th {
             position: sticky;
             top: 20px;
             z-index: 50;
             background-color: #212529 !important;
+            white-space: nowrap;
         }
 
         .table-container {
@@ -80,10 +81,9 @@
         .sync-offline { background-color: #dc3545; }
         .sync-syncing { background-color: #ffc107; }
 
-        /* КОМПАКТНАЯ ТАБЛИЦА */
+        /* КОМПАКТНАЯ ТАБЛИЦА — ТЕКСТ ПЕРЕНОСИТСЯ, НЕ НАЛЕЗАЕТ */
         #invoicesTable {
-            width: auto;
-            min-width: 100%;
+            width: 100%;
             font-size: 0.85em;
             table-layout: auto;
             margin-bottom: 0;
@@ -91,24 +91,32 @@
         #invoicesTable th, #invoicesTable td {
             padding: 4px 6px;
             vertical-align: middle;
-            white-space: nowrap;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
         #invoicesTable th {
-            font-size: 0.92em;
+            font-size: 0.9em;
             padding: 5px 6px;
+            white-space: nowrap;
         }
         #invoicesTable tbody tr td {
             padding-top: 3px !important;
             padding-bottom: 3px !important;
         }
 
-        .col-contractor,
-        .col-contingent {
-            white-space: normal;
-            word-break: break-word;
+        /* Только номер счёта и цифровые колонки — без переносов */
+        #invoicesTable td.col-invoice,
+        #invoicesTable td.col-qty,
+        #invoicesTable td.col-sum,
+        #invoicesTable td.col-date {
+            white-space: nowrap;
         }
-        .col-contractor { max-width: 200px; }
-        .col-contingent { max-width: 240px; }
+
+        /* Контингент и Контрагент — можно переносить, но с ограничением */
+        .col-contractor { max-width: 180px; }
+        .col-contingent { max-width: 220px; }
+        .col-invoice { max-width: 130px; }
 
         .sort-btn { cursor: pointer; user-select: none; }
         .sort-btn:hover { color: #ffc107; }
@@ -1095,15 +1103,11 @@
             return hits >= threshold;
         }
 
-        // Нормализация заголовка: умное удаление переносов
         function normalizeHeader(h) {
             if (!h) return '';
             let s = h.toString();
-            // Перенос после дефиса → убираем без пробела (Кол-\nво → Кол-во)
             s = s.replace(/-\s*[\r\n]+\s*/g, '-');
-            // Остальные переносы → пробел (Номер\nсчета → Номер счета)
             s = s.replace(/[\r\n]+/g, ' ');
-            // Множественные пробелы → один
             s = s.replace(/\s+/g, ' ').trim();
             return s;
         }
@@ -1405,7 +1409,6 @@
                                     headerRow = merged;
                                     i++;
                                 }
-                                // НОРМАЛИЗУЕМ заголовки — убираем переносы строк правильно
                                 headers = headerRow.map(h => normalizeHeader(h));
                                 console.log('📋 Заголовки:', headers);
                                 lastInvoiceNumber = '';
@@ -2481,14 +2484,14 @@
                         <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong></td>
                         ${showOwnerCol ? `<td><small>${escapeHtml(ownerLabel)}</small></td>` : ''}
                         <td><span class="badge ${sectionBadgeClass(sec)}">${sectionLabel(sec)}</span></td>
-                        <td>${row['Дата выписки'] || ''}</td>
+                        <td class="col-date">${row['Дата выписки'] || ''}</td>
                         <td class="col-contractor">${row['Контрагент (Наименование)'] || ''}</td>
                         <td class="col-contingent">${row['Контингент'] || ''}</td>
                         <td>${row['Прибор'] || ''}</td>
-                        <td>${formatQty(row['Кол-во'])}</td>
-                        <td>${row['Всего по счету'] || row['Сумма'] || ''}</td>
-                        <td>${paymentDate ? `<strong>${paymentDate}</strong>` : '—'}</td>
-                        <td>${termHtml}</td>
+                        <td class="col-qty">${formatQty(row['Кол-во'])}</td>
+                        <td class="col-sum">${row['Всего по счету'] || row['Сумма'] || ''}</td>
+                        <td class="col-date">${paymentDate ? `<strong>${paymentDate}</strong>` : '—'}</td>
+                        <td class="col-date">${termHtml}</td>
                         <td>${row.urgency ? `<span class="badge badge-urgent">${row.urgency} дн.</span>` : '—'}</td>
                         <td>
                             ${row.status === 'new' ? '<span class="badge badge-new">Новый</span>' : ''}
