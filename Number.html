@@ -23,34 +23,6 @@
         .badge-onsite { background-color: #0d6efd; color: white; }
         .badge-distributed { background-color: #6f42c1; color: white; }
 
-        /* ========== СТАТУС-БЕЙДЖИ И КНОПКИ — КРУПНЕЕ ========== */
-        #invoicesTable .badge {
-            font-size: 0.95em;
-            padding: 6px 10px;
-            line-height: 1.3;
-        }
-        #invoicesTable .btn-sm {
-            padding: 6px 10px;
-            font-size: 1em;
-            line-height: 1.2;
-            min-width: 34px;
-        }
-        /* Колонка «Статус» — крупнее */
-        #invoicesTable td:nth-child(12),
-        #invoicesTable th:nth-child(12) {
-            min-width: 110px;
-        }
-        /* Колонка «Действия» — крупнее */
-        #invoicesTable td:last-child,
-        #invoicesTable th:last-child {
-            min-width: 180px;
-            white-space: nowrap;
-        }
-
-        /* Строка-счёт админа — кликабельная */
-        .admin-clickable { cursor: pointer; }
-        .admin-clickable:hover { background-color: #f0e6ff !important; }
-
         .top-scroll {
             position: sticky; top: 0; z-index: 100;
             overflow-x: auto; overflow-y: hidden;
@@ -93,20 +65,21 @@
         .sync-offline { background-color: #dc3545; }
         .sync-syncing { background-color: #ffc107; }
 
-        #invoicesTable { width: 100%; font-size: 0.9em; table-layout: auto; margin-bottom: 0; }
+        /* ====== ТАБЛИЦА — компактная, как было ====== */
+        #invoicesTable { width: 100%; font-size: 0.85em; table-layout: auto; margin-bottom: 0; }
         #invoicesTable th, #invoicesTable td {
-            padding: 5px 7px; vertical-align: middle;
+            padding: 4px 6px; vertical-align: middle;
             white-space: normal; word-break: break-word; overflow-wrap: anywhere;
         }
-        #invoicesTable th { font-size: 0.95em; padding: 6px 7px; white-space: nowrap; }
-        #invoicesTable tbody tr td { padding-top: 4px !important; padding-bottom: 4px !important; }
+        #invoicesTable th { font-size: 0.9em; padding: 5px 6px; white-space: nowrap; }
+        #invoicesTable tbody tr td { padding-top: 3px !important; padding-bottom: 3px !important; }
         #invoicesTable td.col-invoice,
         #invoicesTable td.col-qty,
         #invoicesTable td.col-sum,
         #invoicesTable td.col-date { white-space: nowrap; }
 
         .col-contractor { max-width: 240px; }
-        .col-invoice { max-width: 140px; }
+        .col-invoice { max-width: 130px; }
         .col-distributed { min-width: 120px; white-space: nowrap; }
 
         .sort-btn { cursor: pointer; user-select: none; }
@@ -191,7 +164,6 @@
         #cleanBanner .clean-text b { color: #996a00; }
         #cleanBanner .clean-actions { display: flex; gap: 8px; }
 
-        /* Модалка распределения */
         .dist-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 2100; align-items: center; justify-content: center; padding: 20px; }
         .dist-modal.open { display: flex; }
         .dist-modal-content { background: white; border-radius: 10px; max-width: 500px; width: 100%; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
@@ -344,7 +316,6 @@
                                 </div>
                             </div>
 
-                            <!-- Фильтр по пользователям (только для админа) -->
                             <div class="mb-3" id="userFilterBlock" style="display:none;">
                                 <label class="form-label fw-bold">👤 Фильтр по пользователям (кому распределено):</label>
                                 <div class="btn-group flex-wrap" role="group" id="userFilters"></div>
@@ -944,9 +915,6 @@
             renderTable();
         }
 
-        // ============================================================
-        // Фильтр по пользователям (только админ)
-        // ============================================================
         function renderUserFilters() {
             const block = document.getElementById('userFilterBlock');
             const container = document.getElementById('userFilters');
@@ -957,7 +925,6 @@
             block.style.display = 'block';
             container.innerHTML = '';
 
-            // Собираем имена пользователей, которым что-то распределено
             const names = new Map();
             table1Data.forEach(row => {
                 if (row.distributedTo && row.distributedToName) {
@@ -970,7 +937,6 @@
                 return;
             }
 
-            // Кнопка «Сбросить» если есть выбранные
             if (selectedDistributedUsers.size > 0) {
                 const reset = document.createElement('button');
                 reset.className = 'btn btn-sm btn-outline-secondary me-1 mb-1';
@@ -1748,9 +1714,6 @@
             alert(`🧹 Удалено ${c}`);
         }
 
-        // ============================================================
-        // Модалка распределения
-        // ============================================================
         function openDistModal(key) {
             if (!currentIsAdmin) { alert('Только админ'); return; }
             if (viewingUid !== currentUser.uid) { alert('Распределять можно только со своих данных'); return; }
@@ -1956,9 +1919,6 @@
         }
         window.addEventListener('load', setupScrollSync);
 
-        // ============================================================
-        // Рендер
-        // ============================================================
         function renderTable() {
             const tbody = document.getElementById('tableBody');
             const sq = document.getElementById('search').value.trim().toLowerCase();
@@ -1997,7 +1957,6 @@
                 });
             }
 
-            // Фильтр по пользователям, которым распределено (админ)
             if (currentIsAdmin && viewingUid === currentUser.uid && selectedDistributedUsers.size > 0) {
                 fd = fd.filter(row => selectedDistributedUsers.has(row.distributedTo));
             }
@@ -2123,7 +2082,6 @@
                         ? `<td class="col-distributed">${row.distributedToName ? '👤 ' + escapeHtml(row.distributedToName) : '<span class="text-muted">—</span>'}</td>`
                         : '';
 
-                    // У админа — кликабельна вся строка (кроме кнопок действий)
                     if (isAdminSelf) {
                         tr.classList.add('admin-clickable');
                         tr.title = 'Нажмите для распределения';
