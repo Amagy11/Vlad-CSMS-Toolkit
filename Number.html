@@ -21,58 +21,34 @@
         .badge-completed { background-color: #28a745; color: white; }
         .badge-admin { background-color: #dc3545; color: white; }
         .badge-onsite { background-color: #0d6efd; color: white; }
+        .badge-distributed { background-color: #6f42c1; color: white; }
 
-        /* ВЕРХНИЙ СКРОЛЛ-БАР — ВСЕГДА ВИДЕН */
         .top-scroll {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            overflow-x: auto;
-            overflow-y: hidden;
-            height: 16px;
-            margin-bottom: 6px;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            background: #f8f9fa;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            position: sticky; top: 0; z-index: 100;
+            overflow-x: auto; overflow-y: hidden;
+            height: 16px; margin-bottom: 6px;
+            border: 1px solid #dee2e6; border-radius: 4px;
+            background: #f8f9fa; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
         .top-scroll-inner { height: 1px; }
         .top-scroll::-webkit-scrollbar { height: 14px; }
-        .top-scroll::-webkit-scrollbar-thumb {
-            background: #adb5bd;
-            border-radius: 7px;
-            border: 2px solid #f8f9fa;
-        }
+        .top-scroll::-webkit-scrollbar-thumb { background: #adb5bd; border-radius: 7px; border: 2px solid #f8f9fa; }
         .top-scroll::-webkit-scrollbar-thumb:hover { background: #6c757d; }
-        .top-scroll::-webkit-scrollbar-track {
-            background: #e9ecef;
-            border-radius: 7px;
-        }
+        .top-scroll::-webkit-scrollbar-track { background: #e9ecef; border-radius: 7px; }
 
-        /* ЛИПКАЯ ШАПКА ТАБЛИЦЫ */
         #invoicesTable thead th {
-            position: sticky;
-            top: 24px;
-            z-index: 50;
+            position: sticky; top: 24px; z-index: 50;
             background-color: #212529 !important;
             white-space: nowrap;
             padding-bottom: 8px;
             border-bottom: 2px solid #495057;
         }
-
-        /* ОТСТУП МЕЖДУ ШАПКОЙ И ПЕРВОЙ СТРОКОЙ */
         #invoicesTable tbody tr:first-child > td {
             padding-top: 14px !important;
             border-top: none;
         }
 
-        .table-container {
-            max-height: 620px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding-top: 0;
-        }
-
+        .table-container { max-height: 620px; overflow-y: auto; overflow-x: hidden; padding-top: 0; }
         .table-info { display: none; margin-top: 10px; }
         .device-filter { margin-bottom: 15px; }
         .device-tag {
@@ -89,40 +65,21 @@
         .sync-offline { background-color: #dc3545; }
         .sync-syncing { background-color: #ffc107; }
 
-        /* КОМПАКТНАЯ ТАБЛИЦА — ТЕКСТ ПЕРЕНОСИТСЯ, НЕ НАЛЕЗАЕТ */
-        #invoicesTable {
-            width: 100%;
-            font-size: 0.85em;
-            table-layout: auto;
-            margin-bottom: 0;
-        }
+        #invoicesTable { width: 100%; font-size: 0.85em; table-layout: auto; margin-bottom: 0; }
         #invoicesTable th, #invoicesTable td {
-            padding: 4px 6px;
-            vertical-align: middle;
-            white-space: normal;
-            word-break: break-word;
-            overflow-wrap: anywhere;
+            padding: 4px 6px; vertical-align: middle;
+            white-space: normal; word-break: break-word; overflow-wrap: anywhere;
         }
-        #invoicesTable th {
-            font-size: 0.9em;
-            padding: 5px 6px;
-            white-space: nowrap;
-        }
-        #invoicesTable tbody tr td {
-            padding-top: 3px !important;
-            padding-bottom: 3px !important;
-        }
-
+        #invoicesTable th { font-size: 0.9em; padding: 5px 6px; white-space: nowrap; }
+        #invoicesTable tbody tr td { padding-top: 3px !important; padding-bottom: 3px !important; }
         #invoicesTable td.col-invoice,
         #invoicesTable td.col-qty,
         #invoicesTable td.col-sum,
-        #invoicesTable td.col-date {
-            white-space: nowrap;
-        }
+        #invoicesTable td.col-date { white-space: nowrap; }
 
-        .col-contractor { max-width: 180px; }
-        .col-contingent { max-width: 220px; }
+        .col-contractor { max-width: 240px; }
         .col-invoice { max-width: 130px; }
+        .col-distributed { min-width: 130px; max-width: 150px; white-space: nowrap; }
 
         .sort-btn { cursor: pointer; user-select: none; }
         .sort-btn:hover { color: #ffc107; }
@@ -155,76 +112,36 @@
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             animation: helpSlideIn 0.25s ease-out;
         }
-        @keyframes helpSlideIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes helpSlideIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         .help-modal-header {
             background-color: #0d6efd; color: white;
             padding: 15px 20px; border-radius: 10px 10px 0 0;
             display: flex; justify-content: space-between; align-items: center;
         }
         .help-modal-header h4 { margin: 0; }
-        .help-close {
-            background: transparent; border: none; color: white;
-            font-size: 28px; line-height: 1; cursor: pointer; padding: 0 5px;
-        }
+        .help-close { background: transparent; border: none; color: white; font-size: 28px; line-height: 1; cursor: pointer; padding: 0 5px; }
         .help-close:hover { color: #ffc107; }
         .help-modal-body { padding: 20px 25px; overflow-y: auto; flex: 1; }
-        .help-modal-body h5 {
-            color: #0d6efd; margin-top: 20px; margin-bottom: 10px;
-            border-bottom: 2px solid #e9ecef; padding-bottom: 5px;
-        }
+        .help-modal-body h5 { color: #0d6efd; margin-top: 20px; margin-bottom: 10px; border-bottom: 2px solid #e9ecef; padding-bottom: 5px; }
         .help-modal-body h5:first-child { margin-top: 0; }
         .help-modal-body h6 { color: #495057; margin-top: 15px; }
         .help-modal-body p { margin-bottom: 10px; }
-        .help-modal-body code {
-            background-color: #f1f3f5; padding: 2px 6px;
-            border-radius: 4px; color: #dc3545; font-size: 0.9em;
-        }
-        .help-section {
-            background-color: #f8f9fa; border-left: 4px solid #0d6efd;
-            padding: 12px 15px; margin-bottom: 15px; border-radius: 4px;
-        }
-        .help-section-title {
-            font-weight: bold; margin-bottom: 8px;
-            display: flex; align-items: center; gap: 8px;
-        }
-        .help-code {
-            background-color: #2d2d2d; color: #f8f8f2;
-            padding: 12px; border-radius: 5px;
-            font-size: 0.85em; overflow-x: auto;
-            margin: 8px 0 0 0; white-space: pre;
-            font-family: 'Consolas', 'Monaco', monospace;
-        }
-        .help-alert {
-            background-color: #d1ecf1; border-left: 4px solid #0dcaf0;
-            padding: 12px 15px; border-radius: 4px; margin-top: 15px;
-        }
-        .help-modal-footer {
-            padding: 15px 20px; border-top: 1px solid #dee2e6;
-            text-align: right; background-color: #f8f9fa;
-            border-radius: 0 0 10px 10px;
-        }
+        .help-modal-body code { background-color: #f1f3f5; padding: 2px 6px; border-radius: 4px; color: #dc3545; font-size: 0.9em; }
+        .help-section { background-color: #f8f9fa; border-left: 4px solid #0d6efd; padding: 12px 15px; margin-bottom: 15px; border-radius: 4px; }
+        .help-section-title { font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .help-code { background-color: #2d2d2d; color: #f8f8f2; padding: 12px; border-radius: 5px; font-size: 0.85em; overflow-x: auto; margin: 8px 0 0 0; white-space: pre; font-family: 'Consolas', 'Monaco', monospace; }
+        .help-alert { background-color: #d1ecf1; border-left: 4px solid #0dcaf0; padding: 12px 15px; border-radius: 4px; margin-top: 15px; }
+        .help-modal-footer { padding: 15px 20px; border-top: 1px solid #dee2e6; text-align: right; background-color: #f8f9fa; border-radius: 0 0 10px 10px; }
         .help-modal-body ul { padding-left: 20px; }
         .help-modal-body ul li { margin-bottom: 5px; }
 
-        .admin-user-item {
-            padding: 10px 15px;
-            border-bottom: 1px solid #e9ecef;
-            display: flex; justify-content: space-between; align-items: center;
-        }
+        .admin-user-item { padding: 10px 15px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; }
         .admin-user-item:last-child { border-bottom: none; }
 
         .admin-mode-banner {
             background: linear-gradient(90deg, #dc3545 0%, #b02a37 100%);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            color: white; padding: 8px 15px; border-radius: 6px;
+            margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
         }
 
@@ -232,28 +149,32 @@
         .term-soon { color: #fd7e14; font-weight: bold; }
         .term-ok { color: #198754; }
 
-        #loadingScreen {
-            display: block;
-            text-align: center;
-            padding-top: 100px;
-        }
+        #loadingScreen { display: block; text-align: center; padding-top: 100px; }
 
         #cleanBanner {
-            display: none;
-            background: linear-gradient(90deg, #fff3cd 0%, #ffe69c 100%);
-            border-left: 5px solid #ffc107;
-            color: #664d03;
-            padding: 12px 18px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            justify-content: space-between;
-            align-items: center;
+            display: none; background: linear-gradient(90deg, #fff3cd 0%, #ffe69c 100%);
+            border-left: 5px solid #ffc107; color: #664d03;
+            padding: 12px 18px; border-radius: 8px; margin-bottom: 15px;
+            justify-content: space-between; align-items: center;
             box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
         }
         #cleanBanner.open { display: flex; }
         #cleanBanner .clean-text { font-size: 1em; }
         #cleanBanner .clean-text b { color: #996a00; }
         #cleanBanner .clean-actions { display: flex; gap: 8px; }
+
+        /* Модалка распределения */
+        .dist-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 2100; align-items: center; justify-content: center; padding: 20px; }
+        .dist-modal.open { display: flex; }
+        .dist-modal-content { background: white; border-radius: 10px; max-width: 500px; width: 100%; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .dist-modal-header { background-color: #6f42c1; color: white; padding: 15px 20px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .dist-modal-header h4 { margin: 0; font-size: 1.1em; }
+        .dist-modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+        .dist-modal-footer { padding: 15px 20px; border-top: 1px solid #dee2e6; text-align: right; background: #f8f9fa; border-radius: 0 0 10px 10px; }
+        .dist-user-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #e9ecef; transition: background 0.15s; }
+        .dist-user-item:last-child { border-bottom: none; }
+        .dist-user-item:hover { background: #e7f1ff; }
+        .dist-current { background: #e2d9f3; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -266,12 +187,9 @@
 
     <div id="authScreen" class="container mt-5" style="max-width: 500px; display: none;">
         <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4 id="authTitle">Вход</h4>
-            </div>
+            <div class="card-header bg-primary text-white"><h4 id="authTitle">Вход</h4></div>
             <div class="card-body">
                 <div id="authError" class="alert alert-danger" style="display:none;"></div>
-
                 <div class="mb-3">
                     <label class="form-label">Логин</label>
                     <input type="text" id="authUsername" class="form-control" placeholder="Например: Иван"
@@ -285,10 +203,8 @@
                            autocomplete="current-password"
                            onkeydown="if(event.key==='Enter')handleAuthSubmit()">
                 </div>
-
                 <button class="btn btn-success w-100 mb-2" id="authSubmitBtn" onclick="handleAuthSubmit()">Войти</button>
                 <button class="btn btn-link w-100" id="authSwitchBtn" onclick="switchAuthMode()">Нет аккаунта? Зарегистрироваться</button>
-
                 <div id="firstUserHint" class="alert alert-info mt-3" style="display:none;">
                     💡 Первый зарегистрированный пользователь автоматически становится <b>администратором</b>.
                 </div>
@@ -360,15 +276,12 @@
                                     Пустая строка сбрасывает раздел. Совпадение по счёту И прибору — обновление, статус сохраняется.
                                 </small>
                             </div>
-
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Таблица 2 (квитанции с пометками):</label>
                                 <input type="file" id="table2File" class="form-control" accept=".xlsx,.xls">
                             </div>
-
                             <button class="btn btn-success" onclick="loadBothTables()">📥 Загрузить</button>
                             <button class="btn btn-danger" onclick="clearAllData()">🗑 Очистить</button>
-
                             <div id="table1Info" class="alert alert-info table-info"></div>
                             <div id="table2Info" class="alert alert-info table-info"></div>
                         </div>
@@ -377,9 +290,7 @@
 
                 <div class="col-md-6">
                     <div class="card">
-                        <div class="card-header bg-info text-white">
-                            <h5>🔍 Фильтры и сортировка</h5>
-                        </div>
+                        <div class="card-header bg-info text-white"><h5>🔍 Фильтры и сортировка</h5></div>
                         <div class="card-body">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Статус (можно несколько):</label>
@@ -399,6 +310,8 @@
                                     <button class="btn btn-outline-dark section-btn" data-section="common" onclick="toggleSection('common')">Общие</button>
                                     <button class="btn btn-outline-danger section-btn" data-section="urgent" onclick="toggleSection('urgent')">Срочные</button>
                                     <button class="btn btn-outline-warning section-btn" data-section="budget" onclick="toggleSection('budget')">Бюджет</button>
+                                    <button class="btn btn-outline-primary section-btn" data-section="onsite" onclick="toggleSection('onsite')">🚗 Выездные</button>
+                                    <button class="btn btn-outline-secondary section-btn" data-section="distributed" onclick="toggleSection('distributed')">📦 Распределённые</button>
                                     <button class="btn btn-outline-secondary" onclick="clearSections()">Сбросить</button>
                                 </div>
                             </div>
@@ -451,7 +364,6 @@
                                     <th>Раздел</th>
                                     <th>Дата выписки</th>
                                     <th class="col-contractor">Контрагент</th>
-                                    <th class="col-contingent">Контингент</th>
                                     <th>Прибор</th>
                                     <th>Кол-во</th>
                                     <th>Сумма</th>
@@ -462,6 +374,7 @@
                                     <th>Срочность</th>
                                     <th>Статус</th>
                                     <th>Пометки</th>
+                                    <th class="col-distributed" id="distributedColHeader" style="display:none;">Распределён</th>
                                     <th>Действия</th>
                                 </tr>
                             </thead>
@@ -473,6 +386,23 @@
         </div>
     </div>
 
+    <!-- Модалка распределения -->
+    <div id="distModal" class="dist-modal" onclick="if(event.target===this)closeDistModal()">
+        <div class="dist-modal-content">
+            <div class="dist-modal-header">
+                <h4>📦 Распределить счёт</h4>
+                <button class="help-close" onclick="closeDistModal()">×</button>
+            </div>
+            <div class="dist-modal-body">
+                <p class="text-muted small mb-2">Счёт: <b id="distInvoiceInfo">—</b></p>
+                <div id="distUserList"></div>
+            </div>
+            <div class="dist-modal-footer">
+                <button class="btn btn-secondary" onclick="closeDistModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
     <div id="helpModal" class="help-modal" onclick="if(event.target===this)closeHelp()">
         <div class="help-modal-content">
             <div class="help-modal-header">
@@ -480,94 +410,39 @@
                 <button class="help-close" onclick="closeHelp()">×</button>
             </div>
             <div class="help-modal-body">
-
                 <h5>📄 Таблица 1 — счета с приборами</h5>
                 <p>Файл содержит одну или несколько таблиц. Каждая таблица начинается с шапки:</p>
-
                 <div class="help-section">
-                    <div class="help-section-title">
-                        <span class="badge badge-common">Общая</span>
-                        Обычные счета
-                    </div>
+                    <div class="help-section-title"><span class="badge badge-common">Общая</span> Обычные счета</div>
                     <p>Просто таблица с шапкой, без надписей над ней. Всё, что идёт первым в файле — считается «Общей».</p>
                     <pre class="help-code">Номер счета | Дата выписки | Контрагент | Прибор | Кол-во | Сумма
-100-01      | 01.03.2026   | ООО ...    | Счётчик| 1      | 1500
-100-02      | 02.03.2026   | ИП ...     | ...    | 2      | 3000</pre>
+100-01      | 01.03.2026   | ООО ...    | Счётчик| 1      | 1500</pre>
                 </div>
-
                 <div class="help-section">
-                    <div class="help-section-title">
-                        <span class="badge badge-urgent">Срочные</span>
-                    </div>
-                    <p>Над шапкой таблицы напиши в первой колонке: <code>[СРОЧНЫЕ]</code> (или просто «СРОЧНЫЕ»).</p>
-                    <pre class="help-code">Срочные
-Номер счета | Дата выписки | Контрагент | Прибор | Кол-во | Сумма
-200-01      | 01.03.2026   | ООО ...    | ...    | 1      | 5000</pre>
+                    <div class="help-section-title"><span class="badge badge-urgent">Срочные</span></div>
+                    <p>Над шапкой: <code>[СРОЧНЫЕ]</code>.</p>
                 </div>
-
                 <div class="help-section">
-                    <div class="help-section-title">
-                        <span class="badge badge-budget">Бюджет</span>
-                    </div>
-                    <p>Над шапкой таблицы напиши: <code>БЮДЖЕТ</code>.</p>
-                    <pre class="help-code">Бюджет
-Номер счета | Дата выписки | Контрагент | Прибор | Кол-во | Сумма
-300-01      | 01.03.2026   | ООО ...    | ...    | 1      | 7000</pre>
+                    <div class="help-section-title"><span class="badge badge-budget">Бюджет</span></div>
+                    <p>Над шапкой: <code>БЮДЖЕТ</code>.</p>
                 </div>
-
                 <hr>
-
                 <h6>🔹 Правила:</h6>
                 <ul>
-                    <li>Между таблицами — <b>пустая строка</b>. Она сбрасывает раздел обратно на «Общую».</li>
-                    <li>Название раздела пишется в <b>первой колонке</b>, в скобках или без — регистр не важен.</li>
-                    <li>Заголовок таблицы определяется по <b>ключевым словам</b>: «номер счета», «контрагент», «прибор», «сумма», «код», «наименование» и т.п.</li>
-                    <li>Поддерживаются <b>объединённые ячейки</b>: если номер счёта объединён — он протянется вниз, если в строках есть прибор/кол-во/сумма.</li>
-                    <li>Поддерживается <b>двухуровневая шапка</b>: строка 2 имеет приоритет — оттуда берётся «Код» и «Наименование».</li>
-                    <li>Колонки <b>«Код»</b> и <b>«Наименование»</b> под шапкой «Контрагент» объединяются в столбец <b>«Контингент»</b>.</li>
-                    <li><b>Совпадение по счёту И прибору</b> — данные обновляются, статус сохраняется.</li>
+                    <li>Пустая строка — сброс раздела на «Общую».</li>
+                    <li>Заголовок определяется по 2+ ключевым словам.</li>
+                    <li>Поддерживаются объединённые ячейки.</li>
+                    <li>Колонки «Код» и «Наименование» → столбец «Контрагент».</li>
                 </ul>
-
                 <hr>
-
-                <h5>📄 Таблица 2 — квитанции с пометками</h5>
-                <p>Обычная таблица с шапкой. Парсер ищет колонки по словам:</p>
-                <ul>
-                    <li><b>Квитанция / Номер счёта</b> — номер счёта с дефисом (обязательно).</li>
-                    <li><b>Дата оплаты</b> — колонка с датой оплаты.</li>
-                    <li><b>Бюджет</b> — «Да», «+», «1» — признак бюджета.</li>
-                    <li><b>Срочность</b> — число дней или пометка.</li>
-                    <li><b>Наличие оплаты</b> — «Оплачено» / «Не оплачено».</li>
-                    <li><b>Прибор</b> — для сопоставления с Таблицей 1.</li>
-                </ul>
-
+                <h5>📦 Распределение счетов</h5>
+                <p>Админ может распределить свой счёт пользователю — тот увидит его у себя с бейджем «Распределённый». Если счёт у пользователя уже есть (по номеру+прибору), он не дублируется — просто ставится метка.</p>
                 <hr>
-
-                <h5>📅 Колонка «Срок»</h5>
-                <ul>
-                    <li><b>Обычные счета</b> — 30 календарных дней от «Даты выписки».</li>
-                    <li><b>Бюджет и Срочные</b> — 5 рабочих дней от «Даты выписки».</li>
-                    <li>Рабочие дни — без выходных (сб, вс) и <b>без официальных праздников РБ</b>.</li>
-                    <li>Если последний день попадает на выходной — берётся предыдущий рабочий.</li>
-                </ul>
-
-                <hr>
-
                 <h5>🚗 Пометка «Выездной»</h5>
-                <p>Ставится вручную в приложении кнопкой <b>🚗</b> в колонке «Действия». Общая для всех пользователей — кто поставил, у всех видно.</p>
-
+                <p>Ставится кнопкой 🚗 в колонке «Действия».</p>
                 <hr>
-
                 <h5>🧹 Автоочистка</h5>
-                <p>При входе приложение проверяет счета со статусом <b>«Выполнен»</b>. Если счёт был выполнен <b>2+ месяца назад</b> — появится баннер с предложением удалить. Ты сам решаешь: удалить или отложить.</p>
-
-                <hr>
-
-                <div class="help-alert">
-                    <b>ℹ️ Общие статусы между пользователями</b><br>
-                    Если у разных пользователей в их файлах есть счёт с <b>одинаковым номером и прибором</b> — статус «Выполнено» / «В работе» и пометка «Выездной» синхронизируются автоматически.
-                </div>
-
+                <p>Выполненные счета старше 2 месяцев — баннер с предложением удалить.</p>
             </div>
             <div class="help-modal-footer">
                 <button class="btn btn-secondary" onclick="closeHelp()">Закрыть</button>
@@ -594,20 +469,13 @@
     </div>
 
     <script type="module">
-        // ============================================================
-        // Firebase
-        // ============================================================
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import {
             getDatabase, ref, set, onValue, remove, get
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import {
-            getAuth,
-            createUserWithEmailAndPassword,
-            signInWithEmailAndPassword,
-            signOut,
-            onAuthStateChanged,
-            updateProfile
+            getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+            signOut, onAuthStateChanged, updateProfile
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -617,8 +485,7 @@
             projectId: "vlad-csms-af6df",
             storageBucket: "vlad-csms-af6df.firebasestorage.app",
             messagingSenderId: "417297799117",
-            appId: "1:417297799117:web:0a93dce429cd37db499684",
-            measurementId: "G-MD79ZVT24Z"
+            appId: "1:417297799117:web:0a93dce429cd37db499684"
         };
 
         const EMAIL_DOMAIN = "@invoice.local";
@@ -632,7 +499,7 @@
         } catch (err) {
             console.error('❌ Firebase init error:', err);
             document.getElementById('loadingScreen').innerHTML =
-                '<div class="alert alert-danger">Ошибка инициализации Firebase: ' + err.message + '</div>';
+                '<div class="alert alert-danger">Ошибка Firebase: ' + err.message + '</div>';
         }
 
         function stripUndefined(obj) {
@@ -647,77 +514,46 @@
         }
 
         const HOLIDAYS_RB_2026 = [
-            '2026-01-01', '2026-01-02',
-            '2026-01-07',
-            '2026-03-08',
-            '2026-04-21',
-            '2026-05-01',
-            '2026-05-09',
-            '2026-07-03',
-            '2026-11-07',
-            '2026-12-25'
+            '2026-01-01', '2026-01-02', '2026-01-07',
+            '2026-03-08', '2026-04-21', '2026-05-01', '2026-05-09',
+            '2026-07-03', '2026-11-07', '2026-12-25'
         ];
-
-        const WORKDAY_TRANSFERS_RB_2026 = {
-            '2026-04-20': true,
-            '2026-04-25': true
-        };
+        const WORKDAY_TRANSFERS_RB_2026 = { '2026-04-20': true, '2026-04-25': true };
 
         function toISO(d) {
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         }
-
-        function isHoliday(date) {
-            return HOLIDAYS_RB_2026.includes(toISO(date));
-        }
-
+        function isHoliday(date) { return HOLIDAYS_RB_2026.includes(toISO(date)); }
         function isWeekend(date) {
             const dow = date.getDay();
-            const iso = toISO(date);
-            if (WORKDAY_TRANSFERS_RB_2026[iso] === true) return false;
+            if (WORKDAY_TRANSFERS_RB_2026[toISO(date)] === true) return false;
             return dow === 0 || dow === 6;
         }
-
         function isNonWorkingDay(date) {
             const iso = toISO(date);
             if (WORKDAY_TRANSFERS_RB_2026[iso] === true && date.getDay() === 1) return true;
             return isWeekend(date) || isHoliday(date);
         }
-
         function addCalendarDays(dateStr, n) {
             const d = parseDate(dateStr);
             if (!d) return null;
-            const result = new Date(d);
-            result.setDate(result.getDate() + n);
-            return result;
+            const r = new Date(d); r.setDate(r.getDate() + n); return r;
         }
-
         function addWorkingDays(dateStr, n) {
             const d = parseDate(dateStr);
             if (!d) return null;
-            const result = new Date(d);
-            let added = 0;
+            const r = new Date(d); let added = 0;
             while (added < n) {
-                result.setDate(result.getDate() + 1);
-                if (!isNonWorkingDay(result)) added++;
+                r.setDate(r.getDate() + 1);
+                if (!isNonWorkingDay(r)) added++;
             }
-            while (isNonWorkingDay(result)) {
-                result.setDate(result.getDate() - 1);
-            }
-            return result;
+            while (isNonWorkingDay(r)) r.setDate(r.getDate() - 1);
+            return r;
         }
-
         function formatDate(d) {
             if (!d || !(d instanceof Date) || isNaN(d.getTime())) return '';
-            const day = String(d.getDate()).padStart(2, '0');
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const y = d.getFullYear();
-            return `${day}.${m}.${y}`;
+            return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
         }
-
         function formatQty(v) {
             if (v === undefined || v === null || v === '') return '';
             const s = String(v).trim().replace(',', '.');
@@ -755,6 +591,8 @@
         let cleanDismissedThisSession = false;
         let autoCleanChecked = false;
 
+        let distributingRowKey = null;
+
         window.handleAuthSubmit = handleAuthSubmit;
         window.switchAuthMode = switchAuthMode;
         window.logout = logout;
@@ -778,36 +616,29 @@
         window.onAdminUserChange = onAdminUserChange;
         window.performAutoClean = performAutoClean;
         window.dismissAutoClean = dismissAutoClean;
+        window.openDistModal = openDistModal;
+        window.closeDistModal = closeDistModal;
+        window.assignToUser = assignToUser;
+        window.cancelDistribution = cancelDistribution;
 
         function setSyncStatus(status, text) {
-            const indicator = document.getElementById('syncIndicator');
-            const textEl = document.getElementById('syncText');
-            if (!indicator || !textEl) return;
-            indicator.className = 'sync-indicator ' +
+            const i = document.getElementById('syncIndicator');
+            const t = document.getElementById('syncText');
+            if (!i || !t) return;
+            i.className = 'sync-indicator ' +
                 (status === 'online' ? 'sync-online' :
                  status === 'syncing' ? 'sync-syncing' : 'sync-offline');
-            textEl.textContent = text;
+            t.textContent = text;
         }
 
-        function openHelp() {
-            document.getElementById('helpModal').classList.add('open');
-            document.body.style.overflow = 'hidden';
-        }
-        function closeHelp() {
-            document.getElementById('helpModal').classList.remove('open');
-            document.body.style.overflow = '';
-        }
-        function openAdminPanel() {
-            document.getElementById('adminModal').classList.add('open');
-            document.body.style.overflow = 'hidden';
-            renderAdminUserList();
-        }
-        function closeAdminPanel() {
-            document.getElementById('adminModal').classList.remove('open');
-            document.body.style.overflow = '';
-        }
+        function openHelp() { document.getElementById('helpModal').classList.add('open'); document.body.style.overflow = 'hidden'; }
+        function closeHelp() { document.getElementById('helpModal').classList.remove('open'); document.body.style.overflow = ''; }
+        function openAdminPanel() { document.getElementById('adminModal').classList.add('open'); document.body.style.overflow = 'hidden'; renderAdminUserList(); }
+        function closeAdminPanel() { document.getElementById('adminModal').classList.remove('open'); document.body.style.overflow = ''; }
+        function closeDistModal() { document.getElementById('distModal').classList.remove('open'); document.body.style.overflow = ''; distributingRowKey = null; }
+
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); }
+            if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); }
         });
 
         const TRANSLIT_MAP = {
@@ -816,32 +647,22 @@
             'с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch',
             'ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'
         };
-
         function transliterate(str) {
-            let result = '';
-            for (const char of str) {
-                const lower = char.toLowerCase();
-                if (TRANSLIT_MAP[lower] !== undefined) {
-                    result += TRANSLIT_MAP[lower];
-                } else {
-                    result += char;
-                }
+            let r = '';
+            for (const c of str) {
+                const l = c.toLowerCase();
+                r += (TRANSLIT_MAP[l] !== undefined) ? TRANSLIT_MAP[l] : c;
             }
-            return result;
+            return r;
         }
-
-        function usernameToEmail(username) {
-            const normalized = username.toLowerCase().trim();
-            const translit = transliterate(normalized);
-            const clean = translit.replace(/[^a-z0-9._-]/g, '.');
-            return clean + EMAIL_DOMAIN;
+        function usernameToEmail(u) {
+            const n = u.toLowerCase().trim();
+            return transliterate(n).replace(/[^a-z0-9._-]/g, '.') + EMAIL_DOMAIN;
         }
-
-        function validateUsername(username) {
-            const trimmed = username.trim();
-            if (trimmed.length < 2) return false;
-            if (trimmed.length > 30) return false;
-            return /^[а-яёa-z0-9\s._-]+$/i.test(trimmed);
+        function validateUsername(u) {
+            const t = u.trim();
+            if (t.length < 2 || t.length > 30) return false;
+            return /^[а-яёa-z0-9\s._-]+$/i.test(t);
         }
 
         function switchAuthMode() {
@@ -849,89 +670,67 @@
             document.getElementById('authTitle').textContent = isAuthMode === 'login' ? 'Вход' : 'Регистрация';
             document.getElementById('authSubmitBtn').textContent = isAuthMode === 'login' ? 'Войти' : 'Зарегистрироваться';
             document.getElementById('authSwitchBtn').textContent = isAuthMode === 'login'
-                ? 'Нет аккаунта? Зарегистрироваться'
-                : 'Уже есть аккаунт? Войти';
+                ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти';
             document.getElementById('authError').style.display = 'none';
             checkIfFirstUser();
         }
-
         function showAuthError(msg) {
             const el = document.getElementById('authError');
-            el.textContent = msg;
-            el.style.display = 'block';
+            el.textContent = msg; el.style.display = 'block';
         }
-
         async function checkIfFirstUser() {
             try {
                 const snap = await get(ref(database, 'users'));
                 const hint = document.getElementById('firstUserHint');
-                if (!snap.exists() || Object.keys(snap.val() || {}).length === 0) {
-                    hint.style.display = 'block';
-                } else {
-                    hint.style.display = 'none';
-                }
+                hint.style.display = (!snap.exists() || Object.keys(snap.val() || {}).length === 0) ? 'block' : 'none';
             } catch(e) {}
         }
 
         async function handleAuthSubmit() {
             const username = document.getElementById('authUsername').value.trim();
             const password = document.getElementById('authPassword').value;
-
             if (!username || !password) { showAuthError('Заполните логин и пароль'); return; }
-            if (!validateUsername(username)) {
-                showAuthError('Логин: от 2 до 30 символов. Допустимы русские/латинские буквы, цифры, пробел, . _ -');
-                return;
-            }
+            if (!validateUsername(username)) { showAuthError('Логин: 2-30 символов, буквы/цифры/._-'); return; }
             if (password.length < 6) { showAuthError('Пароль минимум 6 символов'); return; }
 
             const btn = document.getElementById('authSubmitBtn');
-            btn.disabled = true;
-            btn.textContent = 'Подождите...';
-
+            btn.disabled = true; btn.textContent = 'Подождите...';
             const email = usernameToEmail(username);
-            const normalizedUsername = username.toLowerCase().trim();
+            const norm = username.toLowerCase().trim();
 
             try {
                 if (isAuthMode === 'login') {
                     await signInWithEmailAndPassword(auth, email, password);
                 } else {
                     const cred = await createUserWithEmailAndPassword(auth, email, password);
-
                     try { await updateProfile(cred.user, { displayName: username }); } catch(e) {}
-
                     let isFirst = false;
                     try {
-                        const usersSnap = await get(ref(database, 'users'));
-                        isFirst = !usersSnap.exists() || Object.keys(usersSnap.val() || {}).length === 0;
+                        const s = await get(ref(database, 'users'));
+                        isFirst = !s.exists() || Object.keys(s.val() || {}).length === 0;
                     } catch(e) {}
-
                     await set(ref(database, 'users/' + cred.user.uid), {
-                        username: normalizedUsername,
-                        displayName: username,
-                        name: username,
-                        isAdmin: isFirst,
-                        createdAt: new Date().toISOString()
+                        username: norm, displayName: username, name: username,
+                        isAdmin: isFirst, createdAt: new Date().toISOString()
                     });
-
-                    await set(ref(database, 'usernames/' + normalizedUsername), cred.user.uid);
-
+                    await set(ref(database, 'usernames/' + norm), cred.user.uid);
                     if (isFirst) {
                         await set(ref(database, 'admins/' + cred.user.uid), true);
-                        console.log('🎉 Первый пользователь — администратор');
+                        console.log('🎉 Первый — администратор');
                     }
                 }
             } catch (err) {
-                console.error('Auth error:', err);
-                const messages = {
-                    'auth/user-not-found': 'Пользователь не найден',
-                    'auth/wrong-password': 'Неверный пароль',
-                    'auth/invalid-credential': 'Неверный логин или пароль',
-                    'auth/invalid-email': 'Некорректный логин',
-                    'auth/email-already-in-use': 'Такой логин уже занят',
-                    'auth/weak-password': 'Слабый пароль (минимум 6 символов)',
-                    'auth/operation-not-allowed': 'Включите Email/Password в Firebase Authentication'
+                console.error(err);
+                const M = {
+                    'auth/user-not-found':'Пользователь не найден',
+                    'auth/wrong-password':'Неверный пароль',
+                    'auth/invalid-credential':'Неверный логин или пароль',
+                    'auth/invalid-email':'Некорректный логин',
+                    'auth/email-already-in-use':'Логин занят',
+                    'auth/weak-password':'Слабый пароль (мин. 6)',
+                    'auth/operation-not-allowed':'Включите Email/Password в Firebase'
                 };
-                showAuthError(messages[err.code] || err.message);
+                showAuthError(M[err.code] || err.message);
             } finally {
                 btn.disabled = false;
                 btn.textContent = isAuthMode === 'login' ? 'Войти' : 'Зарегистрироваться';
@@ -939,7 +738,7 @@
         }
 
         async function logout() {
-            if (!confirm('Выйти из аккаунта?')) return;
+            if (!confirm('Выйти?')) return;
             if (unsubInvoices) { unsubInvoices(); unsubInvoices = null; }
             if (unsubShared) { unsubShared(); unsubShared = null; }
             try { await signOut(auth); } catch(e) { console.error(e); }
@@ -947,24 +746,20 @@
 
         onAuthStateChanged(auth, async (user) => {
             document.getElementById('loadingScreen').style.display = 'none';
-
             if (user) {
                 currentUser = user;
-
                 let name = user.displayName || user.email.split('@')[0];
                 let isAdmin = false;
                 try {
                     const snap = await get(ref(database, 'users/' + user.uid));
                     if (snap.exists()) {
-                        const data = snap.val();
-                        name = data.name || data.displayName || data.username || name;
-                        isAdmin = data.isAdmin === true;
+                        const d = snap.val();
+                        name = d.name || d.displayName || d.username || name;
+                        isAdmin = d.isAdmin === true;
                     }
-                    const adminSnap = await get(ref(database, 'admins/' + user.uid));
-                    if (adminSnap.exists() && adminSnap.val() === true) isAdmin = true;
-                } catch(e) {
-                    console.warn('Профиль:', e);
-                }
+                    const a = await get(ref(database, 'admins/' + user.uid));
+                    if (a.exists() && a.val() === true) isAdmin = true;
+                } catch(e) {}
                 currentUserName = name;
                 currentIsAdmin = isAdmin;
 
@@ -997,45 +792,27 @@
                 loadFromStorage();
                 subscribeToUserData(viewingUid);
                 subscribeToSharedStatuses();
-
                 setSyncStatus('syncing', 'Подключение...');
             } else {
-                currentUser = null;
-                currentUserName = '';
-                currentIsAdmin = false;
-                viewingUid = null;
-                table1Data = [];
-                table2Data = [];
-                sharedStatuses = {};
-                userInvoicesRef = null;
-                sharedStatusesRef = null;
-
+                currentUser = null; currentUserName = ''; currentIsAdmin = false;
+                viewingUid = null; table1Data = []; table2Data = [];
+                sharedStatuses = {}; userInvoicesRef = null; sharedStatusesRef = null;
                 document.getElementById('authScreen').style.display = 'block';
                 document.getElementById('appScreen').style.display = 'none';
                 setSyncStatus('offline', 'Не подключено');
-                checkIfFirstUser();
-                hideCleanBanner();
+                checkIfFirstUser(); hideCleanBanner();
             }
         });
 
-        function normalizeKey(v) {
-            return (v || '').toString().trim().replace(/\s+/g, ' ').toLowerCase();
-        }
-
+        function normalizeKey(v) { return (v || '').toString().trim().replace(/\s+/g, ' ').toLowerCase(); }
         function rowKey(row) {
             const num = normalizeKey(row['Номер счета']);
             const dev = normalizeKey(row['Прибор']);
             if (dev) return `${num}||${dev}`;
             return `${num}||__no_device__`;
         }
-
-        function fbKey(key) {
-            return key.replace(/[.#$/\[\]]/g, '_');
-        }
-
-        function safeString(v) {
-            return (v == null ? '' : String(v)).toLowerCase();
-        }
+        function fbKey(key) { return key.replace(/[.#$/\[\]]/g, '_'); }
+        function safeString(v) { return (v == null ? '' : String(v)).toLowerCase(); }
 
         function parseDate(dateStr) {
             if (!dateStr && dateStr !== 0) return null;
@@ -1047,10 +824,8 @@
                 } catch(e) { return null; }
             }
             const str = dateStr.toString().trim();
-            const parts = str.split('.');
-            if (parts.length === 3) {
-                return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-            }
+            const p = str.split('.');
+            if (p.length === 3) return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
             const date = new Date(str);
             return isNaN(date.getTime()) ? null : date;
         }
@@ -1062,32 +837,22 @@
             if (/[0-9\-]/.test(cell)) return null;
             if (!/^[А-ЯЁA-Z\s]+$/.test(cell)) return null;
             if (/^(ОБЩ|ВСЕ|ALL|COMMON)/.test(cell)) return 'common';
-            if (/^(СРОЧН|URGENT)/.test(cell))        return 'urgent';
-            if (/^(БЮДЖЕТ|BUDGET)/.test(cell))       return 'budget';
+            if (/^(СРОЧН|URGENT)/.test(cell)) return 'urgent';
+            if (/^(БЮДЖЕТ|BUDGET)/.test(cell)) return 'budget';
             return null;
         }
-
-        function isEmptyRow(row) {
-            return !row || row.every(c => !c || c.toString().trim() === '');
-        }
-
+        function isEmptyRow(row) { return !row || row.every(c => !c || c.toString().trim() === ''); }
         function isHeaderRow(row, minHits) {
-            const keywords = [
-                'номер счета', 'номер счёта', 'номер квитанции',
-                'контрагент', 'наименование', 'код',
-                'прибор', 'кол-во', 'количество',
-                'сумма', 'всего', 'дата выписки'
-            ];
+            const kw = ['номер счета','номер счёта','номер квитанции','контрагент','наименование','код',
+                'прибор','кол-во','количество','сумма','всего','дата выписки'];
             let hits = 0;
             row.forEach(c => {
                 if (!c) return;
                 const s = c.toString().toLowerCase().trim();
-                if (keywords.some(k => s === k || s.startsWith(k))) hits++;
+                if (kw.some(k => s === k || s.startsWith(k))) hits++;
             });
-            const threshold = (minHits !== undefined) ? minHits : 2;
-            return hits >= threshold;
+            return hits >= (minHits !== undefined ? minHits : 2);
         }
-
         function normalizeHeader(h) {
             if (!h) return '';
             let s = h.toString();
@@ -1096,25 +861,24 @@
             s = s.replace(/\s+/g, ' ').trim();
             return s;
         }
-
         function sectionLabel(section) {
             switch (section) {
                 case 'urgent': return 'Срочные';
                 case 'budget': return 'Бюджет';
-                default:       return 'Общая';
+                case 'onsite': return 'Выездные';
+                case 'distributed': return 'Распределённые';
+                default: return 'Общая';
             }
         }
-
         function sectionBadgeClass(section) {
             switch (section) {
                 case 'urgent': return 'badge-urgent';
                 case 'budget': return 'badge-budget';
-                default:       return 'badge-common';
+                default: return 'badge-common';
             }
         }
 
-        function setSortByDate(sortType) { sortByDate = sortType; renderTable(); }
-
+        function setSortByDate(t) { sortByDate = t; renderTable(); }
         function sortByPaymentDate() {
             if (sortByDate === 'none') sortByDate = 'earliest';
             else if (sortByDate === 'earliest') sortByDate = 'latest';
@@ -1123,12 +887,9 @@
             renderTable();
         }
 
-        function toggleStatus(status) {
-            if (selectedStatuses.has(status)) selectedStatuses.delete(status);
-            else selectedStatuses.add(status);
-            document.querySelectorAll('.status-btn').forEach(btn => {
-                btn.classList.toggle('active', selectedStatuses.has(btn.dataset.status));
-            });
+        function toggleStatus(s) {
+            if (selectedStatuses.has(s)) selectedStatuses.delete(s); else selectedStatuses.add(s);
+            document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', selectedStatuses.has(b.dataset.status)));
             renderTable();
         }
         function clearStatus() {
@@ -1136,12 +897,9 @@
             document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
             renderTable();
         }
-        function toggleSection(section) {
-            if (selectedSections.has(section)) selectedSections.delete(section);
-            else selectedSections.add(section);
-            document.querySelectorAll('.section-btn').forEach(btn => {
-                btn.classList.toggle('active', selectedSections.has(btn.dataset.section));
-            });
+        function toggleSection(s) {
+            if (selectedSections.has(s)) selectedSections.delete(s); else selectedSections.add(s);
+            document.querySelectorAll('.section-btn').forEach(b => b.classList.toggle('active', selectedSections.has(b.dataset.section)));
             renderTable();
         }
         function clearSections() {
@@ -1153,8 +911,8 @@
         let unsubAdminUsers = null;
         function subscribeToAllUsersForAdmin() {
             if (unsubAdminUsers) unsubAdminUsers();
-            unsubAdminUsers = onValue(ref(database, 'users'), (snapshot) => {
-                allUsersCache = snapshot.val() || {};
+            unsubAdminUsers = onValue(ref(database, 'users'), (snap) => {
+                allUsersCache = snap.val() || {};
                 updateAdminUserSelect();
                 renderAdminUserList();
             });
@@ -1163,84 +921,66 @@
         function updateAdminUserSelect() {
             const sel = document.getElementById('adminUserSelect');
             if (!sel) return;
-            const currentVal = sel.value;
+            const cv = sel.value;
             sel.innerHTML = '<option value="">— Свои данные —</option>';
             const arr = Object.entries(allUsersCache).map(([uid, u]) => ({ uid, ...u }));
             arr.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
             arr.forEach(u => {
                 if (u.uid === currentUser.uid) return;
-                const opt = document.createElement('option');
-                opt.value = u.uid;
-                opt.textContent = `👤 ${u.name || u.username || u.uid}`;
-                sel.appendChild(opt);
+                const o = document.createElement('option');
+                o.value = u.uid;
+                o.textContent = `👤 ${u.name || u.username || u.uid}`;
+                sel.appendChild(o);
             });
-            sel.value = currentVal || '';
+            sel.value = cv || '';
         }
 
         function updateAdminModeInfo() {
             const info = document.getElementById('adminViewInfo');
-            if (!info) return;
-            if (!currentIsAdmin) return;
-
+            if (!info || !currentIsAdmin) return;
             if (viewingUid === currentUser.uid) {
                 info.innerHTML = 'Вы работаете со <b>своими</b> данными.';
             } else {
-                info.innerHTML = `Вы работаете как <b>${escapeHtml(viewingName)}</b>. Загружаемый Excel сохранится в его список.`;
+                info.innerHTML = `Вы работаете как <b>${escapeHtml(viewingName)}</b>.`;
             }
         }
 
         function onAdminUserChange() {
             const sel = document.getElementById('adminUserSelect');
             const uid = sel.value;
-
             if (unsubInvoices) { unsubInvoices(); unsubInvoices = null; }
-
-            table1Data = [];
-            table2Data = [];
-            deviceTypes.clear();
-            selectedDevices.clear();
-            selectedSections.clear();
-            selectedStatuses.clear();
+            table1Data = []; table2Data = [];
+            deviceTypes.clear(); selectedDevices.clear();
+            selectedSections.clear(); selectedStatuses.clear();
             document.querySelectorAll('.device-tag, .section-btn, .status-btn').forEach(b => b.classList.remove('active'));
             renderDeviceTags();
-
-            if (!uid) {
-                viewingUid = currentUser.uid;
-                viewingName = currentUserName;
-            } else {
+            if (!uid) { viewingUid = currentUser.uid; viewingName = currentUserName; }
+            else {
                 const u = allUsersCache[uid];
                 viewingUid = uid;
                 viewingName = u ? (u.name || u.username || uid) : uid;
             }
-
             updateAdminModeInfo();
-
             cleanDismissedThisSession = false;
             autoCleanChecked = false;
             hideCleanBanner();
-
             loadFromStorage();
             subscribeToUserData(viewingUid);
             renderTable();
         }
 
         function renderAdminUserList() {
-            const container = document.getElementById('adminUserList');
-            if (!container) return;
-
+            const c = document.getElementById('adminUserList');
+            if (!c) return;
             const arr = Object.entries(allUsersCache).map(([uid, u]) => ({ uid, ...u }));
-            if (arr.length === 0) {
-                container.innerHTML = '<div class="text-muted text-center py-3">Нет пользователей.</div>';
-                return;
-            }
+            if (!arr.length) { c.innerHTML = '<div class="text-muted text-center py-3">Нет пользователей.</div>'; return; }
             arr.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
-
-            container.innerHTML = '';
+            c.innerHTML = '';
             arr.forEach(u => {
-                const item = document.createElement('div');
-                item.className = 'admin-user-item';
                 const isSelf = u.uid === currentUser.uid;
                 const nameSafe = escapeHtml(u.name || u.username || '').replace(/'/g, '');
+                const item = document.createElement('div');
+                item.className = 'admin-user-item';
                 item.innerHTML = `
                     <div>
                         <b>${escapeHtml(u.name || u.username || u.uid)}</b>
@@ -1248,73 +988,63 @@
                         ${u.isAdmin ? '<span class="badge badge-admin ms-2">АДМИН</span>' : ''}
                         ${isSelf ? '<span class="badge bg-secondary ms-2">это вы</span>' : ''}
                     </div>
-                    <div>
-                        ${isSelf ? '' : `<button class="btn btn-sm btn-outline-danger" onclick="deleteUserAdmin('${u.uid}', '${nameSafe}')">🗑 Удалить</button>`}
-                    </div>
+                    <div>${isSelf ? '' : `<button class="btn btn-sm btn-outline-danger" onclick="deleteUserAdmin('${u.uid}', '${nameSafe}')">🗑 Удалить</button>`}</div>
                 `;
-                container.appendChild(item);
+                c.appendChild(item);
             });
         }
 
         function escapeHtml(s) {
-            return String(s)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
         async function deleteUserAdmin(uid, name) {
-            if (!currentIsAdmin) { alert('Только админ может удалять пользователей'); return; }
-            if (uid === currentUser.uid) { alert('Нельзя удалить себя'); return; }
-            if (!confirm(`Удалить пользователя "${name}"?\nВсе его счета и данные будут удалены безвозвратно.`)) return;
-
+            if (!currentIsAdmin) { alert('Только админ'); return; }
+            if (uid === currentUser.uid) { alert('Нельзя себя'); return; }
+            if (!confirm(`Удалить пользователя "${name}"?\nВсе данные будут удалены безвозвратно.`)) return;
             try {
                 await remove(ref(database, 'users/' + uid));
                 const u = allUsersCache[uid];
-                if (u && u.username) {
-                    await remove(ref(database, 'usernames/' + u.username));
-                }
+                if (u && u.username) await remove(ref(database, 'usernames/' + u.username));
                 await remove(ref(database, 'invoices/' + uid));
                 await remove(ref(database, 'admins/' + uid));
-
                 if (viewingUid === uid) {
                     document.getElementById('adminUserSelect').value = '';
                     onAdminUserChange();
                 }
-
                 alert('Пользователь и все его данные удалены.');
             } catch (e) {
-                console.error('Ошибка удаления:', e);
-                alert('Не удалось удалить: ' + e.message);
+                console.error(e); alert('Не удалось: ' + e.message);
             }
         }
 
         function mergeRow(oldRow, newRow) {
             return {
                 ...oldRow,
-                'Дата выписки':              newRow['Дата выписки']              || oldRow['Дата выписки'],
+                'Дата выписки': newRow['Дата выписки'] || oldRow['Дата выписки'],
                 'Контрагент (Наименование)': newRow['Контрагент (Наименование)'] || oldRow['Контрагент (Наименование)'],
-                'Контингент':                newRow['Контингент']                || oldRow['Контингент'] || '',
-                'Кол-во':                    newRow['Кол-во']                    || oldRow['Кол-во'],
-                'Сумма':                     newRow['Сумма']                     || oldRow['Сумма'],
-                'Всего по счету':            newRow['Всего по счету']            || oldRow['Всего по счету'],
-                'Дата оплаты':               newRow['Дата оплаты']               || oldRow['Дата оплаты'],
-
-                isBudget:  oldRow.isBudget  || newRow.isBudget,
-                isUrgent:  oldRow.isUrgent  || newRow.isUrgent,
-                isOnsite:  oldRow.isOnsite  || newRow.isOnsite,
+                'Контингент': newRow['Контингент'] || oldRow['Контингент'] || '',
+                'Кол-во': newRow['Кол-во'] || oldRow['Кол-во'],
+                'Сумма': newRow['Сумма'] || oldRow['Сумма'],
+                'Всего по счету': newRow['Всего по счету'] || oldRow['Всего по счету'],
+                'Дата оплаты': newRow['Дата оплаты'] || oldRow['Дата оплаты'],
+                isBudget: oldRow.isBudget || newRow.isBudget,
+                isUrgent: oldRow.isUrgent || newRow.isUrgent,
+                isOnsite: oldRow.isOnsite || newRow.isOnsite,
                 isMatched: oldRow.isMatched || newRow.isMatched,
-
+                distributed: oldRow.distributed || newRow.distributed || false,
+                distributedTo: oldRow.distributedTo || newRow.distributedTo || '',
+                distributedToName: oldRow.distributedToName || newRow.distributedToName || '',
+                distributedAt: oldRow.distributedAt || newRow.distributedAt || '',
+                distributedBy: oldRow.distributedBy || newRow.distributedBy || '',
+                distributedByName: oldRow.distributedByName || newRow.distributedByName || '',
+                copied: oldRow.copied || newRow.copied || false,
                 section: (oldRow.section && oldRow.section !== 'common')
-                    ? oldRow.section
-                    : (newRow.section || 'common'),
-
+                    ? oldRow.section : (newRow.section || 'common'),
                 status: oldRow.status,
                 statusDate: oldRow.statusDate,
                 statusChangedBy: oldRow.statusChangedBy,
-
                 paymentStatus: oldRow.paymentStatus,
                 urgency: oldRow.urgency || newRow.urgency || ''
             };
@@ -1330,43 +1060,26 @@
 
                     workbook.SheetNames.forEach(sheetName => {
                         const sheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(sheet, {
-                            defval: '', raw: true, header: 1
-                        });
+                        const jsonData = XLSX.utils.sheet_to_json(sheet, {defval: '', raw: true, header: 1});
 
-                        let headers = null;
-                        let section = 'common';
-                        let lastInvoiceNumber = '';
-                        let lastInvoiceDate = '';
-                        let lastContractor = '';
-                        let lastDevice = '';
+                        let headers = null, section = 'common';
+                        let lastInv = '', lastDate = '', lastContr = '', lastDev = '';
 
                         for (let i = 0; i < jsonData.length; i++) {
                             const row = jsonData[i];
-
                             if (isEmptyRow(row)) {
-                                section = 'common';
-                                headers = null;
-                                lastInvoiceNumber = '';
-                                lastInvoiceDate = '';
-                                lastContractor = '';
-                                lastDevice = '';
+                                section = 'common'; headers = null;
+                                lastInv = ''; lastDate = ''; lastContr = ''; lastDev = '';
                                 continue;
                             }
-
                             const marker = detectSectionMarker(row);
                             if (marker) {
-                                section = marker;
-                                headers = null;
-                                lastInvoiceNumber = '';
-                                lastInvoiceDate = '';
-                                lastContractor = '';
-                                lastDevice = '';
+                                section = marker; headers = null;
+                                lastInv = ''; lastDate = ''; lastContr = ''; lastDev = '';
                                 continue;
                             }
-
                             if (isHeaderRow(row)) {
-                                let headerRow = row;
+                                let hr = row;
                                 const next = jsonData[i + 1];
                                 if (next && !isEmptyRow(next) && !detectSectionMarker(next) && isHeaderRow(next, 1)) {
                                     const maxLen = Math.max(row.length, next.length);
@@ -1374,85 +1087,51 @@
                                     for (let c = 0; c < maxLen; c++) {
                                         const a = (row[c] || '').toString().trim();
                                         const b = (next[c] || '').toString().trim();
-                                        let value = '';
-                                        if (b) value = b;
-                                        else if (a) value = a;
-                                        merged.push(value);
+                                        merged.push(b || a);
                                     }
-                                    headerRow = merged;
-                                    i++;
+                                    hr = merged; i++;
                                 }
-                                headers = headerRow.map(h => normalizeHeader(h));
+                                headers = hr.map(h => normalizeHeader(h));
                                 console.log('📋 Заголовки:', headers);
-                                lastInvoiceNumber = '';
-                                lastInvoiceDate = '';
-                                lastContractor = '';
-                                lastDevice = '';
+                                lastInv = ''; lastDate = ''; lastContr = ''; lastDev = '';
                                 continue;
                             }
-
                             if (!headers) continue;
 
                             let invoiceNumber = '', invoiceDate = '', contractor = '';
-                            let contingentCode = '', contingentName = '';
-                            let device = '', quantity = '', amount = '';
-                            let totalAmount = '', paymentDate = '';
+                            let code = '', name = '';
+                            let device = '', quantity = '', amount = '', totalAmount = '', paymentDate = '';
 
                             headers.forEach((header, index) => {
                                 const value = row[index] || '';
                                 const h = header.toLowerCase();
-
-                                if (h.includes('код')) {
-                                    contingentCode = value.toString().trim();
-                                    return;
-                                }
-                                if (h.includes('наименование') || h.includes('контингент')) {
-                                    contingentName = value.toString().trim();
-                                    return;
-                                }
-
-                                if (h.includes('номер') && (h.includes('счет') || h.includes('счёт') || h.includes('квитанц'))) {
-                                    invoiceNumber = value.toString().trim();
-                                } else if (h.includes('дата') && h.includes('выписк')) {
-                                    invoiceDate = value.toString().trim();
-                                } else if (h.includes('контрагент')) {
-                                    contractor = value.toString().trim();
-                                } else if (h.includes('прибор')) {
-                                    device = value.toString().trim();
-                                } else if (h.includes('кол-во') || h.includes('колич') || h.includes('кол.') || h === 'кол' || h.includes('шт') || h.includes('количество')) {
-                                    quantity = value.toString().trim();
-                                } else if (h.includes('сумм') || h.includes('всего')) {
-                                    amount = value.toString().trim();
-                                    totalAmount = value.toString().trim();
-                                } else if (h.includes('оплат')) {
-                                    paymentDate = value.toString().trim();
-                                }
+                                if (h.includes('код')) { code = value.toString().trim(); return; }
+                                if (h.includes('наименование') || h.includes('контингент')) { name = value.toString().trim(); return; }
+                                if (h.includes('номер') && (h.includes('счет') || h.includes('счёт') || h.includes('квитанц'))) invoiceNumber = value.toString().trim();
+                                else if (h.includes('дата') && h.includes('выписк')) invoiceDate = value.toString().trim();
+                                else if (h.includes('контрагент')) contractor = value.toString().trim();
+                                else if (h.includes('прибор')) device = value.toString().trim();
+                                else if (h.includes('кол-во') || h.includes('колич') || h.includes('кол.') || h === 'кол' || h.includes('шт') || h.includes('количество')) quantity = value.toString().trim();
+                                else if (h.includes('сумм') || h.includes('всего')) { amount = value.toString().trim(); totalAmount = value.toString().trim(); }
+                                else if (h.includes('оплат')) paymentDate = value.toString().trim();
                             });
 
-                            let contingent = '';
-                            if (contingentCode && contingentName) {
-                                contingent = contingentCode + ' ' + contingentName;
-                            } else {
-                                contingent = contingentCode || contingentName || '';
-                            }
+                            let contingent = (code && name) ? (code + ' ' + name) : (code || name || '');
 
-                            if (!invoiceNumber && lastInvoiceNumber) {
+                            if (!invoiceNumber && lastInv) {
                                 const hasData = device || quantity || amount;
                                 if (hasData) {
-                                    invoiceNumber = lastInvoiceNumber;
-                                    if (!invoiceDate) invoiceDate = lastInvoiceDate;
-                                    if (!contractor) contractor = lastContractor;
+                                    invoiceNumber = lastInv;
+                                    if (!invoiceDate) invoiceDate = lastDate;
+                                    if (!contractor) contractor = lastContr;
                                 }
                             }
+                            if (!device && lastDev && (quantity || amount)) device = lastDev;
 
-                            if (!device && lastDevice && (quantity || amount)) {
-                                device = lastDevice;
-                            }
-
-                            if (invoiceNumber) lastInvoiceNumber = invoiceNumber;
-                            if (invoiceDate)   lastInvoiceDate = invoiceDate;
-                            if (contractor)    lastContractor = contractor;
-                            if (device)        lastDevice = device;
+                            if (invoiceNumber) lastInv = invoiceNumber;
+                            if (invoiceDate) lastDate = invoiceDate;
+                            if (contractor) lastContr = contractor;
+                            if (device) lastDev = device;
 
                             if (!invoiceNumber) continue;
 
@@ -1472,6 +1151,13 @@
                                 isUrgent: section === 'urgent',
                                 isOnsite: false,
                                 isMatched: false,
+                                distributed: false,
+                                distributedTo: '',
+                                distributedToName: '',
+                                distributedAt: '',
+                                distributedBy: '',
+                                distributedByName: '',
+                                copied: false,
                                 status: 'new',
                                 statusDate: null,
                                 paymentStatus: '',
@@ -1479,11 +1165,10 @@
                             });
                         }
                     });
-
-                    console.log(`=== Таблица 1: загружено ${allData.length} позиций ===`);
+                    console.log(`=== Т1: загружено ${allData.length} ===`);
                     callback(allData);
                 } catch (error) {
-                    console.error('Ошибка:', error);
+                    console.error(error);
                     alert('Ошибка чтения файла: ' + error.message);
                 }
             };
@@ -1497,16 +1182,10 @@
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
                     let allData = [];
-
                     workbook.SheetNames.forEach(sheetName => {
                         const sheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(sheet, {
-                            defval: '', raw: true, header: 1
-                        });
-
-                        let headerRowIndex = -1;
-                        let headers = [];
-
+                        const jsonData = XLSX.utils.sheet_to_json(sheet, {defval: '', raw: true, header: 1});
+                        let headerRowIndex = -1, headers = [];
                         for (let i = 0; i < jsonData.length; i++) {
                             const row = jsonData[i];
                             if (isEmptyRow(row)) continue;
@@ -1516,45 +1195,33 @@
                                 break;
                             }
                         }
-
                         if (headerRowIndex === -1) return;
-
-                        let lastInvoiceNumber = '';
-
+                        let lastInv = '';
                         for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
                             const row = jsonData[i];
                             if (isEmptyRow(row)) continue;
-
                             let invoiceNumber = '', paymentDate = '', isBudget = false;
                             let urgency = '', paymentStatus = '', contractor = '';
                             let amount = '', device = '';
-
                             row.forEach((value, index) => {
                                 const header = headers[index] || '';
                                 const h = header.toLowerCase();
-                                const cellValue = value ? value.toString().trim() : '';
-
+                                const cv = value ? value.toString().trim() : '';
                                 if (h.includes('квитанц') || h.includes('номер') || h.includes('счет')) {
-                                    if (cellValue && cellValue.includes('-')) invoiceNumber = cellValue;
+                                    if (cv && cv.includes('-')) invoiceNumber = cv;
                                 }
-                                if (h.includes('дата') && h.includes('оплат')) paymentDate = cellValue;
-                                if (h.includes('бюджет')) {
-                                    if (['да','yes','1','+'].includes(cellValue.toLowerCase())) isBudget = true;
-                                }
-                                if (h.includes('срочн')) urgency = cellValue;
-                                if (h.includes('наличие') && h.includes('оплат')) paymentStatus = cellValue;
-                                if (h.includes('контрагент') || h.includes('наименование')) contractor = cellValue;
-                                if (h.includes('прибор')) device = cellValue;
-                                if (h.includes('сумм')) amount = cellValue;
+                                if (h.includes('дата') && h.includes('оплат')) paymentDate = cv;
+                                if (h.includes('бюджет')) { if (['да','yes','1','+'].includes(cv.toLowerCase())) isBudget = true; }
+                                if (h.includes('срочн')) urgency = cv;
+                                if (h.includes('наличие') && h.includes('оплат')) paymentStatus = cv;
+                                if (h.includes('контрагент') || h.includes('наименование')) contractor = cv;
+                                if (h.includes('прибор')) device = cv;
+                                if (h.includes('сумм')) amount = cv;
                             });
-
-                            if (!invoiceNumber && lastInvoiceNumber) {
-                                if (device || amount || urgency || paymentStatus) {
-                                    invoiceNumber = lastInvoiceNumber;
-                                }
+                            if (!invoiceNumber && lastInv) {
+                                if (device || amount || urgency || paymentStatus) invoiceNumber = lastInv;
                             }
-                            if (invoiceNumber) lastInvoiceNumber = invoiceNumber;
-
+                            if (invoiceNumber) lastInv = invoiceNumber;
                             if (invoiceNumber && invoiceNumber.includes('-')) {
                                 allData.push({
                                     'Номер счета': invoiceNumber || '',
@@ -1570,11 +1237,10 @@
                             }
                         }
                     });
-
-                    console.log(`=== Таблица 2: загружено ${allData.length} записей ===`);
+                    console.log(`=== Т2: загружено ${allData.length} ===`);
                     callback(allData);
                 } catch (error) {
-                    console.error('Ошибка чтения Таблицы 2:', error);
+                    console.error(error);
                     alert('Ошибка чтения Таблицы 2: ' + error.message);
                 }
             };
@@ -1582,267 +1248,169 @@
         }
 
         function loadTable1() {
-            const fileInput = document.getElementById('table1File');
-            if (!fileInput.files[0]) { alert('Выберите файл Таблицы 1'); return; }
+            const fi = document.getElementById('table1File');
+            if (!fi.files[0]) { alert('Выберите файл Таблицы 1'); return; }
+            const targetUid = viewingUid, targetName = viewingName;
+            readTable1(fi.files[0], function(newData) {
+                if (targetUid !== viewingUid) { alert('Пользователь переключён — отмена'); return; }
+                if (!newData.length) { alert('Счета не найдены'); return; }
 
-            const targetUid = viewingUid;
-            const targetName = viewingName;
-
-            readTable1(fileInput.files[0], function(newData) {
-                if (targetUid !== viewingUid) {
-                    console.warn('⚠️ viewingUid изменился во время чтения. Отмена.');
-                    alert('Пользователь переключён — загрузка отменена. Попробуйте снова.');
-                    return;
-                }
-
-                if (newData.length === 0) {
-                    alert('Не удалось найти счета. Проверьте формат данных.');
-                    return;
-                }
-
-                const existingMap = new Map();
-                table1Data.forEach((row, idx) => existingMap.set(rowKey(row), idx));
-
-                let addedCount = 0, updatedCount = 0;
-
-                newData.forEach(newRow => {
-                    const key = rowKey(newRow);
-
-                    if (existingMap.has(key)) {
-                        const idx = existingMap.get(key);
-                        table1Data[idx] = mergeRow(table1Data[idx], newRow);
-                        updatedCount++;
+                const existing = new Map();
+                table1Data.forEach((r, i) => existing.set(rowKey(r), i));
+                let added = 0, updated = 0;
+                newData.forEach(nr => {
+                    const k = rowKey(nr);
+                    if (existing.has(k)) {
+                        table1Data[existing.get(k)] = mergeRow(table1Data[existing.get(k)], nr);
+                        updated++;
                     } else {
-                        table1Data.push(newRow);
-                        existingMap.set(key, table1Data.length - 1);
-                        addedCount++;
+                        table1Data.push(nr);
+                        existing.set(k, table1Data.length - 1);
+                        added++;
                     }
                 });
-
-                console.log(`Загрузка Т1: добавлено ${addedCount}, обновлено ${updatedCount}, всего в памяти ${table1Data.length}`);
-
+                console.log(`Т1: +${added}, ~${updated}, всего ${table1Data.length}`);
                 applySharedStatuses();
                 matchTables();
                 saveToStorage();
                 renderTable();
-                if (!autoCleanChecked) {
-                    autoCleanChecked = true;
-                    checkAutoClean();
-                }
-
-                const infoDiv = document.getElementById('table1Info');
-                infoDiv.style.display = 'block';
-                const targetLabel = (currentIsAdmin && targetUid !== currentUser.uid)
-                    ? ` в список «${escapeHtml(targetName)}»` : '';
-                infoDiv.innerHTML = `✅ Добавлено${targetLabel}: <b>${addedCount}</b>, обновлено: <b>${updatedCount}</b>`;
-                setTimeout(() => infoDiv.style.display = 'none', 7000);
+                if (!autoCleanChecked) { autoCleanChecked = true; checkAutoClean(); }
+                const d = document.getElementById('table1Info');
+                d.style.display = 'block';
+                const tl = (currentIsAdmin && targetUid !== currentUser.uid) ? ` в список «${escapeHtml(targetName)}»` : '';
+                d.innerHTML = `✅ Добавлено${tl}: <b>${added}</b>, обновлено: <b>${updated}</b>`;
+                setTimeout(() => d.style.display = 'none', 7000);
             });
         }
 
         function loadTable2() {
-            const fileInput = document.getElementById('table2File');
-            if (!fileInput.files[0]) { alert('Выберите файл Таблицы 2'); return; }
+            const fi = document.getElementById('table2File');
+            if (!fi.files[0]) { alert('Выберите файл Таблицы 2'); return; }
+            const targetUid = viewingUid, targetName = viewingName;
+            readTable2(fi.files[0], function(newData) {
+                if (targetUid !== viewingUid) { alert('Пользователь переключён — отмена'); return; }
+                if (!newData.length) { alert('Счета не найдены'); return; }
 
-            const targetUid = viewingUid;
-            const targetName = viewingName;
-
-            readTable2(fileInput.files[0], function(newData) {
-                if (targetUid !== viewingUid) {
-                    console.warn('⚠️ viewingUid изменился во время чтения. Отмена.');
-                    alert('Пользователь переключён — загрузка отменена. Попробуйте снова.');
-                    return;
-                }
-
-                if (newData.length === 0) {
-                    alert('Не удалось найти счета в Таблице 2.');
-                    return;
-                }
-
-                const existingMap = {};
-                table2Data.forEach(row => {
-                    const key = rowKey(row);
-                    if (!key.startsWith('||')) existingMap[key] = row;
+                const existing = {};
+                table2Data.forEach(r => {
+                    const k = rowKey(r);
+                    if (!k.startsWith('||')) existing[k] = r;
                 });
-
-                let addedCount = 0, updatedCount = 0;
-
-                newData.forEach(newRow => {
-                    const key = rowKey(newRow);
-                    if (existingMap[key]) {
-                        const existing = existingMap[key];
-                        const changed =
-                            existing['Б'] !== newRow['Б'] ||
-                            existing['С'] !== newRow['С'] ||
-                            existing['Дата оплаты'] !== newRow['Дата оплаты'] ||
-                            existing['Наличие оплаты'] !== newRow['Наличие оплаты'] ||
-                            existing['Прибор'] !== newRow['Прибор'] ||
-                            existing['Сумма'] !== newRow['Сумма'] ||
-                            existing['Контрагент'] !== newRow['Контрагент'];
-
-                        if (changed) {
-                            existing['Б'] = newRow['Б'] || existing['Б'];
-                            existing['С'] = newRow['С'] || existing['С'];
-                            existing['Дата оплаты'] = newRow['Дата оплаты'] || existing['Дата оплаты'];
-                            existing['Наличие оплаты'] = newRow['Наличие оплаты'] || existing['Наличие оплаты'];
-                            existing['Прибор'] = newRow['Прибор'] || existing['Прибор'];
-                            existing['Сумма'] = newRow['Сумма'] || existing['Сумма'];
-                            existing['Контрагент'] = newRow['Контрагент'] || existing['Контрагент'];
-                            updatedCount++;
+                let added = 0, updated = 0;
+                newData.forEach(nr => {
+                    const k = rowKey(nr);
+                    if (existing[k]) {
+                        const e = existing[k];
+                        if (e['Б'] !== nr['Б'] || e['С'] !== nr['С'] || e['Дата оплаты'] !== nr['Дата оплаты'] ||
+                            e['Наличие оплаты'] !== nr['Наличие оплаты'] || e['Прибор'] !== nr['Прибор'] ||
+                            e['Сумма'] !== nr['Сумма'] || e['Контрагент'] !== nr['Контрагент']) {
+                            e['Б'] = nr['Б'] || e['Б'];
+                            e['С'] = nr['С'] || e['С'];
+                            e['Дата оплаты'] = nr['Дата оплаты'] || e['Дата оплаты'];
+                            e['Наличие оплаты'] = nr['Наличие оплаты'] || e['Наличие оплаты'];
+                            e['Прибор'] = nr['Прибор'] || e['Прибор'];
+                            e['Сумма'] = nr['Сумма'] || e['Сумма'];
+                            e['Контрагент'] = nr['Контрагент'] || e['Контрагент'];
+                            updated++;
                         }
                     } else {
-                        table2Data.push(newRow);
-                        existingMap[key] = newRow;
-                        addedCount++;
+                        table2Data.push(nr);
+                        existing[k] = nr;
+                        added++;
                     }
                 });
-
-                console.log(`Загрузка Т2: добавлено ${addedCount}, обновлено ${updatedCount}`);
-
+                console.log(`Т2: +${added}, ~${updated}`);
                 matchTables();
                 saveToStorage();
                 renderTable();
-
-                const infoDiv = document.getElementById('table2Info');
-                infoDiv.style.display = 'block';
-                const targetLabel = (currentIsAdmin && targetUid !== currentUser.uid)
-                    ? ` в список «${escapeHtml(targetName)}»` : '';
-                infoDiv.innerHTML = `✅ Добавлено${targetLabel}: <b>${addedCount}</b>, обновлено: <b>${updatedCount}</b>, всего: <b>${table2Data.length}</b>`;
-                setTimeout(() => infoDiv.style.display = 'none', 7000);
+                const d = document.getElementById('table2Info');
+                d.style.display = 'block';
+                const tl = (currentIsAdmin && targetUid !== currentUser.uid) ? ` в список «${escapeHtml(targetName)}»` : '';
+                d.innerHTML = `✅ Добавлено${tl}: <b>${added}</b>, обновлено: <b>${updated}</b>, всего: <b>${table2Data.length}</b>`;
+                setTimeout(() => d.style.display = 'none', 7000);
             });
         }
 
         function loadBothTables() {
-            const file1 = document.getElementById('table1File').files[0];
-            const file2 = document.getElementById('table2File').files[0];
-
-            if (file1 && file2) {
-                loadTable1();
-                setTimeout(loadTable2, 500);
-            } else if (file1) {
-                loadTable1();
-            } else if (file2) {
-                loadTable2();
-            } else {
-                alert('Выберите хотя бы один файл');
-            }
+            const f1 = document.getElementById('table1File').files[0];
+            const f2 = document.getElementById('table2File').files[0];
+            if (f1 && f2) { loadTable1(); setTimeout(loadTable2, 500); }
+            else if (f1) loadTable1();
+            else if (f2) loadTable2();
+            else alert('Выберите хотя бы один файл');
         }
 
         function matchTables() {
             if (!table1Data.length || !table2Data.length) return;
-
-            const table2ByKey = {};
-            const table2ByNum = {};
-
+            const byKey = {}, byNum = {};
             table2Data.forEach(row => {
-                const key = rowKey(row);
-                if (!key.startsWith('||')) table2ByKey[key] = row;
-
-                const num = normalizeKey(row['Номер счета']);
-                if (num) {
-                    if (!table2ByNum[num]) table2ByNum[num] = [];
-                    table2ByNum[num].push(row);
+                const k = rowKey(row);
+                if (!k.startsWith('||')) byKey[k] = row;
+                const n = normalizeKey(row['Номер счета']);
+                if (n) {
+                    if (!byNum[n]) byNum[n] = [];
+                    byNum[n].push(row);
                 }
             });
-
-            let matchCount = 0;
-
+            let mc = 0;
             table1Data = table1Data.map(row => {
-                const key = rowKey(row);
-                const num = normalizeKey(row['Номер счета']);
-
-                let matched = table2ByKey[key];
-
-                if (!matched && num && table2ByNum[num]) {
-                    const dev = normalizeKey(row['Прибор']);
-                    matched = table2ByNum[num].find(r => {
-                        const rDev = normalizeKey(r['Прибор']);
-                        return !rDev || rDev === dev;
+                const k = rowKey(row);
+                const n = normalizeKey(row['Номер счета']);
+                let m = byKey[k];
+                if (!m && n && byNum[n]) {
+                    const d = normalizeKey(row['Прибор']);
+                    m = byNum[n].find(r => {
+                        const rd = normalizeKey(r['Прибор']);
+                        return !rd || rd === d;
                     });
                 }
-
-                if (matched) {
-                    matchCount++;
-                    const isBudget2 = matched['Б'] === 'Да' || matched['Б'] === 'да' || matched['Б'] === true;
-                    const isUrgent2 = !!(matched['С'] && matched['С'].toString().trim() !== '');
-
+                if (m) {
+                    mc++;
+                    const b2 = m['Б'] === 'Да' || m['Б'] === 'да' || m['Б'] === true;
+                    const u2 = !!(m['С'] && m['С'].toString().trim() !== '');
                     return {
                         ...row,
                         section: row.section || 'common',
-                        isBudget: row.isBudget || isBudget2,
-                        isUrgent: row.isUrgent || isUrgent2,
+                        isBudget: row.isBudget || b2,
+                        isUrgent: row.isUrgent || u2,
                         isMatched: true,
-                        urgency: matched['С'] || row.urgency || '',
-                        paymentStatus: matched['Наличие оплаты'] || row.paymentStatus || '',
-                        paymentDate: matched['Дата оплаты'] || row.paymentDate || row['Дата оплаты'] || ''
+                        urgency: m['С'] || row.urgency || '',
+                        paymentStatus: m['Наличие оплаты'] || row.paymentStatus || '',
+                        paymentDate: m['Дата оплаты'] || row.paymentDate || row['Дата оплаты'] || ''
                     };
                 }
-
                 return { ...row, section: row.section || 'common' };
             });
-
-            console.log(`Совпадений: ${matchCount}`);
+            console.log(`Совпадений: ${mc}`);
         }
 
         function saveToStorage() {
             if (!viewingUid) return;
-
             localStorage.setItem('cache_' + viewingUid + '_table1', JSON.stringify(table1Data));
             localStorage.setItem('cache_' + viewingUid + '_table2', JSON.stringify(table2Data));
-
             if (isRemoteUpdate) return;
             if (!currentUser || !userInvoicesRef) return;
-
-            const cleanTable1 = table1Data.map(row => {
-                const withDefaults = {
-                    ...row,
-                    status: 'new',
-                    statusDate: null,
-                    statusChangedBy: ''
-                };
-                return stripUndefined(withDefaults);
-            });
-
-            const cleanTable2 = table2Data.map(row => stripUndefined(row));
-
+            const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
+            const c2 = table2Data.map(r => stripUndefined(r));
             setSyncStatus('syncing', 'Синхронизация...');
-
-            set(userInvoicesRef, {
-                table1Data: cleanTable1,
-                table2Data: cleanTable2,
-                updatedAt: new Date().toISOString()
-            })
-            .then(() => {
-                setSyncStatus('online', 'Синхронизировано');
-                setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000);
-            })
-            .catch(err => {
-                console.error('❌ Firebase write error:', err);
-                setSyncStatus('offline', 'Ошибка записи');
-            });
-
+            set(userInvoicesRef, { table1Data: c1, table2Data: c2, updatedAt: new Date().toISOString() })
+                .then(() => {
+                    setSyncStatus('online', 'Синхронизировано');
+                    setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000);
+                })
+                .catch(err => {
+                    console.error('❌ Firebase write error:', err);
+                    setSyncStatus('offline', 'Ошибка записи');
+                });
             updateDeviceTypes();
         }
 
         function loadFromStorage() {
             if (!viewingUid) return;
-
             const c1 = localStorage.getItem('cache_' + viewingUid + '_table1');
             const c2 = localStorage.getItem('cache_' + viewingUid + '_table2');
-
-            if (c1) {
-                try { table1Data = JSON.parse(c1); }
-                catch(e) { table1Data = []; }
-            } else {
-                table1Data = [];
-            }
-
-            if (c2) {
-                try { table2Data = JSON.parse(c2); }
-                catch(e) { table2Data = []; }
-            } else {
-                table2Data = [];
-            }
-
+            if (c1) { try { table1Data = JSON.parse(c1); } catch(e) { table1Data = []; } } else table1Data = [];
+            if (c2) { try { table2Data = JSON.parse(c2); } catch(e) { table2Data = []; } } else table2Data = [];
             table1Data = table1Data.map(r => ({ ...r, section: r.section || 'common' }));
             updateDeviceTypes();
             renderTable();
@@ -1850,465 +1418,528 @@
 
         function subscribeToUserData(uid) {
             if (unsubInvoices) unsubInvoices();
-
             userInvoicesRef = ref(database, 'invoices/' + uid);
-
-            unsubInvoices = onValue(userInvoicesRef, (snapshot) => {
-                const data = snapshot.val();
+            unsubInvoices = onValue(userInvoicesRef, (snap) => {
+                const data = snap.val();
                 if (data) {
                     isRemoteUpdate = true;
-                    table1Data = (data.table1Data || []).map(r => ({
-                        ...r,
-                        section: r.section || 'common'
-                    }));
+                    table1Data = (data.table1Data || []).map(r => ({ ...r, section: r.section || 'common' }));
                     table2Data = data.table2Data || [];
                     applySharedStatuses();
                     updateDeviceTypes();
                     renderTable();
                     isRemoteUpdate = false;
                 } else {
-                    table1Data = [];
-                    table2Data = [];
+                    table1Data = []; table2Data = [];
                     updateDeviceTypes();
                     renderTable();
                 }
-
-                if (!autoCleanChecked) {
-                    autoCleanChecked = true;
-                    checkAutoClean();
-                }
-
+                if (!autoCleanChecked) { autoCleanChecked = true; checkAutoClean(); }
                 setSyncStatus('online', 'Онлайн');
             }, (err) => {
-                console.error('Ошибка подписки на счета:', err);
+                console.error('Ошибка подписки:', err);
                 setSyncStatus('offline', 'Ошибка доступа');
             });
         }
 
         function subscribeToSharedStatuses() {
             if (unsubShared) unsubShared();
-
             sharedStatusesRef = ref(database, 'sharedStatuses');
-
-            unsubShared = onValue(sharedStatusesRef, (snapshot) => {
-                sharedStatuses = snapshot.val() || {};
+            unsubShared = onValue(sharedStatusesRef, (snap) => {
+                sharedStatuses = snap.val() || {};
                 applySharedStatuses();
                 renderTable();
-            }, (err) => {
-                console.error('Ошибка подписки на общие статусы:', err);
-            });
+            }, (err) => console.error('Ошибка общих статусов:', err));
         }
 
         function applySharedStatuses() {
             table1Data = table1Data.map(row => {
-                const key = fbKey(rowKey(row));
-                const shared = sharedStatuses[key];
-
-                let result = { ...row };
-
-                if (shared && shared.status) {
-                    result.status = shared.status;
-                    result.statusDate = shared.statusDate;
-                    result.statusChangedBy = shared.changedByName || shared.changedByEmail || '';
+                const k = fbKey(rowKey(row));
+                const s = sharedStatuses[k];
+                let r = { ...row };
+                if (s && s.status) {
+                    r.status = s.status;
+                    r.statusDate = s.statusDate;
+                    r.statusChangedBy = s.changedByName || s.changedByEmail || '';
                 } else if (row.status !== 'new') {
-                    result.status = 'new';
-                    result.statusDate = null;
-                    result.statusChangedBy = '';
+                    r.status = 'new'; r.statusDate = null; r.statusChangedBy = '';
                 }
-
-                result.isOnsite = !!(shared && shared.isOnsite);
-
-                return result;
+                r.isOnsite = !!(s && s.isOnsite);
+                return r;
             });
         }
 
         function updateDeviceTypes() {
             deviceTypes.clear();
             table1Data.forEach(row => {
-                const device = row['Прибор'] || '';
-                if (device && device.trim()) {
-                    deviceTypes.add(device.split(' ').slice(0, 3).join(' '));
-                }
+                const d = row['Прибор'] || '';
+                if (d && d.trim()) deviceTypes.add(d.split(' ').slice(0, 3).join(' '));
             });
             renderDeviceTags();
         }
 
         function renderDeviceTags() {
-            const container = document.getElementById('deviceTags');
-            container.innerHTML = '';
+            const c = document.getElementById('deviceTags');
+            c.innerHTML = '';
             Array.from(deviceTypes).sort().forEach(device => {
-                const tag = document.createElement('span');
-                tag.className = 'device-tag badge bg-light text-dark border';
-                if (selectedDevices.has(device)) tag.classList.add('active');
-                tag.textContent = device;
-                tag.onclick = () => {
-                    if (selectedDevices.has(device)) selectedDevices.delete(device);
-                    else selectedDevices.add(device);
-                    renderDeviceTags();
-                    renderTable();
+                const t = document.createElement('span');
+                t.className = 'device-tag badge bg-light text-dark border';
+                if (selectedDevices.has(device)) t.classList.add('active');
+                t.textContent = device;
+                t.onclick = () => {
+                    if (selectedDevices.has(device)) selectedDevices.delete(device); else selectedDevices.add(device);
+                    renderDeviceTags(); renderTable();
                 };
-                container.appendChild(tag);
+                c.appendChild(t);
             });
-
             if (selectedDevices.size > 0) {
-                const resetBtn = document.createElement('button');
-                resetBtn.className = 'btn btn-sm btn-outline-secondary ms-2';
-                resetBtn.textContent = 'Сбросить приборы';
-                resetBtn.onclick = () => {
-                    selectedDevices.clear();
-                    renderDeviceTags();
-                    renderTable();
-                };
-                container.appendChild(resetBtn);
+                const r = document.createElement('button');
+                r.className = 'btn btn-sm btn-outline-secondary ms-2';
+                r.textContent = 'Сбросить приборы';
+                r.onclick = () => { selectedDevices.clear(); renderDeviceTags(); renderTable(); };
+                c.appendChild(r);
             }
         }
 
         async function changeStatus(key, newStatus) {
             if (!currentUser) return;
-
             const now = new Date().toISOString();
-
             table1Data = table1Data.map(row => {
-                if (rowKey(row) === key) {
-                    return { ...row, status: newStatus, statusDate: now };
-                }
+                if (rowKey(row) === key) return { ...row, status: newStatus, statusDate: now };
                 return row;
             });
-
             if (userInvoicesRef) {
-                const cleanTable1 = table1Data.map(row => {
-                    const withDefaults = {
-                        ...row,
-                        status: 'new',
-                        statusDate: null,
-                        statusChangedBy: ''
-                    };
-                    return stripUndefined(withDefaults);
-                });
-                const cleanTable2 = table2Data.map(row => stripUndefined(row));
-                set(userInvoicesRef, {
-                    table1Data: cleanTable1,
-                    table2Data: cleanTable2,
-                    updatedAt: now
-                }).catch(err => console.error('Ошибка записи своих данных:', err));
+                const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
+                const c2 = table2Data.map(r => stripUndefined(r));
+                set(userInvoicesRef, { table1Data: c1, table2Data: c2, updatedAt: now })
+                    .catch(err => console.error(err));
             }
-
-            const sKey = fbKey(key);
-            const existing = sharedStatuses[sKey] || {};
-
-            if (newStatus === 'new' && !existing.isOnsite) {
-                remove(ref(database, 'sharedStatuses/' + sKey))
-                    .catch(err => console.error('Ошибка удаления общего статуса:', err));
+            const sk = fbKey(key);
+            const ex = sharedStatuses[sk] || {};
+            if (newStatus === 'new' && !ex.isOnsite) {
+                remove(ref(database, 'sharedStatuses/' + sk)).catch(err => console.error(err));
             } else {
-                set(ref(database, 'sharedStatuses/' + sKey), {
-                    status: newStatus,
-                    statusDate: now,
-                    changedBy: currentUser.uid,
-                    changedByEmail: currentUser.email,
-                    changedByName: currentUserName,
-                    isOnsite: !!existing.isOnsite
-                }).catch(err => console.error('Ошибка записи общего статуса:', err));
+                set(ref(database, 'sharedStatuses/' + sk), {
+                    status: newStatus, statusDate: now,
+                    changedBy: currentUser.uid, changedByEmail: currentUser.email,
+                    changedByName: currentUserName, isOnsite: !!ex.isOnsite
+                }).catch(err => console.error(err));
             }
-
             renderTable();
         }
 
         async function toggleOnsite(key) {
             if (!currentUser) return;
-
             const now = new Date().toISOString();
-            const sKey = fbKey(key);
-            const existing = sharedStatuses[sKey] || {};
-            const newOnsite = !existing.isOnsite;
-
+            const sk = fbKey(key);
+            const ex = sharedStatuses[sk] || {};
+            const newOnsite = !ex.isOnsite;
             table1Data = table1Data.map(row => {
-                if (rowKey(row) === key) {
-                    return { ...row, isOnsite: newOnsite };
-                }
+                if (rowKey(row) === key) return { ...row, isOnsite: newOnsite };
                 return row;
             });
-
-            const currentStatus = existing.status || 'new';
-
-            if (!newOnsite && currentStatus === 'new') {
-                remove(ref(database, 'sharedStatuses/' + sKey))
-                    .catch(err => console.error('Ошибка удаления общего статуса:', err));
+            const cs = ex.status || 'new';
+            if (!newOnsite && cs === 'new') {
+                remove(ref(database, 'sharedStatuses/' + sk)).catch(err => console.error(err));
             } else {
-                set(ref(database, 'sharedStatuses/' + sKey), {
-                    status: currentStatus,
-                    statusDate: existing.statusDate || now,
-                    changedBy: existing.changedBy || currentUser.uid,
-                    changedByEmail: existing.changedByEmail || currentUser.email,
-                    changedByName: existing.changedByName || currentUserName,
+                set(ref(database, 'sharedStatuses/' + sk), {
+                    status: cs,
+                    statusDate: ex.statusDate || now,
+                    changedBy: ex.changedBy || currentUser.uid,
+                    changedByEmail: ex.changedByEmail || currentUser.email,
+                    changedByName: ex.changedByName || currentUserName,
                     isOnsite: newOnsite
-                }).catch(err => console.error('Ошибка записи общего статуса:', err));
+                }).catch(err => console.error(err));
             }
-
             renderTable();
         }
 
         function clearAllData() {
-            if (!currentUser) return;
-            if (!viewingUid) return;
-
+            if (!currentUser || !viewingUid) return;
             const isOther = viewingUid !== currentUser.uid;
-            const whoLabel = isOther
-                ? `пользователя «${viewingName}»`
-                : 'свои';
-
-            if (!confirm(`Удалить ВСЕ счета ${whoLabel}? Это действие нельзя отменить.`)) return;
-
-            table1Data = [];
-            table2Data = [];
-            selectedDevices.clear();
-            selectedSections.clear();
-            selectedStatuses.clear();
+            const wl = isOther ? `пользователя «${viewingName}»` : 'свои';
+            if (!confirm(`Удалить ВСЕ счета ${wl}?`)) return;
+            table1Data = []; table2Data = [];
+            selectedDevices.clear(); selectedSections.clear(); selectedStatuses.clear();
             document.querySelectorAll('.device-tag, .section-btn, .status-btn').forEach(b => b.classList.remove('active'));
-            renderDeviceTags();
-            hideCleanBanner();
-
-            remove(ref(database, 'invoices/' + viewingUid))
-                .catch(err => console.error('Ошибка удаления:', err));
-
+            renderDeviceTags(); hideCleanBanner();
+            remove(ref(database, 'invoices/' + viewingUid)).catch(err => console.error(err));
             localStorage.removeItem('cache_' + viewingUid + '_table1');
             localStorage.removeItem('cache_' + viewingUid + '_table2');
-
-            updateDeviceTypes();
-            renderTable();
+            updateDeviceTypes(); renderTable();
         }
 
         function calculateTerm(row) {
-            const dateStr = row['Дата выписки'];
-            if (!dateStr) return { date: null, label: '' };
-
-            const isFast = row.isBudget === true || row.isUrgent === true;
-            if (isFast) {
-                const d = addWorkingDays(dateStr, 5);
+            const ds = row['Дата выписки'];
+            if (!ds) return { date: null, label: '' };
+            const fast = row.isBudget === true || row.isUrgent === true;
+            if (fast) {
+                const d = addWorkingDays(ds, 5);
                 return { date: d, label: '5 раб.' };
-            } else {
-                const d = addCalendarDays(dateStr, 30);
-                return { date: d, label: '30 кал.' };
             }
+            const d = addCalendarDays(ds, 30);
+            return { date: d, label: '30 кал.' };
         }
 
         function getCleanCandidates() {
-            const threshold = new Date();
-            threshold.setMonth(threshold.getMonth() - 2);
-            threshold.setHours(0, 0, 0, 0);
-
-            const candidates = [];
-
+            const th = new Date();
+            th.setMonth(th.getMonth() - 2);
+            th.setHours(0, 0, 0, 0);
+            const c = [];
             table1Data.forEach(row => {
                 if (row.status !== 'completed') return;
-
-                let refDate = null;
-                if (row.statusDate) {
-                    refDate = new Date(row.statusDate);
-                } else if (row['Дата выписки']) {
-                    refDate = parseDate(row['Дата выписки']);
-                }
-
-                if (!refDate || isNaN(refDate.getTime())) return;
-
-                if (refDate < threshold) {
-                    candidates.push(row);
-                }
+                let rd = null;
+                if (row.statusDate) rd = new Date(row.statusDate);
+                else if (row['Дата выписки']) rd = parseDate(row['Дата выписки']);
+                if (!rd || isNaN(rd.getTime())) return;
+                if (rd < th) c.push(row);
             });
-
-            return candidates;
+            return c;
         }
-
         function checkAutoClean() {
             if (cleanDismissedThisSession) return;
-            if (!table1Data.length) {
-                hideCleanBanner();
-                return;
-            }
-
+            if (!table1Data.length) { hideCleanBanner(); return; }
             pendingCleanRows = getCleanCandidates();
-
-            if (pendingCleanRows.length === 0) {
-                hideCleanBanner();
-                return;
-            }
-
-            const banner = document.getElementById('cleanBanner');
-            const countEl = document.getElementById('cleanCount');
-            const wordEl = document.getElementById('cleanWord');
-            const periodEl = document.getElementById('cleanPeriod');
-
-            countEl.textContent = pendingCleanRows.length;
-
+            if (!pendingCleanRows.length) { hideCleanBanner(); return; }
+            const b = document.getElementById('cleanBanner');
+            document.getElementById('cleanCount').textContent = pendingCleanRows.length;
             const n = pendingCleanRows.length;
-            const nMod10 = n % 10;
-            const nMod100 = n % 100;
-            let word = 'счетов';
-            if (nMod10 === 1 && nMod100 !== 11) word = 'счет';
-            else if (nMod10 >= 2 && nMod10 <= 4 && (nMod100 < 10 || nMod100 >= 20)) word = 'счета';
-            wordEl.textContent = word;
-
-            let earliest = null;
-            let latest = null;
+            const m10 = n % 10, m100 = n % 100;
+            let w = 'счетов';
+            if (m10 === 1 && m100 !== 11) w = 'счет';
+            else if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) w = 'счета';
+            document.getElementById('cleanWord').textContent = w;
+            let e = null, l = null;
             pendingCleanRows.forEach(r => {
                 const d = r.statusDate ? new Date(r.statusDate) : parseDate(r['Дата выписки']);
                 if (!d || isNaN(d.getTime())) return;
-                if (!earliest || d < earliest) earliest = d;
-                if (!latest || d > latest) latest = d;
+                if (!e || d < e) e = d;
+                if (!l || d > l) l = d;
             });
-
-            if (earliest && latest) {
+            if (e && l) {
                 const fmt = (d) => {
-                    const months = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-                    return `${months[d.getMonth()]} ${d.getFullYear()}`;
+                    const mm = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+                    return `${mm[d.getMonth()]} ${d.getFullYear()}`;
                 };
-                const eStr = fmt(earliest);
-                const lStr = fmt(latest);
-                periodEl.textContent = (eStr === lStr) ? eStr : `${eStr} — ${lStr}`;
+                document.getElementById('cleanPeriod').textContent = (fmt(e) === fmt(l)) ? fmt(e) : `${fmt(e)} — ${fmt(l)}`;
             } else {
-                periodEl.textContent = 'старше 2 месяцев';
+                document.getElementById('cleanPeriod').textContent = 'старше 2 месяцев';
             }
-
-            banner.classList.add('open');
+            b.classList.add('open');
         }
-
         function hideCleanBanner() {
-            const banner = document.getElementById('cleanBanner');
-            if (banner) banner.classList.remove('open');
+            const b = document.getElementById('cleanBanner');
+            if (b) b.classList.remove('open');
         }
-
-        function dismissAutoClean() {
-            cleanDismissedThisSession = true;
-            hideCleanBanner();
-        }
-
+        function dismissAutoClean() { cleanDismissedThisSession = true; hideCleanBanner(); }
         async function performAutoClean() {
-            if (!pendingCleanRows.length) {
-                hideCleanBanner();
-                return;
-            }
-
-            const count = pendingCleanRows.length;
-            if (!confirm(`Удалить ${count} выполненных счетов старше 2 месяцев? Это действие нельзя отменить.`)) return;
-
-            const keysToRemove = new Set();
-            pendingCleanRows.forEach(row => {
-                keysToRemove.add(rowKey(row));
-            });
-
-            table1Data = table1Data.filter(row => {
-                const key = rowKey(row);
-                return !pendingCleanRows.some(p => rowKey(p) === key);
-            });
-
-            const fbKeysToRemove = Array.from(keysToRemove).map(fbKey);
-
+            if (!pendingCleanRows.length) { hideCleanBanner(); return; }
+            const c = pendingCleanRows.length;
+            if (!confirm(`Удалить ${c} счетов?`)) return;
+            const ktr = new Set();
+            pendingCleanRows.forEach(r => ktr.add(rowKey(r)));
+            table1Data = table1Data.filter(r => !pendingCleanRows.some(p => rowKey(p) === rowKey(r)));
+            const fkr = Array.from(ktr).map(fbKey);
             saveToStorage();
-
-            for (const fk of fbKeysToRemove) {
-                try {
-                    await remove(ref(database, 'sharedStatuses/' + fk));
-                } catch(e) {
-                    console.warn('Не удалось удалить sharedStatus:', fk, e);
-                }
+            for (const fk of fkr) {
+                try { await remove(ref(database, 'sharedStatuses/' + fk)); }
+                catch(e) { console.warn(e); }
             }
-
             pendingCleanRows = [];
             hideCleanBanner();
             renderTable();
-
-            alert(`🧹 Удалено ${count} старых выполненных счетов.`);
-            console.log(`🧹 Автоочистка: удалено ${count} счетов.`);
+            alert(`🧹 Удалено ${c}`);
         }
 
-        function setupScrollSync() {
-            const topScroll = document.getElementById('topScroll');
-            const topScrollInner = document.getElementById('topScrollInner');
-            const bottomScroll = document.getElementById('bottomScroll');
-            const table = document.getElementById('invoicesTable');
+        // ============================================================
+        // Модалка распределения
+        // ============================================================
+        function openDistModal(key) {
+            if (!currentIsAdmin) { alert('Только админ'); return; }
+            if (viewingUid !== currentUser.uid) { alert('Распределять можно только со своих данных'); return; }
 
-            if (!topScroll || !bottomScroll || !table) return;
+            const row = table1Data.find(r => rowKey(r) === key);
+            if (!row) return;
+            distributingRowKey = key;
 
-            function updateTopWidth() {
-                if (topScrollInner && table) {
-                    topScrollInner.style.width = table.scrollWidth + 'px';
+            const info = document.getElementById('distInvoiceInfo');
+            info.textContent = `${row['Номер счета']} | ${row['Прибор'] || '—'} | ${row['Контингент'] || ''}`;
+
+            const list = document.getElementById('distUserList');
+            list.innerHTML = '';
+            const arr = Object.entries(allUsersCache).map(([uid, u]) => ({ uid, ...u }));
+            arr.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+
+            const curTo = row.distributedTo || '';
+
+            // Кнопка «Отменить распределение», если уже назначен
+            if (curTo) {
+                const cBtn = document.createElement('button');
+                cBtn.className = 'btn btn-warning w-100 mb-3';
+                cBtn.textContent = '❌ Отменить распределение';
+                cBtn.onclick = () => cancelDistribution();
+                list.appendChild(cBtn);
+            }
+
+            if (!arr.length) {
+                const d = document.createElement('div');
+                d.className = 'text-muted text-center py-3';
+                d.textContent = 'Нет других пользователей.';
+                list.appendChild(d);
+            } else {
+                arr.forEach(u => {
+                    if (u.uid === currentUser.uid) return;
+                    const item = document.createElement('div');
+                    item.className = 'dist-user-item' + (u.uid === curTo ? ' dist-current' : '');
+                    item.textContent = `👤 ${u.name || u.username || u.uid}` + (u.uid === curTo ? ' ✓' : '');
+                    item.onclick = () => assignToUser(u.uid, u.name || u.username || u.uid);
+                    list.appendChild(item);
+                });
+            }
+
+            document.getElementById('distModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        async function assignToUser(userUid, userName) {
+            if (!currentIsAdmin) return;
+            if (!distributingRowKey) return;
+            if (userUid === currentUser.uid) { alert('Нельзя назначить себе'); return; }
+
+            const key = distributingRowKey;
+            const now = new Date().toISOString();
+
+            // 1. Ставим флаг у админа
+            const adminRowIdx = table1Data.findIndex(r => rowKey(r) === key);
+            if (adminRowIdx === -1) { closeDistModal(); return; }
+
+            const adminRow = table1Data[adminRowIdx];
+            table1Data[adminRowIdx] = {
+                ...adminRow,
+                distributedTo: userUid,
+                distributedToName: userName,
+                distributedAt: now
+            };
+
+            // 2. Читаем данные пользователя, чтобы не перезаписать его список
+            let userTable1 = [];
+            try {
+                const snap = await get(ref(database, 'invoices/' + userUid + '/table1Data'));
+                if (snap.exists()) userTable1 = snap.val() || [];
+            } catch(e) {
+                console.warn('Не смог прочитать данные пользователя:', e);
+            }
+
+            // 3. Проверяем, есть ли у пользователя этот счёт по ключу
+            const existsIdx = userTable1.findIndex(r => rowKey(r) === key);
+
+            if (existsIdx >= 0) {
+                // Есть — просто ставим distributed: true, НЕ дублируем
+                userTable1[existsIdx] = {
+                    ...userTable1[existsIdx],
+                    distributed: true,
+                    distributedBy: currentUser.uid,
+                    distributedByName: currentUserName,
+                    distributedAt: now
+                };
+            } else {
+                // Нет — копируем с флагами
+                const copy = stripUndefined({
+                    ...adminRow,
+                    distributed: true,
+                    distributedBy: currentUser.uid,
+                    distributedByName: currentUserName,
+                    distributedAt: now,
+                    copied: true,                 // ← это копия, при отмене удалим
+                    distributedTo: '',            // у пользователя не нужен
+                    distributedToName: ''
+                });
+                userTable1.push(copy);
+            }
+
+            // 4. Сохраняем оба списка
+            setSyncStatus('syncing', 'Распределение...');
+            try {
+                await set(ref(database, 'invoices/' + userUid + '/table1Data'), userTable1);
+
+                // Сохраняем и у админа (свежий список)
+                const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
+                await set(userInvoicesRef, {
+                    table1Data: c1,
+                    table2Data: table2Data.map(r => stripUndefined(r)),
+                    updatedAt: now
+                });
+
+                setSyncStatus('online', 'Распределено');
+                setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000);
+            } catch(e) {
+                console.error('Ошибка распределения:', e);
+                setSyncStatus('offline', 'Ошибка');
+                alert('Не удалось распределить: ' + e.message);
+                return;
+            }
+
+            closeDistModal();
+            renderTable();
+            alert(`📦 Счёт распределён пользователю «${userName}»`);
+        }
+
+        async function cancelDistribution() {
+            if (!currentIsAdmin) return;
+            if (!distributingRowKey) return;
+
+            const key = distributingRowKey;
+            const row = table1Data.find(r => rowKey(r) === key);
+            if (!row || !row.distributedTo) { closeDistModal(); return; }
+
+            const userUid = row.distributedTo;
+            const userName = row.distributedToName || userUid;
+
+            if (!confirm(`Отменить распределение для «${userName}»?`)) return;
+
+            const now = new Date().toISOString();
+
+            // 1. Снимаем у админа
+            const idx = table1Data.findIndex(r => rowKey(r) === key);
+            if (idx >= 0) {
+                table1Data[idx] = {
+                    ...table1Data[idx],
+                    distributedTo: '',
+                    distributedToName: '',
+                    distributedAt: ''
+                };
+            }
+
+            // 2. У пользователя: если копия — удаляем, если свой — просто снимаем флаг
+            let userTable1 = [];
+            try {
+                const snap = await get(ref(database, 'invoices/' + userUid + '/table1Data'));
+                if (snap.exists()) userTable1 = snap.val() || [];
+            } catch(e) { console.warn(e); }
+
+            const ui = userTable1.findIndex(r => rowKey(r) === key);
+            if (ui >= 0) {
+                const uRow = userTable1[ui];
+                if (uRow.copied) {
+                    userTable1.splice(ui, 1);       // удаляем копию
+                } else {
+                    userTable1[ui] = {              // снимаем флаг
+                        ...uRow,
+                        distributed: false,
+                        distributedBy: '',
+                        distributedByName: '',
+                        distributedAt: ''
+                    };
                 }
             }
-            updateTopWidth();
 
-            topScroll.addEventListener('scroll', () => {
-                bottomScroll.scrollLeft = topScroll.scrollLeft;
-            });
-            bottomScroll.addEventListener('scroll', () => {
-                topScroll.scrollLeft = bottomScroll.scrollLeft;
-            });
+            setSyncStatus('syncing', 'Отмена распределения...');
+            try {
+                await set(ref(database, 'invoices/' + userUid + '/table1Data'), userTable1);
 
-            window.addEventListener('resize', updateTopWidth);
-            window.__updateTopScrollWidth = updateTopWidth;
+                const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
+                await set(userInvoicesRef, {
+                    table1Data: c1,
+                    table2Data: table2Data.map(r => stripUndefined(r)),
+                    updatedAt: now
+                });
+
+                setSyncStatus('online', 'Отменено');
+                setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000);
+            } catch(e) {
+                console.error('Ошибка отмены:', e);
+                setSyncStatus('offline', 'Ошибка');
+                alert('Не удалось: ' + e.message);
+                return;
+            }
+
+            closeDistModal();
+            renderTable();
+            alert(`📦 Распределение для «${userName}» отменено`);
         }
 
+        // ============================================================
+        // Синхронизация скролла
+        // ============================================================
+        function setupScrollSync() {
+            const ts = document.getElementById('topScroll');
+            const tsi = document.getElementById('topScrollInner');
+            const bs = document.getElementById('bottomScroll');
+            const t = document.getElementById('invoicesTable');
+            if (!ts || !bs || !t) return;
+            function upd() { if (tsi && t) tsi.style.width = t.scrollWidth + 'px'; }
+            upd();
+            ts.addEventListener('scroll', () => { bs.scrollLeft = ts.scrollLeft; });
+            bs.addEventListener('scroll', () => { ts.scrollLeft = bs.scrollLeft; });
+            window.addEventListener('resize', upd);
+            window.__updateTopScrollWidth = upd;
+        }
         window.addEventListener('load', setupScrollSync);
 
+        // ============================================================
+        // Рендер
+        // ============================================================
         function renderTable() {
             const tbody = document.getElementById('tableBody');
-            const searchQuery = document.getElementById('search').value.trim().toLowerCase();
+            const sq = document.getElementById('search').value.trim().toLowerCase();
 
             const ownerHeader = document.getElementById('ownerColHeader');
-            const showOwnerCol = currentIsAdmin;
+            const showOwner = currentIsAdmin;
+            ownerHeader.style.display = showOwner ? 'table-cell' : 'none';
 
-            ownerHeader.style.display = showOwnerCol ? 'table-cell' : 'none';
+            const distHeader = document.getElementById('distributedColHeader');
+            const showDistCol = currentIsAdmin && viewingUid === currentUser.uid;
+            distHeader.style.display = showDistCol ? 'table-cell' : 'none';
 
-            let filteredData = [...table1Data];
+            let fd = [...table1Data];
 
             if (selectedStatuses.size > 0) {
-                filteredData = filteredData.filter(row => {
-                    for (const st of selectedStatuses) {
-                        if (st === 'new' && row.status === 'new') return true;
-                        if (st === 'inwork' && row.status === 'inwork') return true;
-                        if (st === 'completed' && row.status === 'completed') return true;
-                        if (st === 'highlighted' && (row.isBudget || row.isUrgent || row.isOnsite)) return true;
-                        if (st === 'matched' && row.isMatched) return true;
+                fd = fd.filter(row => {
+                    for (const s of selectedStatuses) {
+                        if (s === 'new' && row.status === 'new') return true;
+                        if (s === 'inwork' && row.status === 'inwork') return true;
+                        if (s === 'completed' && row.status === 'completed') return true;
+                        if (s === 'highlighted' && (row.isBudget || row.isUrgent || row.isOnsite)) return true;
+                        if (s === 'matched' && row.isMatched) return true;
                     }
                     return false;
                 });
             }
 
             if (selectedSections.size > 0) {
-                filteredData = filteredData.filter(row =>
-                    selectedSections.has(row.section || 'common')
-                );
-            }
-
-            if (selectedDevices.size > 0) {
-                filteredData = filteredData.filter(row => {
-                    const device = (row['Прибор'] || '').split(' ').slice(0, 3).join(' ');
-                    return selectedDevices.has(device);
+                fd = fd.filter(row => {
+                    for (const sec of selectedSections) {
+                        if (sec === 'onsite' && row.isOnsite) return true;
+                        if (sec === 'distributed' && row.distributed) return true;
+                        if (sec !== 'onsite' && sec !== 'distributed' && (row.section || 'common') === sec) return true;
+                    }
+                    return false;
                 });
             }
 
-            if (searchQuery) {
-                filteredData = filteredData.filter(row => {
-                    const invoiceNumber = safeString(row['Номер счета']);
-                    const contractor    = safeString(row['Контрагент (Наименование)']);
-                    const contingent    = safeString(row['Контингент']);
-                    const device        = safeString(row['Прибор']);
-                    const paymentDate   = safeString(row.paymentDate || row['Дата оплаты']);
-                    const urgency       = safeString(row.urgency);
-                    const section       = safeString(sectionLabel(row.section));
-                    const onsite        = row.isOnsite ? 'выездной выезд' : '';
+            if (selectedDevices.size > 0) {
+                fd = fd.filter(row => {
+                    const d = (row['Прибор'] || '').split(' ').slice(0, 3).join(' ');
+                    return selectedDevices.has(d);
+                });
+            }
 
-                    return invoiceNumber.includes(searchQuery) ||
-                           contractor.includes(searchQuery) ||
-                           contingent.includes(searchQuery) ||
-                           device.includes(searchQuery) ||
-                           paymentDate.includes(searchQuery) ||
-                           urgency.includes(searchQuery) ||
-                           section.includes(searchQuery) ||
-                           onsite.includes(searchQuery);
+            if (sq) {
+                fd = fd.filter(row => {
+                    const inv = safeString(row['Номер счета']);
+                    const cont = safeString(row['Контингент']);
+                    const dev = safeString(row['Прибор']);
+                    const pd = safeString(row.paymentDate || row['Дата оплаты']);
+                    const ur = safeString(row.urgency);
+                    const sec = safeString(sectionLabel(row.section));
+                    const on = row.isOnsite ? 'выездной выезд' : '';
+                    return inv.includes(sq) || cont.includes(sq) || dev.includes(sq) ||
+                           pd.includes(sq) || ur.includes(sq) || sec.includes(sq) || on.includes(sq);
                 });
             }
 
             if (sortByDate === 'earliest') {
-                filteredData.sort((a, b) => {
+                fd.sort((a, b) => {
                     const da = parseDate(a.paymentDate || a['Дата оплаты']);
                     const db = parseDate(b.paymentDate || b['Дата оплаты']);
                     if (!da && !db) return 0;
@@ -2317,7 +1948,7 @@
                     return da - db;
                 });
             } else if (sortByDate === 'latest') {
-                filteredData.sort((a, b) => {
+                fd.sort((a, b) => {
                     const da = parseDate(a.paymentDate || a['Дата оплаты']);
                     const db = parseDate(b.paymentDate || b['Дата оплаты']);
                     if (!da && !db) return 0;
@@ -2326,7 +1957,7 @@
                     return db - da;
                 });
             } else if (sortByDate === 'noDate') {
-                filteredData = filteredData.filter(row => !row.paymentDate && !row['Дата оплаты']);
+                fd = fd.filter(row => !row.paymentDate && !row['Дата оплаты']);
             }
 
             document.getElementById('dateSortIndicator').textContent =
@@ -2339,89 +1970,86 @@
             document.getElementById('highlightedCount').textContent = table1Data.filter(r => r.isBudget || r.isUrgent || r.isOnsite).length;
             document.getElementById('urgentCount').textContent = table1Data.filter(r => r.isUrgent).length;
 
-            const statusLabels = {
-                'new': 'Новые', 'inwork': 'В работе', 'completed': 'Выполненные',
-                'highlighted': 'С пометками', 'matched': 'Совпавшие'
-            };
+            const sl = { 'new':'Новые','inwork':'В работе','completed':'Выполненные','highlighted':'С пометками','matched':'Совпавшие' };
             let title = 'Все счета';
-            if (currentIsAdmin && viewingUid !== currentUser.uid) {
-                title = `[${viewingName}] Все счета`;
-            }
-            if (selectedStatuses.size > 0) {
-                title = Array.from(selectedStatuses).map(s => statusLabels[s]).join(' + ');
-            }
-            if (selectedSections.size > 0) {
-                title += ` / ${Array.from(selectedSections).map(sectionLabel).join(' + ')}`;
-            }
-            if (selectedDevices.size > 0) {
-                title += ` / приборы: ${Array.from(selectedDevices).join(', ')}`;
-            }
+            if (currentIsAdmin && viewingUid !== currentUser.uid) title = `[${viewingName}] Все счета`;
+            if (selectedStatuses.size > 0) title = Array.from(selectedStatuses).map(s => sl[s]).join(' + ');
+            if (selectedSections.size > 0) title += ` / ${Array.from(selectedSections).map(sectionLabel).join(' + ')}`;
+            if (selectedDevices.size > 0) title += ` / приборы: ${Array.from(selectedDevices).join(', ')}`;
             if (sortByDate === 'earliest') title += ' (сначала ранние)';
             if (sortByDate === 'latest') title += ' (сначала поздние)';
             if (sortByDate === 'noDate') title += ' (без даты оплаты)';
-            if (searchQuery) title += ` (поиск: "${searchQuery}")`;
+            if (sq) title += ` (поиск: "${sq}")`;
 
-            document.getElementById('tableTitle').textContent = `📋 ${title} (${filteredData.length})`;
+            document.getElementById('tableTitle').textContent = `📋 ${title} (${fd.length})`;
 
             tbody.innerHTML = '';
+            const colsCount = 13 + (showOwner ? 1 : 0) + (showDistCol ? 1 : 0);
 
-            if (filteredData.length === 0) {
-                const cols = showOwnerCol ? 15 : 14;
-                tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center text-muted">Нет данных. Измените фильтры или поиск.</td></tr>`;
+            if (!fd.length) {
+                tbody.innerHTML = `<tr><td colspan="${colsCount}" class="text-center text-muted">Нет данных.</td></tr>`;
             } else {
                 const ownerLabel = currentIsAdmin
                     ? (viewingUid === currentUser.uid ? currentUserName + ' (вы)' : viewingName)
                     : '';
 
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
+                const today = new Date(); today.setHours(0,0,0,0);
 
-                filteredData.forEach(row => {
+                fd.forEach(row => {
                     const tr = document.createElement('tr');
                     if (row.status === 'inwork') tr.classList.add('status-inwork');
                     if (row.status === 'completed') tr.classList.add('status-completed');
-
                     const sec = row.section || 'common';
                     if (sec === 'budget') tr.classList.add('budget');
                     else if (sec === 'urgent') tr.classList.add('urgent');
-
                     if (row.isBudget || row.isUrgent) tr.classList.add('highlighted');
 
-                    const paymentDate = row.paymentDate || row['Дата оплаты'] || '';
-                    const key = rowKey(row)
-                        .replace(/\\/g, '\\\\')
-                        .replace(/'/g, "\\'")
-                        .replace(/"/g, '&quot;');
-
+                    const pd = row.paymentDate || row['Дата оплаты'] || '';
+                    const key = rowKey(row).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
                     const changedBy = row.statusChangedBy
-                        ? `<br><small class="text-muted">${row.statusChangedBy}</small>`
-                        : '';
+                        ? `<br><small class="text-muted">${row.statusChangedBy}</small>` : '';
 
                     const term = calculateTerm(row);
                     let termHtml = '—';
                     if (term.date) {
-                        const diffDays = Math.ceil((term.date.getTime() - today.getTime()) / (1000*60*60*24));
+                        const dd = Math.ceil((term.date.getTime() - today.getTime()) / 86400000);
                         let cls = 'term-ok';
-                        if (diffDays < 0) cls = 'term-expired';
-                        else if (diffDays <= 3) cls = 'term-soon';
+                        if (dd < 0) cls = 'term-expired';
+                        else if (dd <= 3) cls = 'term-soon';
                         termHtml = `<span class="${cls}" title="${term.label}">${formatDate(term.date)}</span>`;
                     }
 
-                    const onsiteBtn = row.isOnsite
-                        ? `<button class="btn btn-sm btn-primary me-1" onclick="toggleOnsite('${key}')" title="Снять пометку Выездной">🚗</button>`
-                        : `<button class="btn btn-sm btn-outline-primary me-1" onclick="toggleOnsite('${key}')" title="Отметить как Выездной">🚗</button>`;
+                    const onBtn = row.isOnsite
+                        ? `<button class="btn btn-sm btn-primary me-1" onclick="toggleOnsite('${key}')" title="Снять выездной">🚗</button>`
+                        : `<button class="btn btn-sm btn-outline-primary me-1" onclick="toggleOnsite('${key}')" title="Выездной">🚗</button>`;
+
+                    // Кнопка распределения (только у админа на своих данных)
+                    let distBtn = '';
+                    if (currentIsAdmin && viewingUid === currentUser.uid) {
+                        distBtn = row.distributedTo
+                            ? `<button class="btn btn-sm btn-outline-secondary me-1" onclick="openDistModal('${key}')" title="Распределён: ${escapeHtml(row.distributedToName || '')}">📦</button>`
+                            : `<button class="btn btn-sm btn-outline-secondary me-1" onclick="openDistModal('${key}')" title="Распределить">📦</button>`;
+                    }
+
+                    // Бейдж «Распределённый» у пользователя
+                    const distributedBadge = row.distributed
+                        ? `<span class="badge badge-distributed ms-1">📦 Распределённый</span>` : '';
+
+                    // Колонка «Распределён» — только у админа на своих данных
+                    const distCell = showDistCol
+                        ? `<td class="col-distributed">${row.distributedToName ? '👤 ' + escapeHtml(row.distributedToName) : '<span class="text-muted">—</span>'}</td>`
+                        : '';
 
                     tr.innerHTML = `
-                        <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong></td>
-                        ${showOwnerCol ? `<td><small>${escapeHtml(ownerLabel)}</small></td>` : ''}
+                        <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong>${distributedBadge}</td>
+                        ${showOwner ? `<td><small>${escapeHtml(ownerLabel)}</small></td>` : ''}
                         <td><span class="badge ${sectionBadgeClass(sec)}">${sectionLabel(sec)}</span></td>
                         <td class="col-date">${row['Дата выписки'] || ''}</td>
-                        <td class="col-contractor">${row['Контрагент (Наименование)'] || ''}</td>
-                        <td class="col-contingent">${row['Контингент'] || ''}</td>
+                        <td class="col-contractor">${row['Контингент'] || ''}</td>
                         <td>${row['Прибор'] || ''}</td>
                         <td class="col-qty">${formatQty(row['Кол-во'])}</td>
                         <td class="col-sum">${row['Всего по счету'] || row['Сумма'] || ''}</td>
-                        <td class="col-date">${paymentDate ? `<strong>${paymentDate}</strong>` : '—'}</td>
+                        <td class="col-date">${pd ? `<strong>${pd}</strong>` : '—'}</td>
                         <td class="col-date">${termHtml}</td>
                         <td>${row.urgency ? `<span class="badge badge-urgent">${row.urgency} дн.</span>` : '—'}</td>
                         <td>
@@ -2435,19 +2063,21 @@
                             ${row.isOnsite ? '<span class="badge badge-onsite me-1">🚗 Выездной</span>' : ''}
                             ${!row.isBudget && !row.isUrgent && !row.isOnsite ? '<span class="text-muted">—</span>' : ''}
                         </td>
+                        ${distCell}
                         <td>
-                            ${onsiteBtn}
+                            ${distBtn}
+                            ${onBtn}
                             ${row.status === 'new' ? `
-                                <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">▶</button>
-                                <button class="btn btn-sm btn-success" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
+                                <button class="btn btn-sm btn-info me-1" onclick="changeStatus('${key}', 'inwork')">▶</button>
+                                <button class="btn btn-sm btn-success" onclick="changeStatus('${key}', 'completed')">✓</button>
                             ` : ''}
                             ${row.status === 'inwork' ? `
-                                <button class="btn btn-sm btn-success me-1" onclick="changeStatus('${key}', 'completed')" title="Выполнен">✓</button>
-                                <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
+                                <button class="btn btn-sm btn-success me-1" onclick="changeStatus('${key}', 'completed')">✓</button>
+                                <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')">↩</button>
                             ` : ''}
                             ${row.status === 'completed' ? `
-                                <button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${key}', 'inwork')" title="В работу">↩</button>
-                                <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')" title="В новые">↩</button>
+                                <button class="btn btn-sm btn-warning me-1" onclick="changeStatus('${key}', 'inwork')">↩</button>
+                                <button class="btn btn-sm btn-secondary" onclick="changeStatus('${key}', 'new')">↩</button>
                             ` : ''}
                         </td>
                     `;
@@ -2462,65 +2092,45 @@
 
         function exportToExcel() {
             if (!table1Data.length) { alert('Нет данных'); return; }
-
-            let dataToExport = [...table1Data];
+            let dte = [...table1Data];
 
             if (selectedStatuses.size > 0) {
-                dataToExport = dataToExport.filter(row => {
-                    for (const st of selectedStatuses) {
-                        if (st === 'new' && row.status === 'new') return true;
-                        if (st === 'inwork' && row.status === 'inwork') return true;
-                        if (st === 'completed' && row.status === 'completed') return true;
-                        if (st === 'highlighted' && (row.isBudget || row.isUrgent || row.isOnsite)) return true;
-                        if (st === 'matched' && row.isMatched) return true;
+                dte = dte.filter(row => {
+                    for (const s of selectedStatuses) {
+                        if (s === 'new' && row.status === 'new') return true;
+                        if (s === 'inwork' && row.status === 'inwork') return true;
+                        if (s === 'completed' && row.status === 'completed') return true;
+                        if (s === 'highlighted' && (row.isBudget || row.isUrgent || row.isOnsite)) return true;
+                        if (s === 'matched' && row.isMatched) return true;
                     }
                     return false;
                 });
             }
-
             if (selectedSections.size > 0) {
-                dataToExport = dataToExport.filter(r => selectedSections.has(r.section || 'common'));
+                dte = dte.filter(r => {
+                    for (const sec of selectedSections) {
+                        if (sec === 'onsite' && r.isOnsite) return true;
+                        if (sec === 'distributed' && r.distributed) return true;
+                        if (sec !== 'onsite' && sec !== 'distributed' && (r.section || 'common') === sec) return true;
+                    }
+                    return false;
+                });
             }
-
             if (selectedDevices.size > 0) {
-                dataToExport = dataToExport.filter(r => {
-                    const device = (r['Прибор'] || '').split(' ').slice(0, 3).join(' ');
-                    return selectedDevices.has(device);
+                dte = dte.filter(r => {
+                    const d = (r['Прибор'] || '').split(' ').slice(0, 3).join(' ');
+                    return selectedDevices.has(d);
                 });
             }
 
-            const searchQuery = document.getElementById('search').value.trim().toLowerCase();
-            if (searchQuery) {
-                dataToExport = dataToExport.filter(row => {
-                    const invoiceNumber = safeString(row['Номер счета']);
-                    const contractor    = safeString(row['Контрагент (Наименование)']);
-                    const contingent    = safeString(row['Контингент']);
-                    const device        = safeString(row['Прибор']);
-                    const paymentDate   = safeString(row.paymentDate || row['Дата оплаты']);
-                    const urgency       = safeString(row.urgency);
-                    const section       = safeString(sectionLabel(row.section));
-                    const onsite        = row.isOnsite ? 'выездной выезд' : '';
-
-                    return invoiceNumber.includes(searchQuery) ||
-                           contractor.includes(searchQuery) ||
-                           contingent.includes(searchQuery) ||
-                           device.includes(searchQuery) ||
-                           paymentDate.includes(searchQuery) ||
-                           urgency.includes(searchQuery) ||
-                           section.includes(searchQuery) ||
-                           onsite.includes(searchQuery);
-                });
-            }
-
-            const exportData = dataToExport.map(row => {
+            const ed = dte.map(row => {
                 const term = calculateTerm(row);
                 return {
                     'Квитанция/Счет': row['Номер счета'],
                     'Владелец': (currentIsAdmin && viewingUid !== currentUser.uid) ? viewingName : '',
                     'Раздел': sectionLabel(row.section || 'common'),
                     'Дата выписки': row['Дата выписки'],
-                    'Контрагент': row['Контрагент (Наименование)'],
-                    'Контингент': row['Контингент'] || '',
+                    'Контрагент': row['Контингент'] || '',
                     'Прибор': row['Прибор'],
                     'Кол-во': row['Кол-во'],
                     'Сумма': row['Всего по счету'],
@@ -2530,21 +2140,20 @@
                     'Статус': row.status,
                     'Изменил': row.statusChangedBy || '',
                     'Бюджет': row.isBudget ? 'Да' : '',
-                    'Выездной': row.isOnsite ? 'Да' : ''
+                    'Выездной': row.isOnsite ? 'Да' : '',
+                    'Распределён': row.distributedToName || ''
                 };
             });
 
-            const ws = XLSX.utils.json_to_sheet(exportData);
+            const ws = XLSX.utils.json_to_sheet(ed);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Счета');
-
             const parts = ['счета'];
             if (currentIsAdmin && viewingUid !== currentUser.uid) parts.push(viewingName);
             if (selectedSections.size > 0) parts.push(Array.from(selectedSections).join('-'));
             if (selectedDevices.size > 0) parts.push('приборы');
             if (selectedStatuses.size > 0) parts.push(Array.from(selectedStatuses).join('-'));
             parts.push(new Date().toISOString().slice(0, 10));
-
             XLSX.writeFile(wb, parts.join('_') + '.xlsx');
         }
 
