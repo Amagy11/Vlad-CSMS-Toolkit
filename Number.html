@@ -974,43 +974,75 @@
             return isNaN(date.getTime()) ? null : date;
         }
 
-        // Расширенный парсер маркера: проверяет первые 5 ячеек строки.
-        // Возвращает {place, type} или null.
+        // Приводит любые пробелы (обычные, неразрывные, тонкие, табы) к обычному пробелу
+        function normalizeSpaces(s) {
+            if (s === undefined || s === null) return '';
+            return String(s)
+                .replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000\t]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        // Убирает все пробелы и дефисы, приводит к верхнему регистру
+        // "эталон бюджет" -> "ЭТАЛОНБЮДЖЕТ"
+        // "эталон-бюджет" -> "ЭТАЛОНБЮДЖЕТ"
+        function squash(s) {
+            return normalizeSpaces(s).toUpperCase().replace(/[\s\-_]+/g, '');
+        }
+
+        // Проверяет, содержит ли "сплющенная" строка одно из ключевых слов.
+        // Работает даже если слова слиты: "ЭТАЛОНБЮДЖЕТ" содержит "ЭТАЛОН" и "БЮДЖЕТ".
         function detectSectionMarker(row) {
             if (!row || !row.length) return null;
 
             const limit = Math.min(row.length, 5);
             for (let idx = 0; idx < limit; idx++) {
-                let cell = (row[idx] || '').toString().trim().toUpperCase().replace(/[\[\]]/g, '');
-                if (!cell) continue;
-                if (/[0-9\-]/.test(cell)) continue;
-                if (!/^[А-ЯЁA-Z\s]+$/.test(cell)) continue;
+                const raw = row[idx];
+                if (raw === undefined || raw === null || raw === '') continue;
 
-                const words = cell.split(/\s+/).filter(w => w);
-                if (!words.length) continue;
+                // Пропускаем строки с цифрами (это не маркер, а данные/дата)
+                const rawStr = normalizeSpaces(raw);
+                if (!rawStr) continue;
+                if (/\d/.test(rawStr)) continue;
+                // Только буквы, пробелы и дефисы
+                if (!/^[А-ЯЁA-Zа-яёa-z\s\-_]+$/.test(rawStr)) continue;
+
+                const up = rawStr.toUpperCase().replace(/[\[\]]/g, '');
+                const sq = squash(up);
+
+                if (!sq) continue;
 
                 let place = null;
                 let type = null;
                 let matched = false;
 
-                for (const w of words) {
-                    if (/^(ЭТАЛОН|ETALON)/.test(w)) { place = 'etalon'; matched = true; continue; }
-                    if (/^(ВЫЕЗД|ONSITE)/.test(w)) { place = 'onsite'; matched = true; continue; }
-                    if (/^(ЦСМС|CSM|CSMS)/.test(w)) { place = 'csm'; matched = true; continue; }
-                    if (/^(БЮДЖЕТ|BUDGET)/.test(w)) { type = 'budget'; matched = true; continue; }
-                    if (/^(СРОЧН|URGENT)/.test(w)) { type = 'urgent'; matched = true; continue; }
-                    if (/^(ОБЩ|ВСЕ|ALL|COMMON)/.test(w)) { type = 'common'; matched = true; continue; }
+                // Ищем подстроки (работает и "ЭТАЛОН БЮДЖЕТ", и "ЭТАЛОНБЮДЖЕТ")
+                if (sq.includes('ЭТАЛОН') || sq.includes('ETALON') || sq.includes('ETAL')) {
+                    place = 'etalon'; matched = true;
+                } else if (sq.includes('ВЫЕЗД') || sq.includes('ONSITE')) {
+                    place = 'onsite'; matched = true;
+                } else if (sq.includes('ЦСМС') || sq.includes('CSMS') || sq.includes('CSM')) {
+                    place = 'csm'; matched = true;
+                }
+
+                if (sq.includes('БЮДЖЕТ') || sq.includes('BUDGET') || sq.includes('БЮД')) {
+                    type = 'budget'; matched = true;
+                } else if (sq.includes('СРОЧН') || sq.includes('URGENT') || sq.includes('СРОЧ')) {
+                    type = 'urgent'; matched = true;
+                } else if (sq.includes('ОБЩ') || sq.includes('COMMON') || sq === 'ВСЕ' || sq === 'ALL') {
+                    type = 'common'; matched = true;
                 }
 
                 if (!matched) continue;
                 if (!place) place = 'csm';
                 if (!type) type = 'common';
-                console.log(`🔎 Маркер найден в ячейке ${idx}: "${cell}" →`, {place, type});
+                console.log(`🔎 Маркер в ячейке ${idx}: "${rawStr}" →`, {place, type});
                 return { place, type };
             }
 
             return null;
         }
+
         function isEmptyRow(row) { return !row || row.every(c => !c || c.toString().trim() === ''); }
         function isHeaderRow(row, minHits) {
             const kw = ['номер счета','номер счёта','номер квитанции','контрагент','наименование','код',
@@ -1436,10 +1468,14 @@
                         }
                     });
                     console.log(`=== Т1: загружено ${allData.length} ===`);
-                    // Статистика по разделам
                     const stats = {csm: 0, etalon: 0, onsite: 0};
-                    allData.forEach(r => { stats[r.place] = (stats[r.place] || 0) + 1; });
+                    const typeStats = {common: 0, budget: 0, urgent: 0};
+                    allData.forEach(r => {
+                        stats[r.place] = (stats[r.place] || 0) + 1;
+                        typeStats[r.type] = (typeStats[r.type] || 0) + 1;
+                    });
                     console.log('📊 По местам:', stats);
+                    console.log('📊 По типам:', typeStats);
                     callback(allData);
                 } catch (error) {
                     console.error(error);
