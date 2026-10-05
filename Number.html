@@ -974,38 +974,42 @@
             return isNaN(date.getTime()) ? null : date;
         }
 
-        // Разбирает маркер блока в {place, type}
-        // Примеры: "ЭТАЛОН БЮДЖЕТ" -> {place:'etalon', type:'budget'}
-        //          "ВЫЕЗДНЫЕ" -> {place:'onsite', type:'common'}
-        //          "БЮДЖЕТ" -> {place:'csm', type:'budget'}
-        //          "ЦСМС" -> {place:'csm', type:'common'}
+        // Расширенный парсер маркера: проверяет первые 5 ячеек строки.
+        // Возвращает {place, type} или null.
         function detectSectionMarker(row) {
             if (!row || !row.length) return null;
-            let cell = (row[0] || '').toString().trim().toUpperCase().replace(/[\[\]]/g, '');
-            if (!cell) return null;
-            if (/[0-9\-]/.test(cell)) return null;
-            if (!/^[А-ЯЁA-Z\s]+$/.test(cell)) return null;
 
-            const words = cell.split(/\s+/).filter(w => w);
-            if (!words.length) return null;
+            const limit = Math.min(row.length, 5);
+            for (let idx = 0; idx < limit; idx++) {
+                let cell = (row[idx] || '').toString().trim().toUpperCase().replace(/[\[\]]/g, '');
+                if (!cell) continue;
+                if (/[0-9\-]/.test(cell)) continue;
+                if (!/^[А-ЯЁA-Z\s]+$/.test(cell)) continue;
 
-            let place = null;
-            let type = null;
+                const words = cell.split(/\s+/).filter(w => w);
+                if (!words.length) continue;
 
-            for (const w of words) {
-                if (/^(ЭТАЛОН|ETALON)/.test(w)) { place = 'etalon'; continue; }
-                if (/^(ВЫЕЗД|ONSITE)/.test(w)) { place = 'onsite'; continue; }
-                if (/^(ЦСМС|CSM|CSMS)/.test(w)) { place = 'csm'; continue; }
-                if (/^(БЮДЖЕТ|BUDGET)/.test(w)) { type = 'budget'; continue; }
-                if (/^(СРОЧН|URGENT)/.test(w)) { type = 'urgent'; continue; }
-                if (/^(ОБЩ|ВСЕ|ALL|COMMON)/.test(w)) { type = 'common'; continue; }
+                let place = null;
+                let type = null;
+                let matched = false;
+
+                for (const w of words) {
+                    if (/^(ЭТАЛОН|ETALON)/.test(w)) { place = 'etalon'; matched = true; continue; }
+                    if (/^(ВЫЕЗД|ONSITE)/.test(w)) { place = 'onsite'; matched = true; continue; }
+                    if (/^(ЦСМС|CSM|CSMS)/.test(w)) { place = 'csm'; matched = true; continue; }
+                    if (/^(БЮДЖЕТ|BUDGET)/.test(w)) { type = 'budget'; matched = true; continue; }
+                    if (/^(СРОЧН|URGENT)/.test(w)) { type = 'urgent'; matched = true; continue; }
+                    if (/^(ОБЩ|ВСЕ|ALL|COMMON)/.test(w)) { type = 'common'; matched = true; continue; }
+                }
+
+                if (!matched) continue;
+                if (!place) place = 'csm';
+                if (!type) type = 'common';
+                console.log(`🔎 Маркер найден в ячейке ${idx}: "${cell}" →`, {place, type});
+                return { place, type };
             }
 
-            if (!place && !type) return null;
-            if (!place) place = 'csm';
-            if (!type) type = 'common';
-
-            return { place, type };
+            return null;
         }
         function isEmptyRow(row) { return !row || row.every(c => !c || c.toString().trim() === ''); }
         function isHeaderRow(row, minHits) {
@@ -1325,11 +1329,15 @@
 
                         for (let i = 0; i < jsonData.length; i++) {
                             const row = jsonData[i];
+
+                            // 1. Пустая строка — сброс
                             if (isEmptyRow(row)) {
                                 curPlace = 'csm'; curType = 'common'; headers = null;
                                 lastInv = ''; lastDate = ''; lastContr = ''; lastDev = '';
                                 continue;
                             }
+
+                            // 2. Маркер — проверяем ПЕРВЫМ делом, до шапки
                             const marker = detectSectionMarker(row);
                             if (marker) {
                                 curPlace = marker.place;
@@ -1338,6 +1346,8 @@
                                 lastInv = ''; lastDate = ''; lastContr = ''; lastDev = '';
                                 continue;
                             }
+
+                            // 3. Шапка
                             if (isHeaderRow(row)) {
                                 let hr = row;
                                 const next = jsonData[i + 1];
@@ -1356,6 +1366,8 @@
                                 lastInv = ''; lastDate = ''; lastContr = ''; lastDev = '';
                                 continue;
                             }
+
+                            // 4. Данные
                             if (!headers) continue;
 
                             let invoiceNumber = '', invoiceDate = '', contractor = '';
@@ -1424,6 +1436,10 @@
                         }
                     });
                     console.log(`=== Т1: загружено ${allData.length} ===`);
+                    // Статистика по разделам
+                    const stats = {csm: 0, etalon: 0, onsite: 0};
+                    allData.forEach(r => { stats[r.place] = (stats[r.place] || 0) + 1; });
+                    console.log('📊 По местам:', stats);
                     callback(allData);
                 } catch (error) {
                     console.error(error);
@@ -1626,7 +1642,6 @@
                 }
                 if (m) {
                     mc++;
-                    // Тип из Т2 может уточнить, если в Т1 он не был явно задан
                     const b2 = m['Б'] === 'Да' || m['Б'] === 'да' || m['Б'] === true;
                     const u2 = !!(m['С'] && m['С'].toString().trim() !== '');
                     let newType = row.type || 'common';
