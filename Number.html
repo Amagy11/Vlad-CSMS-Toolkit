@@ -975,7 +975,6 @@
             return isNaN(date.getTime()) ? null : date;
         }
 
-        // Приводит любые пробелы (обычные, неразрывные, тонкие, табы) к обычному пробелу
         function normalizeSpaces(s) {
             if (s === undefined || s === null) return '';
             return String(s)
@@ -983,17 +982,10 @@
                 .replace(/\s+/g, ' ')
                 .trim();
         }
-
-        // Убирает все пробелы и дефисы, приводит к верхнему регистру
-        // "эталон бюджет" -> "ЭТАЛОНБЮДЖЕТ"
-        // "эталон-бюджет" -> "ЭТАЛОНБЮДЖЕТ"
         function squash(s) {
             return normalizeSpaces(s).toUpperCase().replace(/[\s\-_]+/g, '');
         }
 
-        // Определяет маркер блока. Ищет в первых 5 ячейках строки.
-        // Возвращает {place, type} или null.
-        // Понимает: "ЭТАЛОН БЮДЖЕТ", "ЭТАЛОНБЮДЖЕТ", "эталон-бюджет", "СРОЧНОСТЬ", "срочные" и т.д.
         function detectSectionMarker(row) {
             if (!row || !row.length) return null;
 
@@ -1004,9 +996,7 @@
 
                 const rawStr = normalizeSpaces(raw);
                 if (!rawStr) continue;
-                // Пропускаем строки с цифрами (это данные, не маркер)
                 if (/\d/.test(rawStr)) continue;
-                // Отсекаем заведомо длинные строки (не маркеры)
                 if (rawStr.length > 40) continue;
 
                 const up = rawStr.toUpperCase().replace(/[\[\]]/g, '');
@@ -1018,7 +1008,6 @@
                 let type = null;
                 let matched = false;
 
-                // Место
                 if (sq.includes('ЭТАЛОН') || sq.includes('ETALON') || sq.includes('ETAL')) {
                     place = 'etalon'; matched = true;
                 } else if (sq.includes('ВЫЕЗД') || sq.includes('ONSITE')) {
@@ -1027,7 +1016,6 @@
                     place = 'csm'; matched = true;
                 }
 
-                // Тип
                 if (sq.includes('БЮДЖЕТ') || sq.includes('BUDGET') || sq.includes('БЮД')) {
                     type = 'budget'; matched = true;
                 } else if (sq.includes('СРОЧН') || sq.includes('URGENT') || sq.includes('СРОЧ')) {
@@ -1328,8 +1316,8 @@
                 'Сумма': newRow['Сумма'] || oldRow['Сумма'],
                 'Всего по счету': newRow['Всего по счету'] || oldRow['Всего по счету'],
                 'Дата оплаты': newRow['Дата оплаты'] || oldRow['Дата оплаты'],
-                place: oldRow.place || newRow.place || 'csm',
-                type: oldRow.type || newRow.type || 'common',
+                place: newRow.place || oldRow.place || 'csm',
+                type: newRow.type || oldRow.type || 'common',
                 isMatched: oldRow.isMatched || newRow.isMatched,
                 distributed: oldRow.distributed || newRow.distributed || false,
                 distributedTo: oldRow.distributedTo || newRow.distributedTo || '',
@@ -1365,14 +1353,12 @@
                         for (let i = 0; i < jsonData.length; i++) {
                             const row = jsonData[i];
 
-                            // 1. Пустая строка — сброс
                             if (isEmptyRow(row)) {
                                 curPlace = 'csm'; curType = 'common'; headers = null;
                                 lastInv = ''; lastDate = ''; lastContr = ''; lastDev = '';
                                 continue;
                             }
 
-                            // 2. Маркер — проверяем ПЕРВЫМ делом
                             const marker = detectSectionMarker(row);
                             if (marker) {
                                 curPlace = marker.place;
@@ -1382,7 +1368,6 @@
                                 continue;
                             }
 
-                            // 3. Шапка
                             if (isHeaderRow(row)) {
                                 let hr = row;
                                 const next = jsonData[i + 1];
@@ -1402,7 +1387,6 @@
                                 continue;
                             }
 
-                            // 4. Данные
                             if (!headers) continue;
 
                             let invoiceNumber = '', invoiceDate = '', contractor = '';
