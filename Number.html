@@ -293,7 +293,7 @@
                                 <input type="file" id="table1File" class="form-control" accept=".xlsx,.xls">
                                 <small class="text-muted">
                                     Маркеры: <b>ЦСМС</b>, <b>БЮДЖЕТ</b>, <b>СРОЧНЫЕ</b>, <b>ЭТАЛОН</b>, <b>ВЫЕЗДНЫЕ</b>.
-                                    Комбинации через пробел: <b>ЭТАЛОН БЮДЖЕТ</b>, <b>ВЫЕЗДНЫЕ СРОЧНЫЕ</b>.
+                                    Комбинации через пробел или слитно: <b>ЭТАЛОН БЮДЖЕТ</b> / <b>ЭТАЛОНБЮДЖЕТ</b>.
                                 </small>
                             </div>
                             <div class="mb-3">
@@ -473,25 +473,26 @@
                 </div>
                 <div class="help-section">
                     <div class="help-section-title"><span class="badge badge-urgent">Срочные</span></div>
-                    <p>Маркер: <code>СРОЧНЫЕ</code> или <code>[СРОЧНЫЕ]</code>.</p>
+                    <p>Маркер: <code>СРОЧНЫЕ</code>, <code>СРОЧНОСТЬ</code> или <code>[СРОЧНЫЕ]</code>.</p>
                 </div>
                 <div class="help-section">
                     <div class="help-section-title"><span class="badge badge-budget">Бюджет</span></div>
                     <p>Маркер: <code>БЮДЖЕТ</code> или <code>[БЮДЖЕТ]</code>.</p>
                 </div>
 
-                <h6>🔗 Комбинации (через пробел):</h6>
+                <h6>🔗 Комбинации (через пробел или слитно):</h6>
                 <ul>
-                    <li><code>ЭТАЛОН БЮДЖЕТ</code> → Эталон + Бюджет</li>
-                    <li><code>ЭТАЛОН СРОЧНЫЕ</code> → Эталон + Срочные</li>
-                    <li><code>ВЫЕЗДНЫЕ БЮДЖЕТ</code> → Выездные + Бюджет</li>
-                    <li><code>ВЫЕЗДНЫЕ СРОЧНЫЕ</code> → Выездные + Срочные</li>
+                    <li><code>ЭТАЛОН БЮДЖЕТ</code> или <code>ЭТАЛОНБЮДЖЕТ</code> → Эталон + Бюджет</li>
+                    <li><code>ЭТАЛОН СРОЧНЫЕ</code> или <code>ЭТАЛОНСРОЧНЫЕ</code> → Эталон + Срочные</li>
+                    <li><code>ВЫЕЗДНЫЕ БЮДЖЕТ</code> или <code>ВЫЕЗДНЫЕБЮДЖЕТ</code> → Выездные + Бюджет</li>
+                    <li><code>ВЫЕЗДНЫЕ СРОЧНОСТЬ</code> или <code>ВЫЕЗДНЫЕСРОЧНОСТЬ</code> → Выездные + Срочные</li>
                     <li><code>ЦСМС БЮДЖЕТ</code> (или просто <code>БЮДЖЕТ</code>) → ЦСМС + Бюджет</li>
                 </ul>
                 <hr>
                 <h6>🔹 Правила:</h6>
                 <ul>
                     <li>Квадратные скобки <code>[]</code> необязательны, регистр не важен.</li>
+                    <li>Пробел между словами необязателен.</li>
                     <li>Пустая строка — сброс раздела на «Общую».</li>
                     <li>Заголовок определяется по 2+ ключевым словам.</li>
                     <li>Поддерживаются объединённые ячейки.</li>
@@ -990,8 +991,9 @@
             return normalizeSpaces(s).toUpperCase().replace(/[\s\-_]+/g, '');
         }
 
-        // Проверяет, содержит ли "сплющенная" строка одно из ключевых слов.
-        // Работает даже если слова слиты: "ЭТАЛОНБЮДЖЕТ" содержит "ЭТАЛОН" и "БЮДЖЕТ".
+        // Определяет маркер блока. Ищет в первых 5 ячейках строки.
+        // Возвращает {place, type} или null.
+        // Понимает: "ЭТАЛОН БЮДЖЕТ", "ЭТАЛОНБЮДЖЕТ", "эталон-бюджет", "СРОЧНОСТЬ", "срочные" и т.д.
         function detectSectionMarker(row) {
             if (!row || !row.length) return null;
 
@@ -1000,12 +1002,12 @@
                 const raw = row[idx];
                 if (raw === undefined || raw === null || raw === '') continue;
 
-                // Пропускаем строки с цифрами (это не маркер, а данные/дата)
                 const rawStr = normalizeSpaces(raw);
                 if (!rawStr) continue;
+                // Пропускаем строки с цифрами (это данные, не маркер)
                 if (/\d/.test(rawStr)) continue;
-                // Только буквы, пробелы и дефисы
-                if (!/^[А-ЯЁA-Zа-яёa-z\s\-_]+$/.test(rawStr)) continue;
+                // Отсекаем заведомо длинные строки (не маркеры)
+                if (rawStr.length > 40) continue;
 
                 const up = rawStr.toUpperCase().replace(/[\[\]]/g, '');
                 const sq = squash(up);
@@ -1016,7 +1018,7 @@
                 let type = null;
                 let matched = false;
 
-                // Ищем подстроки (работает и "ЭТАЛОН БЮДЖЕТ", и "ЭТАЛОНБЮДЖЕТ")
+                // Место
                 if (sq.includes('ЭТАЛОН') || sq.includes('ETALON') || sq.includes('ETAL')) {
                     place = 'etalon'; matched = true;
                 } else if (sq.includes('ВЫЕЗД') || sq.includes('ONSITE')) {
@@ -1025,11 +1027,12 @@
                     place = 'csm'; matched = true;
                 }
 
+                // Тип
                 if (sq.includes('БЮДЖЕТ') || sq.includes('BUDGET') || sq.includes('БЮД')) {
                     type = 'budget'; matched = true;
                 } else if (sq.includes('СРОЧН') || sq.includes('URGENT') || sq.includes('СРОЧ')) {
                     type = 'urgent'; matched = true;
-                } else if (sq.includes('ОБЩ') || sq.includes('COMMON') || sq === 'ВСЕ' || sq === 'ALL') {
+                } else if (sq.includes('ОБЩ') || sq.includes('COMMON')) {
                     type = 'common'; matched = true;
                 }
 
@@ -1369,7 +1372,7 @@
                                 continue;
                             }
 
-                            // 2. Маркер — проверяем ПЕРВЫМ делом, до шапки
+                            // 2. Маркер — проверяем ПЕРВЫМ делом
                             const marker = detectSectionMarker(row);
                             if (marker) {
                                 curPlace = marker.place;
