@@ -549,6 +549,8 @@
         };
 
         const EMAIL_DOMAIN = "@invoice.local";
+        // Для отладки конкретного счёта — впиши номер здесь, в консоли увидишь все строки с ним
+        const DEBUG_INVOICE = '';
 
         let app, database, auth;
         try {
@@ -949,7 +951,16 @@
             } catch(e) { console.error('Не удалось пометить просмотренными:', e); }
         }
 
-        function normalizeKey(v) { return (v || '').toString().trim().replace(/\s+/g, ' ').toLowerCase(); }
+        // Улучшенная нормализация — убирает пунктуацию
+        function normalizeKey(v) {
+            if (v === undefined || v === null) return '';
+            return String(v)
+                .trim()
+                .replace(/[.,;:!?()"'«»№]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toLowerCase();
+        }
         function rowKey(row) {
             const num = normalizeKey(row['Номер счета']);
             const dev = normalizeKey(row['Прибор']);
@@ -1426,6 +1437,18 @@
 
                             if (!invoiceNumber) continue;
 
+                            // Отладка конкретного счёта
+                            if (DEBUG_INVOICE && invoiceNumber.includes(DEBUG_INVOICE)) {
+                                console.log('🐛 DEBUG строка:', {
+                                    'Номер счета': invoiceNumber,
+                                    'Прибор': device,
+                                    'Контингент': contingent,
+                                    'Дата выписки': invoiceDate,
+                                    place: curPlace,
+                                    type: curType
+                                });
+                            }
+
                             allData.push({
                                 'Номер счета': invoiceNumber || '',
                                 'Дата выписки': invoiceDate || '',
@@ -1555,8 +1578,21 @@
                 const existing = new Map();
                 table1Data.forEach((r, i) => existing.set(rowKey(r), i));
                 let added = 0, updated = 0;
+                const seenInFile = new Set();
+
                 newData.forEach(nr => {
                     const k = rowKey(nr);
+                    if (seenInFile.has(k)) {
+                        // Дубликат внутри одного файла — обновляем существующий
+                        const idx = existing.get(k);
+                        if (idx !== undefined) {
+                            table1Data[idx] = mergeRow(table1Data[idx], nr);
+                            updated++;
+                        }
+                        return;
+                    }
+                    seenInFile.add(k);
+
                     if (existing.has(k)) {
                         table1Data[existing.get(k)] = mergeRow(table1Data[existing.get(k)], nr);
                         updated++;
