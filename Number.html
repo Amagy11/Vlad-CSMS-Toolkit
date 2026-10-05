@@ -496,6 +496,7 @@
                     <li>Пустая строка — сброс раздела на «Общую».</li>
                     <li>Заголовок определяется по 2+ ключевым словам.</li>
                     <li>Поддерживаются объединённые ячейки.</li>
+                    <li>Приоритет: <b>Выездные / Эталон</b> важнее <b>ЦСМС</b>.</li>
                 </ul>
                 <hr>
                 <h5>📦 Распределение счетов</h5>
@@ -951,7 +952,6 @@
             } catch(e) { console.error('Не удалось пометить просмотренными:', e); }
         }
 
-        // Улучшенная нормализация — убирает пунктуацию
         function normalizeKey(v) {
             if (v === undefined || v === null) return '';
             return String(v)
@@ -961,17 +961,20 @@
                 .trim()
                 .toLowerCase();
         }
-        function rowKey(row) {
+
+        // Базовый ключ = номер счёта + прибор (для идентификации одной и той же позиции)
+        function baseKey(row) {
             const num = normalizeKey(row['Номер счета']);
             const dev = normalizeKey(row['Прибор']);
-            if (num || dev) {
-                if (dev) return `${num}||${dev}`;
-                return `${num}||__no_device__`;
-            }
-            // Совсем без ключа — уникальный фолбэк, чтобы не потерять строку
-            const date = normalizeKey(row['Дата выписки']);
-            const sum = normalizeKey(row['Всего по счету'] || row['Сумма']);
-            return `__nokey__||${date}||${sum}||${Math.random().toString(36).slice(2,7)}`;
+            return `${num}||${dev}`;
+        }
+
+        // Полный ключ = номер + прибор + place + type (для rowKey)
+        function rowKey(row) {
+            const bk = baseKey(row);
+            const place = row.place || 'csm';
+            const type = row.type || 'common';
+            return `${bk}||${place}||${type}`;
         }
         function fbKey(key) { return key.replace(/[.#$/\[\]]/g, '_'); }
         function safeString(v) { return (v == null ? '' : String(v)).toLowerCase(); }
@@ -1003,6 +1006,7 @@
             return normalizeSpaces(s).toUpperCase().replace(/[\s\-_]+/g, '');
         }
 
+        // ⚡ ГЛАВНОЕ ИСПРАВЛЕНИЕ: не ловим контрагентов типа "Закрытое Акционерное Общество"
         function detectSectionMarker(row) {
             if (!row || !row.length) return null;
 
@@ -1013,33 +1017,37 @@
 
                 const rawStr = normalizeSpaces(raw);
                 if (!rawStr) continue;
+                // Не маркер, если есть цифры
                 if (/\d/.test(rawStr)) continue;
-                if (rawStr.length > 40) continue;
+                // Не маркер, если это длинная фраза (название контрагента)
+                if (rawStr.length > 25) continue;
+                // Только буквы, пробелы, дефисы, подчёркивания. Кавычки/точки/запятые — не маркер.
+                if (!/^[А-ЯЁA-Zа-яёa-z\s\-_]+$/.test(rawStr)) continue;
 
                 const up = rawStr.toUpperCase().replace(/[\[\]]/g, '');
                 const sq = squash(up);
-
                 if (!sq) continue;
 
                 let place = null;
                 let type = null;
                 let matched = false;
 
-                if (sq.includes('ЭТАЛОН') || sq.includes('ETALON') || sq.includes('ETAL')) {
+                // Место — по началу (startsWith), чтобы не путать с "Гомельский ВСЗ" и т.п.
+                if (sq.startsWith('ЭТАЛОН') || sq.startsWith('ETALON') || sq.startsWith('ETAL')) {
                     place = 'etalon'; matched = true;
-                } else if (sq.includes('ВЫЕЗД') || sq.includes('ONSITE')) {
+                } else if (sq.startsWith('ВЫЕЗД') || sq.startsWith('ONSITE')) {
                     place = 'onsite'; matched = true;
-                } else if (sq.includes('ЦСМС') || sq.includes('CSMS') || sq.includes('CSM')) {
+                } else if (sq.startsWith('ЦСМС') || sq.startsWith('CSMS') || sq.startsWith('CSM')) {
                     place = 'csm'; matched = true;
                 }
 
+                // Тип — подстрокой
                 if (sq.includes('БЮДЖЕТ') || sq.includes('BUDGET') || sq.includes('БЮД')) {
                     type = 'budget'; matched = true;
                 } else if (sq.includes('СРОЧН') || sq.includes('URGENT') || sq.includes('СРОЧ')) {
                     type = 'urgent'; matched = true;
-                } else if (sq.includes('ОБЩ') || sq.includes('COMMON')) {
-                    type = 'common'; matched = true;
                 }
+                // 'ОБЩ' УБРАНО — оно ловило "Общество"
 
                 if (!matched) continue;
                 if (!place) place = 'csm';
@@ -1098,6 +1106,49 @@
                 case 'budget': return 'badge-budget';
                 default: return 'badge-common';
             }
+        }
+        function placePriority(place) {
+            // Эталон и Выездные приоритетнее ЦСМС
+            if (place === 'etalon') return 3;
+            if (place === 'onsite') return 3;
+            return 1;
+        }
+
+        // ⚡ ПРИОРИТЕТ: если один и тот же номер+прибор встречается в ЦСМС и в Эталон/Выездные —
+        // удаляем ЦСМС-версию, оставляем только приоритетную (Эталон/Выездные).
+        function resolvePriorities(rows) {
+            const groups = new Map();
+            rows.forEach(r => {
+                const bk = baseKey(r);
+                if (!groups.has(bk)) groups.set(bk, []);
+                groups.get(bk).push(r);
+            });
+
+            const result = [];
+            groups.forEach((group, bk) => {
+                if (group.length === 1) {
+                    result.push(group[0]);
+                    return;
+                }
+                // Определяем максимальный приоритет места
+                let maxPriority = 0;
+                group.forEach(r => {
+                    const p = placePriority(r.place || 'csm');
+                    if (p > maxPriority) maxPriority = p;
+                });
+                if (maxPriority <= 1) {
+                    // Все ЦСМС — оставляем все (но лучше одну последнюю, чтобы не было дублей)
+                    // Оставляем самую свежую
+                    result.push(group[group.length - 1]);
+                    return;
+                }
+                // Есть приоритетные (Эталон/Выездные) — убираем ЦСМС-версии
+                const priorityRows = group.filter(r => placePriority(r.place || 'csm') >= maxPriority);
+                // Если приоритетных несколько (например, Эталон + Выездные) — оставляем все
+                priorityRows.forEach(r => result.push(r));
+            });
+
+            return result;
         }
 
         function setSortByDate(t) { sortByDate = t; renderTable(); }
@@ -1323,12 +1374,9 @@
             }
         }
 
-        // Слияние: новые данные из файла перезаписывают старые,
-        // но пользовательские поля (статус, распределение) НЕ трогаются.
         function mergeRow(oldRow, newRow) {
             return {
                 ...oldRow,
-                // --- Данные из файла (обновляются) ---
                 'Дата выписки': newRow['Дата выписки'] || oldRow['Дата выписки'],
                 'Контрагент (Наименование)': newRow['Контрагент (Наименование)'] || oldRow['Контрагент (Наименование)'],
                 'Контингент': newRow['Контингент'] || oldRow['Контингент'] || '',
@@ -1337,10 +1385,8 @@
                 'Сумма': newRow['Сумма'] || oldRow['Сумма'],
                 'Всего по счету': newRow['Всего по счету'] || oldRow['Всего по счету'],
                 'Дата оплаты': newRow['Дата оплаты'] || oldRow['Дата оплаты'],
-                // Раздел/тип — из файла, старые сохраняются только если в файле пусто
                 place: newRow.place || oldRow.place || 'csm',
                 type: newRow.type || oldRow.type || 'common',
-                // --- Пользовательские данные (НЕ трогаем) ---
                 status: oldRow.status || 'new',
                 statusDate: oldRow.statusDate || null,
                 statusChangedBy: oldRow.statusChangedBy || '',
@@ -1351,7 +1397,6 @@
                 distributedBy: oldRow.distributedBy || '',
                 distributedByName: oldRow.distributedByName || '',
                 copied: oldRow.copied || false,
-                // --- Служебные поля из файла (обновляются) ---
                 isMatched: oldRow.isMatched || newRow.isMatched,
                 paymentStatus: newRow.paymentStatus || oldRow.paymentStatus || '',
                 urgency: newRow.urgency || oldRow.urgency || ''
@@ -1368,7 +1413,6 @@
 
                     workbook.SheetNames.forEach(sheetName => {
                         const sheet = workbook.Sheets[sheetName];
-                        // raw: true — важно для дат и чисел
                         const jsonData = XLSX.utils.sheet_to_json(sheet, {defval: '', raw: true, header: 1});
 
                         let headers = null;
@@ -1379,12 +1423,9 @@
                             const row = jsonData[i];
 
                             // 1. Пустая строка — только сбрасываем headers
-                            if (isEmptyRow(row)) {
-                                headers = null;
-                                continue;
-                            }
+                            if (isEmptyRow(row)) { headers = null; continue; }
 
-                            // 2. Маркер — проверяем первым
+                            // 2. Маркер
                             const marker = detectSectionMarker(row);
                             if (marker) {
                                 curPlace = marker.place;
@@ -1435,7 +1476,6 @@
                                 else if (h.includes('оплат')) paymentDate = value.toString().trim();
                             });
 
-                            // Forward-fill: если поля пустые — берём из предыдущей строки
                             if (!invoiceNumber && lastInv) {
                                 invoiceNumber = lastInv;
                                 if (!invoiceDate) invoiceDate = lastDate;
@@ -1443,24 +1483,20 @@
                             }
                             if (!device && lastDev) device = lastDev;
 
-                            // Обновляем кэш
                             if (invoiceNumber) lastInv = invoiceNumber;
                             if (invoiceDate) lastDate = invoiceDate;
                             if (contractor) lastContr = contractor;
                             if (device) lastDev = device;
 
-                            // Пропускаем только если нет вообще ничего: ни номера, ни прибора, ни суммы, ни количества
                             const hasAnyData = invoiceNumber || device || amount || totalAmount || quantity;
                             if (!hasAnyData) continue;
 
                             let contingent = (code && name) ? (code + ' ' + name) : (code || name || '');
 
-                            // Отладка конкретного счёта
                             if (DEBUG_INVOICE && invoiceNumber.includes(DEBUG_INVOICE)) {
                                 console.log('🐛 DEBUG строка:', {
                                     'Номер': invoiceNumber,
                                     'Прибор': device,
-                                    'Контингент': contingent,
                                     'Дата': invoiceDate,
                                     'Сумма': totalAmount || amount,
                                     'place': curPlace, 'type': curType
@@ -1502,8 +1538,18 @@
                         stats[r.place] = (stats[r.place] || 0) + 1;
                         typeStats[r.type] = (typeStats[r.type] || 0) + 1;
                     });
-                    console.log('📊 По местам:', stats);
-                    console.log('📊 По типам:', typeStats);
+                    console.log('📊 По местам (до resolvePriorities):', stats);
+                    console.log('📊 По типам (до resolvePriorities):', typeStats);
+
+                    // ⚡ Приоритет: убираем ЦСМС-дубли, если есть Эталон/Выездные
+                    const before = allData.length;
+                    allData = resolvePriorities(allData);
+                    const removed = before - allData.length;
+                    console.log(`⚡ resolvePriorities: удалено ${removed} ЦСМС-дублей`);
+                    const stats2 = {csm: 0, etalon: 0, onsite: 0};
+                    allData.forEach(r => { stats2[r.place] = (stats2[r.place] || 0) + 1; });
+                    console.log('📊 По местам (после):', stats2);
+
                     callback(allData);
                 } catch (error) {
                     console.error(error);
@@ -1593,6 +1639,7 @@
                 if (targetUid !== viewingUid) { alert('Пользователь переключён — отмена'); return; }
                 if (!newData.length) { alert('Счета не найдены'); return; }
 
+                // Слияние с базой
                 const existing = new Map();
                 table1Data.forEach((r, i) => existing.set(rowKey(r), i));
                 let added = 0, updated = 0;
@@ -1609,7 +1656,6 @@
                         return;
                     }
                     seenInFile.add(k);
-
                     if (existing.has(k)) {
                         table1Data[existing.get(k)] = mergeRow(table1Data[existing.get(k)], nr);
                         updated++;
@@ -1619,7 +1665,13 @@
                         added++;
                     }
                 });
-                console.log(`Т1: +${added}, ~${updated}, всего ${table1Data.length}`);
+
+                // ⚡ Финальная чистка базы: приоритет Эталон/Выездные над ЦСМС
+                const before = table1Data.length;
+                table1Data = resolvePriorities(table1Data);
+                const cleaned = before - table1Data.length;
+
+                console.log(`Т1: +${added}, ~${updated}, всего ${table1Data.length} (убрано дублей: ${cleaned})`);
                 applySharedStatuses();
                 matchTables();
                 saveToStorage();
