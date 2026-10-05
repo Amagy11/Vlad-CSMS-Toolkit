@@ -319,7 +319,6 @@
                                     <button class="btn btn-outline-info status-btn" data-status="inwork" onclick="toggleStatus('inwork')">В работе</button>
                                     <button class="btn btn-outline-success status-btn" data-status="completed" onclick="toggleStatus('completed')">Выполненные</button>
                                     <button class="btn btn-outline-warning status-btn" data-status="highlighted" onclick="toggleStatus('highlighted')">С пометками</button>
-                                    <button class="btn btn-outline-dark status-btn" data-status="matched" onclick="toggleStatus('matched')">Совпавшие</button>
                                     <button class="btn btn-outline-secondary" onclick="clearStatus()">Сбросить</button>
                                 </div>
                             </div>
@@ -489,7 +488,7 @@
                     <li><code>ЦСМС БЮДЖЕТ</code> (или просто <code>БЮДЖЕТ</code>) → ЦСМС + Бюджет</li>
                 </ul>
                 <hr>
-                <h6>🔹 Правила:</h6>
+                <h5>🔹 Правила:</h5>
                 <ul>
                     <li>Квадратные скобки <code>[]</code> необязательны, регистр не важен.</li>
                     <li>Пробел между словами необязателен.</li>
@@ -1350,116 +1349,188 @@
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
+                    // Важно: cellDates: true помогает правильно читать даты
+                    const workbook = XLSX.read(data, {type: 'array', cellDates: true}); 
                     let allData = [];
 
                     workbook.SheetNames.forEach(sheetName => {
                         const sheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(sheet, {defval: '', raw: true, header: 1});
+                        // header: 1 возвращает массив массивов (строки -> ячейки)
+                        const jsonData = XLSX.utils.sheet_to_json(sheet, {defval: '', raw: false, header: 1});
+
+                        if (!jsonData || jsonData.length === 0) return;
 
                         let headers = null;
-                        let curPlace = 'csm', curType = 'common';
-                        let lastInv = '', lastDate = '', lastContr = '', lastDev = '';
+                        let curPlace = 'csm';
+                        let curType = 'common';
+                        
+                        // Переменные для восстановления данных из объединенных ячеек
+                        let lastInvoiceNum = '';
+                        let lastDate = '';
+                        let lastContractor = '';
+                        let lastDevice = '';
 
                         for (let i = 0; i < jsonData.length; i++) {
                             const row = jsonData[i];
-
+                            
+                            // Пропускаем полностью пустые строки
                             if (isEmptyRow(row)) {
-                                curPlace = 'csm'; curType = 'common'; headers = null;
-                                lastInv = ''; lastDate = ''; lastContr = ''; lastDev = '';
+                                // Сбрасываем контекст раздела, но НЕ сбрасываем lastInvoiceNum, 
+                                // так как пустая строка может быть просто форматированием внутри таблицы
+                                // Однако, если после пустой строки идет новый заголовок, он перезапишет headers.
                                 continue;
                             }
 
+                            // Проверка на маркер раздела (Эталон, Бюджет и т.д.)
                             const marker = detectSectionMarker(row);
                             if (marker) {
                                 curPlace = marker.place;
                                 curType = marker.type;
-                                headers = null;
-                                lastInv = ''; lastDate = ''; lastContr = ''; lastDev = '';
+                                headers = null; // Ждем новых заголовков
+                                lastInvoiceNum = ''; 
+                                lastDate = ''; 
+                                lastContractor = ''; 
+                                lastDevice = '';
                                 continue;
                             }
 
+                            // Проверка на строку заголовков
                             if (isHeaderRow(row)) {
-                                let hr = row;
-                                const next = jsonData[i + 1];
-                                if (next && !isEmptyRow(next) && !detectSectionMarker(next) && isHeaderRow(next, 1)) {
-                                    const maxLen = Math.max(row.length, next.length);
-                                    const merged = [];
+                                // Пытаемся склеить две строки заголовков, если вторая тоже похожа на заголовок
+                                let hr = [...row];
+                                const nextRow = jsonData[i + 1];
+                                
+                                // Если следующая строка тоже содержит ключевые слова заголовков, объединяем их
+                                if (nextRow && !isEmptyRow(nextRow) && isHeaderRow(nextRow, 1)) {
+                                    const maxLen = Math.max(hr.length, nextRow.length);
+                                    const mergedHeaders = [];
                                     for (let c = 0; c < maxLen; c++) {
-                                        const a = (row[c] || '').toString().trim();
-                                        const b = (next[c] || '').toString().trim();
-                                        merged.push(b || a);
+                                        const top = (hr[c] || '').toString().trim();
+                                        const bottom = (nextRow[c] || '').toString().trim();
+                                        // Берем то, что длиннее или непустое, или комбинируем
+                                        mergedHeaders.push(bottom ? `${top} ${bottom}`.trim() : top);
                                     }
-                                    hr = merged; i++;
+                                    hr = mergedHeaders;
+                                    i++; // Пропускаем эту вторую строку заголовков
                                 }
+
                                 headers = hr.map(h => normalizeHeader(h));
-                                console.log('📋 Заголовки:', headers);
-                                lastInv = ''; lastDate = ''; lastContr = ''; lastDev = '';
+                                console.log(`📋 Sheet "${sheetName}" Headers at row ${i}:`, headers);
+                                
+                                // Сброс кэша последних значений при новом блоке заголовков
+                                lastInvoiceNum = ''; 
+                                lastDate = ''; 
+                                lastContractor = ''; 
+                                lastDevice = '';
                                 continue;
                             }
 
+                            // Если заголовки еще не найдены, пропускаем строку (это могут быть лишние тексты сверху)
                             if (!headers) continue;
 
-                            let invoiceNumber = '', invoiceDate = '', contractor = '';
-                            let code = '', name = '';
-                            let device = '', quantity = '', amount = '', totalAmount = '', paymentDate = '';
+                            // Извлекаем данные из текущей строки
+                            let invoiceNumber = '';
+                            let invoiceDate = '';
+                            let contractorName = '';
+                            let code = '';
+                            let device = '';
+                            let quantity = '';
+                            let amount = '';
+                            let totalAmount = '';
+                            let paymentDate = '';
 
-                            headers.forEach((header, index) => {
-                                const value = row[index] || '';
-                                const h = header.toLowerCase();
-                                if (h.includes('код')) { code = value.toString().trim(); return; }
-                                if (h.includes('наименование') || h.includes('контингент')) { name = value.toString().trim(); return; }
-                                if (h.includes('номер') && (h.includes('счет') || h.includes('счёт') || h.includes('квитанц'))) invoiceNumber = value.toString().trim();
-                                else if (h.includes('дата') && h.includes('выписк')) invoiceDate = value.toString().trim();
-                                else if (h.includes('контрагент')) contractor = value.toString().trim();
-                                else if (h.includes('прибор')) device = value.toString().trim();
-                                else if (h.includes('кол-во') || h.includes('колич') || h.includes('кол.') || h === 'кол' || h.includes('шт') || h.includes('количество')) quantity = value.toString().trim();
-                                else if (h.includes('сумм') || h.includes('всего')) { amount = value.toString().trim(); totalAmount = value.toString().trim(); }
-                                else if (h.includes('оплат')) paymentDate = value.toString().trim();
+                            // Ищем индексы колонок один раз для эффективности (можно вынести, но здесь оставим в цикле для простоты адаптации под разные файлы)
+                            const colMap = {};
+                            headers.forEach((h, idx) => {
+                                const hl = h.toLowerCase();
+                                if (hl.includes('номер') && (hl.includes('счет') || hl.includes('счёт') || hl.includes('квитанц'))) colMap.invoice = idx;
+                                else if (hl.includes('дата') && hl.includes('выписк')) colMap.date = idx;
+                                else if (hl.includes('код')) colMap.code = idx;
+                                else if (hl.includes('наименование') || hl.includes('контрагент')) {
+                                    // Если есть два столбца контрагента (код и имя), мы уже берем имя
+                                    if(colMap.contractor === undefined) colMap.contractor = idx;
+                                }
+                                else if (hl.includes('прибор')) colMap.device = idx;
+                                else if (hl.includes('кол') && hl.includes('во') || hl === 'кол' || hl.includes('шт')) colMap.qty = idx;
+                                else if (hl.includes('сумма') && !hl.includes('всего')) colMap.amount = idx;
+                                else if (hl.includes('всего')) colMap.total = idx;
+                                else if (hl.includes('оплата') && hl.includes('дата')) colMap.payDate = idx;
+                                else if (hl === 'оплата') colMap.paymentVal = idx; // Иногда оплата стоит отдельно
                             });
 
-                            let contingent = (code && name) ? (code + ' ' + name) : (code || name || '');
+                            // Заполняем переменные из строки
+                            if (colMap.invoice !== undefined) invoiceNumber = String(row[colMap.invoice] || '').trim();
+                            if (colMap.date !== undefined) invoiceDate = String(row[colMap.date] || '').trim();
+                            if (colMap.code !== undefined) code = String(row[colMap.code] || '').trim();
+                            if (colMap.contractor !== undefined) contractorName = String(row[colMap.contractor] || '').trim();
+                            if (colMap.device !== undefined) device = String(row[colMap.device] || '').trim();
+                            if (colMap.qty !== undefined) quantity = String(row[colMap.qty] || '').trim();
+                            if (colMap.amount !== undefined) amount = String(row[colMap.amount] || '').trim();
+                            if (colMap.total !== undefined) totalAmount = String(row[colMap.total] || '').trim();
+                            if (colMap.payDate !== undefined) paymentDate = String(row[colMap.payDate] || '').trim();
 
-                            if (!invoiceNumber && lastInv) {
-                                const hasData = device || quantity || amount;
+                            // ЛОГИКА ВОССТАНОВЛЕНИЯ (Forward Fill)
+                            // Если поле пустое, берем из предыдущей успешной строки
+                            if (!invoiceNumber && lastInvoiceNum) {
+                                // Проверяем, есть ли хоть какие-то данные в этой строке (прибор, сумма, количество)
+                                const hasData = device || quantity || amount || totalAmount;
                                 if (hasData) {
-                                    invoiceNumber = lastInv;
+                                    invoiceNumber = lastInvoiceNum;
                                     if (!invoiceDate) invoiceDate = lastDate;
-                                    if (!contractor) contractor = lastContr;
+                                    if (!contractorName) contractorName = lastContractor;
+                                    if (!device) device = lastDevice; // Часто прибор повторяется в объединенных ячейках
                                 }
                             }
-                            if (!device && lastDev && (quantity || amount)) device = lastDev;
-
-                            if (invoiceNumber) lastInv = invoiceNumber;
+                            
+                            // Обновляем кэш последних значений, если они были найдены
+                            if (invoiceNumber) lastInvoiceNum = invoiceNumber;
                             if (invoiceDate) lastDate = invoiceDate;
-                            if (contractor) lastContr = contractor;
-                            if (device) lastDev = device;
+                            if (contractorName) lastContractor = contractorName;
+                            if (device) lastDevice = device;
 
-                            if (!invoiceNumber) continue;
+                            // Формируем строку для базы данных
+                            // Критически важно: если нет номера счета и нет прибора/данных, пропускаем
+                            if (!invoiceNumber && !device) continue;
+
+                            // Если нет номера, но есть прибор — это аномалия, но попробуем добавить с пустым номером или ошибкой?
+                            // В бизнес-логике обычно номер обязателен. Если его нет, пропускаем.
+                            if (!invoiceNumber) {
+                                console.warn("⚠️ Строка без номера счета пропущена:", row);
+                                continue;
+                            }
+
+                            // Собираем контингент (Код + Наименование)
+                            let contingent = '';
+                            if (code && contractorName) {
+                                contingent = `${code} ${contractorName}`;
+                            } else if (contractorName) {
+                                contingent = contractorName;
+                            } else if (code) {
+                                contingent = code;
+                            }
 
                             // Отладка конкретного счёта
                             if (DEBUG_INVOICE && invoiceNumber.includes(DEBUG_INVOICE)) {
                                 console.log('🐛 DEBUG строка:', {
-                                    'Номер счета': invoiceNumber,
+                                    'Номер': invoiceNumber,
                                     'Прибор': device,
-                                    'Контингент': contingent,
-                                    'Дата выписки': invoiceDate,
-                                    place: curPlace,
-                                    type: curType
+                                    'Дата': invoiceDate,
+                                    'Раздел': curPlace,
+                                    'Тип': curType
                                 });
                             }
 
                             allData.push({
-                                'Номер счета': invoiceNumber || '',
-                                'Дата выписки': invoiceDate || '',
-                                'Контрагент (Наименование)': contractor || '',
-                                'Контингент': contingent || '',
-                                'Прибор': device || '',
-                                'Кол-во': quantity || '',
-                                'Сумма': amount || '',
-                                'Всего по счету': totalAmount || amount || '',
-                                'Оплата': '',
-                                'Дата оплаты': paymentDate || '',
+                                'Номер счета': invoiceNumber,
+                                'Дата выписки': invoiceDate,
+                                'Контрагент (Наименование)': contractorName,
+                                'Контингент': contingent,
+                                'Прибор': device,
+                                'Кол-во': quantity,
+                                'Сумма': amount,
+                                'Всего по счету': totalAmount || amount, // Если всего нет, берем сумму
+                                'Оплата': '', 
+                                'Дата оплаты': paymentDate,
                                 place: curPlace,
                                 type: curType,
                                 isMatched: false,
@@ -1477,7 +1548,10 @@
                             });
                         }
                     });
-                    console.log(`=== Т1: загружено ${allData.length} ===`);
+
+                    console.log(`✅ Т1: Успешно загружено ${allData.length} записей.`);
+                    
+                    // Статистика для проверки
                     const stats = {csm: 0, etalon: 0, onsite: 0};
                     const typeStats = {common: 0, budget: 0, urgent: 0};
                     allData.forEach(r => {
@@ -1486,9 +1560,10 @@
                     });
                     console.log('📊 По местам:', stats);
                     console.log('📊 По типам:', typeStats);
+
                     callback(allData);
                 } catch (error) {
-                    console.error(error);
+                    console.error('❌ Ошибка чтения файла:', error);
                     alert('Ошибка чтения файла: ' + error.message);
                 }
             };
