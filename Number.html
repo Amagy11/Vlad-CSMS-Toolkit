@@ -88,7 +88,7 @@
         .sort-btn:hover { color: #ffc107; }
         .sort-indicator { font-size: 0.8em; }
 
-        .section-btn.active { font-weight: bold; box-shadow: 0 0 0 2px #007bff inset; background-color: #007bff; color: white; }
+        .section-btn.active, .place-btn.active, .type-btn.active { font-weight: bold; box-shadow: 0 0 0 2px #007bff inset; background-color: #007bff; color: white; }
         .status-btn.active { font-weight: bold; box-shadow: 0 0 0 2px #007bff inset; background-color: #007bff; color: white; }
 
         .help-btn {
@@ -292,8 +292,8 @@
                                 <label class="form-label fw-bold">Таблица 1 (счета с приборами):</label>
                                 <input type="file" id="table1File" class="form-control" accept=".xlsx,.xls">
                                 <small class="text-muted">
-                                    Разделы: <b>[ОБЩАЯ]</b>, <b>[СРОЧНЫЕ]</b>, <b>[БЮДЖЕТ]</b>, <b>[ЭТАЛОН]</b>, <b>[ВЫЕЗДНЫЕ]</b>.
-                                    Пустая строка сбрасывает раздел. Совпадение по счёту И прибору — обновление, статус сохраняется.
+                                    Маркеры: <b>ЦСМС</b>, <b>БЮДЖЕТ</b>, <b>СРОЧНЫЕ</b>, <b>ЭТАЛОН</b>, <b>ВЫЕЗДНЫЕ</b>.
+                                    Комбинации через пробел: <b>ЭТАЛОН БЮДЖЕТ</b>, <b>ВЫЕЗДНЫЕ СРОЧНЫЕ</b>.
                                 </small>
                             </div>
                             <div class="mb-3">
@@ -325,15 +325,29 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Разделы (можно несколько):</label>
-                                <div class="btn-group flex-wrap" role="group" id="sectionFilters">
-                                    <button class="btn btn-outline-dark section-btn" data-section="common" onclick="toggleSection('common')">Общие</button>
-                                    <button class="btn btn-outline-danger section-btn" data-section="urgent" onclick="toggleSection('urgent')">Срочные</button>
-                                    <button class="btn btn-outline-warning section-btn" data-section="budget" onclick="toggleSection('budget')">Бюджет</button>
-                                    <button class="btn btn-outline-success section-btn" data-section="etalon" onclick="toggleSection('etalon')">Эталон</button>
-                                    <button class="btn btn-outline-primary section-btn" data-section="onsite" onclick="toggleSection('onsite')">Выездные</button>
+                                <label class="form-label fw-bold">📍 Место нахождения:</label>
+                                <div class="btn-group flex-wrap" role="group" id="placeFilters">
+                                    <button class="btn btn-outline-dark place-btn" data-place="csm" onclick="togglePlace('csm')">ЦСМС</button>
+                                    <button class="btn btn-outline-success place-btn" data-place="etalon" onclick="togglePlace('etalon')">Эталон</button>
+                                    <button class="btn btn-outline-primary place-btn" data-place="onsite" onclick="togglePlace('onsite')">Выездные</button>
+                                    <button class="btn btn-outline-secondary" onclick="clearPlaces()">Сбросить</button>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">🏷 Тип:</label>
+                                <div class="btn-group flex-wrap" role="group" id="typeFilters">
+                                    <button class="btn btn-outline-dark type-btn" data-type="common" onclick="toggleType('common')">Общие</button>
+                                    <button class="btn btn-outline-danger type-btn" data-type="urgent" onclick="toggleType('urgent')">Срочные</button>
+                                    <button class="btn btn-outline-warning type-btn" data-type="budget" onclick="toggleType('budget')">Бюджет</button>
+                                    <button class="btn btn-outline-secondary" onclick="clearTypes()">Сбросить</button>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">📦 Распределённые:</label>
+                                <div class="btn-group flex-wrap" role="group">
                                     <button class="btn btn-outline-secondary section-btn" data-section="distributed" onclick="toggleSection('distributed')">📦 Распределённые</button>
-                                    <button class="btn btn-outline-secondary" onclick="clearSections()">Сбросить</button>
                                 </div>
                             </div>
 
@@ -436,36 +450,51 @@
             </div>
             <div class="help-modal-body">
                 <h5>📄 Таблица 1 — счета с приборами</h5>
-                <p>Файл содержит одну или несколько таблиц. Каждая таблица начинается с шапки:</p>
+                <p>Файл содержит одну или несколько таблиц. Каждая таблица начинается с шапки, над которой может стоять маркер блока.</p>
+
+                <h6>📍 Место нахождения (по маркеру):</h6>
                 <div class="help-section">
-                    <div class="help-section-title"><span class="badge badge-common">Общая</span> Обычные счета</div>
-                    <p>Просто таблица с шапкой, без надписей над ней. Всё, что идёт первым в файле — считается «Общей».</p>
-                    <pre class="help-code">Номер счета | Дата выписки | Контрагент | Прибор | Кол-во | Сумма
-100-01      | 01.03.2026   | ООО ...    | Счётчик| 1      | 1500</pre>
-                </div>
-                <div class="help-section">
-                    <div class="help-section-title"><span class="badge badge-urgent">Срочные</span></div>
-                    <p>Над шапкой: <code>[СРОЧНЫЕ]</code> или <code>СРОЧНЫЕ</code>.</p>
-                </div>
-                <div class="help-section">
-                    <div class="help-section-title"><span class="badge badge-budget">Бюджет</span></div>
-                    <p>Над шапкой: <code>[БЮДЖЕТ]</code> или <code>БЮДЖЕТ</code>.</p>
+                    <div class="help-section-title"><span class="badge badge-common">ЦСМС</span></div>
+                    <p>Без маркера или с маркером <code>ЦСМС</code>.</p>
                 </div>
                 <div class="help-section">
                     <div class="help-section-title"><span class="badge badge-etalon">Эталон</span></div>
-                    <p>Над шапкой: <code>[ЭТАЛОН]</code> или <code>ЭТАЛОН</code>.</p>
+                    <p>Маркер: <code>ЭТАЛОН</code> или <code>[ЭТАЛОН]</code>.</p>
                 </div>
                 <div class="help-section">
                     <div class="help-section-title"><span class="badge badge-onsite">Выездные</span></div>
-                    <p>Над шапкой: <code>[ВЫЕЗДНЫЕ]</code>, <code>ВЫЕЗДНЫЕ</code>, <code>[ВЫЕЗД]</code> или <code>ВЫЕЗД</code>.</p>
+                    <p>Маркер: <code>ВЫЕЗДНЫЕ</code>, <code>ВЫЕЗД</code> или <code>[ВЫЕЗДНЫЕ]</code>.</p>
                 </div>
+
+                <h6>🏷 Тип (по маркеру):</h6>
+                <div class="help-section">
+                    <div class="help-section-title"><span class="badge badge-common">Общие</span></div>
+                    <p>Без маркера.</p>
+                </div>
+                <div class="help-section">
+                    <div class="help-section-title"><span class="badge badge-urgent">Срочные</span></div>
+                    <p>Маркер: <code>СРОЧНЫЕ</code> или <code>[СРОЧНЫЕ]</code>.</p>
+                </div>
+                <div class="help-section">
+                    <div class="help-section-title"><span class="badge badge-budget">Бюджет</span></div>
+                    <p>Маркер: <code>БЮДЖЕТ</code> или <code>[БЮДЖЕТ]</code>.</p>
+                </div>
+
+                <h6>🔗 Комбинации (через пробел):</h6>
+                <ul>
+                    <li><code>ЭТАЛОН БЮДЖЕТ</code> → Эталон + Бюджет</li>
+                    <li><code>ЭТАЛОН СРОЧНЫЕ</code> → Эталон + Срочные</li>
+                    <li><code>ВЫЕЗДНЫЕ БЮДЖЕТ</code> → Выездные + Бюджет</li>
+                    <li><code>ВЫЕЗДНЫЕ СРОЧНЫЕ</code> → Выездные + Срочные</li>
+                    <li><code>ЦСМС БЮДЖЕТ</code> (или просто <code>БЮДЖЕТ</code>) → ЦСМС + Бюджет</li>
+                </ul>
                 <hr>
                 <h6>🔹 Правила:</h6>
                 <ul>
+                    <li>Квадратные скобки <code>[]</code> необязательны, регистр не важен.</li>
                     <li>Пустая строка — сброс раздела на «Общую».</li>
                     <li>Заголовок определяется по 2+ ключевым словам.</li>
                     <li>Поддерживаются объединённые ячейки.</li>
-                    <li>Колонки «Код» и «Наименование» → столбец «Контрагент».</li>
                 </ul>
                 <hr>
                 <h5>📦 Распределение счетов</h5>
@@ -607,6 +636,8 @@
         let table1Data = [];
         let table2Data = [];
         let selectedStatuses = new Set();
+        let selectedPlaces = new Set();
+        let selectedTypes = new Set();
         let selectedSections = new Set();
         let selectedDevices = new Set();
         let selectedDistributedUsers = new Set();
@@ -646,6 +677,10 @@
         window.clearAllData = clearAllData;
         window.toggleStatus = toggleStatus;
         window.clearStatus = clearStatus;
+        window.togglePlace = togglePlace;
+        window.clearPlaces = clearPlaces;
+        window.toggleType = toggleType;
+        window.clearTypes = clearTypes;
         window.toggleSection = toggleSection;
         window.clearSections = clearSections;
         window.toggleUserFilter = toggleUserFilter;
@@ -939,18 +974,38 @@
             return isNaN(date.getTime()) ? null : date;
         }
 
+        // Разбирает маркер блока в {place, type}
+        // Примеры: "ЭТАЛОН БЮДЖЕТ" -> {place:'etalon', type:'budget'}
+        //          "ВЫЕЗДНЫЕ" -> {place:'onsite', type:'common'}
+        //          "БЮДЖЕТ" -> {place:'csm', type:'budget'}
+        //          "ЦСМС" -> {place:'csm', type:'common'}
         function detectSectionMarker(row) {
             if (!row || !row.length) return null;
             let cell = (row[0] || '').toString().trim().toUpperCase().replace(/[\[\]]/g, '');
             if (!cell) return null;
             if (/[0-9\-]/.test(cell)) return null;
             if (!/^[А-ЯЁA-Z\s]+$/.test(cell)) return null;
-            if (/^(ОБЩ|ВСЕ|ALL|COMMON)/.test(cell)) return 'common';
-            if (/^(СРОЧН|URGENT)/.test(cell)) return 'urgent';
-            if (/^(БЮДЖЕТ|BUDGET)/.test(cell)) return 'budget';
-            if (/^(ЭТАЛОН|ETALON)/.test(cell)) return 'etalon';
-            if (/^(ВЫЕЗД|ONSITE)/.test(cell)) return 'onsite';
-            return null;
+
+            const words = cell.split(/\s+/).filter(w => w);
+            if (!words.length) return null;
+
+            let place = null;
+            let type = null;
+
+            for (const w of words) {
+                if (/^(ЭТАЛОН|ETALON)/.test(w)) { place = 'etalon'; continue; }
+                if (/^(ВЫЕЗД|ONSITE)/.test(w)) { place = 'onsite'; continue; }
+                if (/^(ЦСМС|CSM|CSMS)/.test(w)) { place = 'csm'; continue; }
+                if (/^(БЮДЖЕТ|BUDGET)/.test(w)) { type = 'budget'; continue; }
+                if (/^(СРОЧН|URGENT)/.test(w)) { type = 'urgent'; continue; }
+                if (/^(ОБЩ|ВСЕ|ALL|COMMON)/.test(w)) { type = 'common'; continue; }
+            }
+
+            if (!place && !type) return null;
+            if (!place) place = 'csm';
+            if (!type) type = 'common';
+
+            return { place, type };
         }
         function isEmptyRow(row) { return !row || row.every(c => !c || c.toString().trim() === ''); }
         function isHeaderRow(row, minHits) {
@@ -972,22 +1027,31 @@
             s = s.replace(/\s+/g, ' ').trim();
             return s;
         }
-        function sectionLabel(section) {
-            switch (section) {
-                case 'urgent': return 'Срочные';
-                case 'budget': return 'Бюджет';
+        function placeLabel(place) {
+            switch (place) {
                 case 'etalon': return 'Эталон';
                 case 'onsite': return 'Выездные';
-                case 'distributed': return 'Распределённые';
-                default: return 'Общая';
+                default: return 'ЦСМС';
             }
         }
-        function sectionBadgeClass(section) {
-            switch (section) {
-                case 'urgent': return 'badge-urgent';
-                case 'budget': return 'badge-budget';
+        function typeLabel(type) {
+            switch (type) {
+                case 'urgent': return 'Срочные';
+                case 'budget': return 'Бюджет';
+                default: return 'Общие';
+            }
+        }
+        function placeBadgeClass(place) {
+            switch (place) {
                 case 'etalon': return 'badge-etalon';
                 case 'onsite': return 'badge-onsite';
+                default: return 'badge-common';
+            }
+        }
+        function typeBadgeClass(type) {
+            switch (type) {
+                case 'urgent': return 'badge-urgent';
+                case 'budget': return 'badge-budget';
                 default: return 'badge-common';
             }
         }
@@ -1009,6 +1073,26 @@
         function clearStatus() {
             selectedStatuses.clear();
             document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+            renderTable();
+        }
+        function togglePlace(p) {
+            if (selectedPlaces.has(p)) selectedPlaces.delete(p); else selectedPlaces.add(p);
+            document.querySelectorAll('.place-btn').forEach(b => b.classList.toggle('active', selectedPlaces.has(b.dataset.place)));
+            renderTable();
+        }
+        function clearPlaces() {
+            selectedPlaces.clear();
+            document.querySelectorAll('.place-btn').forEach(b => b.classList.remove('active'));
+            renderTable();
+        }
+        function toggleType(t) {
+            if (selectedTypes.has(t)) selectedTypes.delete(t); else selectedTypes.add(t);
+            document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', selectedTypes.has(b.dataset.type)));
+            renderTable();
+        }
+        function clearTypes() {
+            selectedTypes.clear();
+            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
             renderTable();
         }
         function toggleSection(s) {
@@ -1123,9 +1207,10 @@
             if (unsubInvoices) { unsubInvoices(); unsubInvoices = null; }
             table1Data = []; table2Data = [];
             deviceTypes.clear(); selectedDevices.clear();
+            selectedPlaces.clear(); selectedTypes.clear();
             selectedSections.clear(); selectedStatuses.clear();
             selectedDistributedUsers.clear();
-            document.querySelectorAll('.device-tag, .section-btn, .status-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.device-tag, .section-btn, .status-btn, .place-btn, .type-btn').forEach(b => b.classList.remove('active'));
             renderDeviceTags();
             if (!uid) { viewingUid = currentUser.uid; viewingName = currentUserName; }
             else {
@@ -1204,10 +1289,8 @@
                 'Сумма': newRow['Сумма'] || oldRow['Сумма'],
                 'Всего по счету': newRow['Всего по счету'] || oldRow['Всего по счету'],
                 'Дата оплаты': newRow['Дата оплаты'] || oldRow['Дата оплаты'],
-                isBudget: oldRow.isBudget || newRow.isBudget,
-                isUrgent: oldRow.isUrgent || newRow.isUrgent,
-                isEtalon: oldRow.isEtalon || newRow.isEtalon,
-                isOnsite: oldRow.isOnsite || newRow.isOnsite,
+                place: oldRow.place || newRow.place || 'csm',
+                type: oldRow.type || newRow.type || 'common',
                 isMatched: oldRow.isMatched || newRow.isMatched,
                 distributed: oldRow.distributed || newRow.distributed || false,
                 distributedTo: oldRow.distributedTo || newRow.distributedTo || '',
@@ -1216,8 +1299,6 @@
                 distributedBy: oldRow.distributedBy || newRow.distributedBy || '',
                 distributedByName: oldRow.distributedByName || newRow.distributedByName || '',
                 copied: oldRow.copied || newRow.copied || false,
-                section: (oldRow.section && oldRow.section !== 'common')
-                    ? oldRow.section : (newRow.section || 'common'),
                 status: oldRow.status,
                 statusDate: oldRow.statusDate,
                 statusChangedBy: oldRow.statusChangedBy,
@@ -1238,19 +1319,22 @@
                         const sheet = workbook.Sheets[sheetName];
                         const jsonData = XLSX.utils.sheet_to_json(sheet, {defval: '', raw: true, header: 1});
 
-                        let headers = null, section = 'common';
+                        let headers = null;
+                        let curPlace = 'csm', curType = 'common';
                         let lastInv = '', lastDate = '', lastContr = '', lastDev = '';
 
                         for (let i = 0; i < jsonData.length; i++) {
                             const row = jsonData[i];
                             if (isEmptyRow(row)) {
-                                section = 'common'; headers = null;
+                                curPlace = 'csm'; curType = 'common'; headers = null;
                                 lastInv = ''; lastDate = ''; lastContr = ''; lastDev = '';
                                 continue;
                             }
                             const marker = detectSectionMarker(row);
                             if (marker) {
-                                section = marker; headers = null;
+                                curPlace = marker.place;
+                                curType = marker.type;
+                                headers = null;
                                 lastInv = ''; lastDate = ''; lastContr = ''; lastDev = '';
                                 continue;
                             }
@@ -1322,11 +1406,8 @@
                                 'Всего по счету': totalAmount || amount || '',
                                 'Оплата': '',
                                 'Дата оплаты': paymentDate || '',
-                                section: section,
-                                isBudget: section === 'budget',
-                                isUrgent: section === 'urgent',
-                                isEtalon: section === 'etalon',
-                                isOnsite: section === 'onsite',
+                                place: curPlace,
+                                type: curType,
                                 isMatched: false,
                                 distributed: false,
                                 distributedTo: '',
@@ -1545,20 +1626,25 @@
                 }
                 if (m) {
                     mc++;
+                    // Тип из Т2 может уточнить, если в Т1 он не был явно задан
                     const b2 = m['Б'] === 'Да' || m['Б'] === 'да' || m['Б'] === true;
                     const u2 = !!(m['С'] && m['С'].toString().trim() !== '');
+                    let newType = row.type || 'common';
+                    if (newType === 'common') {
+                        if (b2) newType = 'budget';
+                        else if (u2) newType = 'urgent';
+                    }
                     return {
                         ...row,
-                        section: row.section || 'common',
-                        isBudget: row.isBudget || b2,
-                        isUrgent: row.isUrgent || u2,
+                        place: row.place || 'csm',
+                        type: newType,
                         isMatched: true,
                         urgency: m['С'] || row.urgency || '',
                         paymentStatus: m['Наличие оплаты'] || row.paymentStatus || '',
                         paymentDate: m['Дата оплаты'] || row.paymentDate || row['Дата оплаты'] || ''
                     };
                 }
-                return { ...row, section: row.section || 'common' };
+                return { ...row, place: row.place || 'csm', type: row.type || 'common' };
             });
             console.log(`Совпадений: ${mc}`);
         }
@@ -1590,7 +1676,7 @@
             const c2 = localStorage.getItem('cache_' + viewingUid + '_table2');
             if (c1) { try { table1Data = JSON.parse(c1); } catch(e) { table1Data = []; } } else table1Data = [];
             if (c2) { try { table2Data = JSON.parse(c2); } catch(e) { table2Data = []; } } else table2Data = [];
-            table1Data = table1Data.map(r => ({ ...r, section: r.section || 'common' }));
+            table1Data = table1Data.map(r => ({ ...r, place: r.place || 'csm', type: r.type || 'common' }));
             updateDeviceTypes();
             renderTable();
             updateDistributedBanner();
@@ -1603,7 +1689,7 @@
                 const data = snap.val();
                 if (data) {
                     isRemoteUpdate = true;
-                    table1Data = (data.table1Data || []).map(r => ({ ...r, section: r.section || 'common' }));
+                    table1Data = (data.table1Data || []).map(r => ({ ...r, place: r.place || 'csm', type: r.type || 'common' }));
                     table2Data = data.table2Data || [];
                     applySharedStatuses();
                     updateDeviceTypes();
@@ -1714,9 +1800,10 @@
             const wl = isOther ? `пользователя «${viewingName}»` : 'свои';
             if (!confirm(`Удалить ВСЕ счета ${wl}?`)) return;
             table1Data = []; table2Data = [];
-            selectedDevices.clear(); selectedSections.clear(); selectedStatuses.clear();
+            selectedDevices.clear(); selectedPlaces.clear(); selectedTypes.clear();
+            selectedSections.clear(); selectedStatuses.clear();
             selectedDistributedUsers.clear();
-            document.querySelectorAll('.device-tag, .section-btn, .status-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.device-tag, .section-btn, .status-btn, .place-btn, .type-btn').forEach(b => b.classList.remove('active'));
             renderDeviceTags(); renderUserFilters(); hideCleanBanner();
             remove(ref(database, 'invoices/' + viewingUid)).catch(err => console.error(err));
             localStorage.removeItem('cache_' + viewingUid + '_table1');
@@ -1728,7 +1815,7 @@
         function calculateTerm(row) {
             const ds = row['Дата выписки'];
             if (!ds) return { date: null, label: '' };
-            const fast = row.isBudget === true || row.isUrgent === true;
+            const fast = row.type === 'budget' || row.type === 'urgent';
             if (fast) {
                 const d = addWorkingDays(ds, 5);
                 return { date: d, label: '5 раб.' };
@@ -2038,18 +2125,25 @@
                         if (s === 'new' && row.status === 'new') return true;
                         if (s === 'inwork' && row.status === 'inwork') return true;
                         if (s === 'completed' && row.status === 'completed') return true;
-                        if (s === 'highlighted' && (row.isBudget || row.isUrgent || row.isEtalon || row.isOnsite)) return true;
+                        if (s === 'highlighted' && (row.place === 'etalon' || row.place === 'onsite' || row.type === 'budget' || row.type === 'urgent')) return true;
                         if (s === 'matched' && row.isMatched) return true;
                     }
                     return false;
                 });
             }
 
+            if (selectedPlaces.size > 0) {
+                fd = fd.filter(row => selectedPlaces.has(row.place || 'csm'));
+            }
+
+            if (selectedTypes.size > 0) {
+                fd = fd.filter(row => selectedTypes.has(row.type || 'common'));
+            }
+
             if (selectedSections.size > 0) {
                 fd = fd.filter(row => {
                     for (const sec of selectedSections) {
                         if (sec === 'distributed' && row.distributed) return true;
-                        if (sec !== 'distributed' && (row.section || 'common') === sec) return true;
                     }
                     return false;
                 });
@@ -2073,9 +2167,10 @@
                     const dev = safeString(row['Прибор']);
                     const pd = safeString(row.paymentDate || row['Дата оплаты']);
                     const ur = safeString(row.urgency);
-                    const sec = safeString(sectionLabel(row.section));
+                    const pl = safeString(placeLabel(row.place));
+                    const ty = safeString(typeLabel(row.type));
                     return inv.includes(sq) || cont.includes(sq) || dev.includes(sq) ||
-                           pd.includes(sq) || ur.includes(sq) || sec.includes(sq);
+                           pd.includes(sq) || ur.includes(sq) || pl.includes(sq) || ty.includes(sq);
                 });
             }
 
@@ -2108,14 +2203,16 @@
             document.getElementById('newCount').textContent = table1Data.filter(r => r.status === 'new').length;
             document.getElementById('inworkCount').textContent = table1Data.filter(r => r.status === 'inwork').length;
             document.getElementById('completedCount').textContent = table1Data.filter(r => r.status === 'completed').length;
-            document.getElementById('highlightedCount').textContent = table1Data.filter(r => r.isBudget || r.isUrgent || r.isEtalon || r.isOnsite).length;
-            document.getElementById('urgentCount').textContent = table1Data.filter(r => r.isUrgent).length;
+            document.getElementById('highlightedCount').textContent = table1Data.filter(r => r.place === 'etalon' || r.place === 'onsite' || r.type === 'budget' || r.type === 'urgent').length;
+            document.getElementById('urgentCount').textContent = table1Data.filter(r => r.type === 'urgent').length;
 
             const sl = { 'new':'Новые','inwork':'В работе','completed':'Выполненные','highlighted':'С пометками','matched':'Совпавшие' };
             let title = 'Все счета';
             if (currentIsAdmin && viewingUid !== currentUser.uid) title = `[${viewingName}] Все счета`;
             if (selectedStatuses.size > 0) title = Array.from(selectedStatuses).map(s => sl[s]).join(' + ');
-            if (selectedSections.size > 0) title += ` / ${Array.from(selectedSections).map(sectionLabel).join(' + ')}`;
+            if (selectedPlaces.size > 0) title += ` / место: ${Array.from(selectedPlaces).map(placeLabel).join(' + ')}`;
+            if (selectedTypes.size > 0) title += ` / тип: ${Array.from(selectedTypes).map(typeLabel).join(' + ')}`;
+            if (selectedSections.size > 0) title += ` / ${Array.from(selectedSections).map(s => s === 'distributed' ? 'Распределённые' : s).join(' + ')}`;
             if (selectedDistributedUsers.size > 0) {
                 const names = Array.from(selectedDistributedUsers).map(uid => {
                     const u = allUsersCache[uid];
@@ -2148,12 +2245,13 @@
                     const tr = document.createElement('tr');
                     if (row.status === 'inwork') tr.classList.add('status-inwork');
                     if (row.status === 'completed') tr.classList.add('status-completed');
-                    const sec = row.section || 'common';
-                    if (sec === 'budget') tr.classList.add('budget');
-                    else if (sec === 'urgent') tr.classList.add('urgent');
-                    else if (sec === 'etalon') tr.classList.add('etalon');
-                    else if (sec === 'onsite') tr.classList.add('onsite');
-                    if (row.isBudget || row.isUrgent || row.isEtalon || row.isOnsite) tr.classList.add('highlighted');
+                    const place = row.place || 'csm';
+                    const type = row.type || 'common';
+                    if (type === 'budget') tr.classList.add('budget');
+                    else if (type === 'urgent') tr.classList.add('urgent');
+                    if (place === 'etalon') tr.classList.add('etalon');
+                    else if (place === 'onsite') tr.classList.add('onsite');
+                    if (place === 'etalon' || place === 'onsite' || type === 'budget' || type === 'urgent') tr.classList.add('highlighted');
 
                     const pd = row.paymentDate || row['Дата оплаты'] || '';
                     const key = rowKey(row).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -2189,7 +2287,10 @@
                     tr.innerHTML = `
                         <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong>${distributedBadge}</td>
                         ${showOwner ? `<td><small>${escapeHtml(ownerLabel)}</small></td>` : ''}
-                        <td><span class="badge ${sectionBadgeClass(sec)}">${sectionLabel(sec)}</span></td>
+                        <td>
+                            <span class="badge ${placeBadgeClass(place)} me-1">${placeLabel(place)}</span>
+                            <span class="badge ${typeBadgeClass(type)}">${typeLabel(type)}</span>
+                        </td>
                         <td class="col-date">${row['Дата выписки'] || ''}</td>
                         <td class="col-contractor">${row['Контингент'] || ''}</td>
                         <td>${row['Прибор'] || ''}</td>
@@ -2204,11 +2305,11 @@
                             ${row.status === 'completed' ? `<span class="badge badge-completed">✓ Выполнен</span>${changedBy}` : ''}
                         </td>
                         <td>
-                            ${row.isBudget ? '<span class="badge badge-budget me-1">Бюджет</span>' : ''}
-                            ${row.isUrgent ? '<span class="badge badge-urgent me-1">Срочно</span>' : ''}
-                            ${row.isEtalon ? '<span class="badge badge-etalon me-1">Эталон</span>' : ''}
-                            ${row.isOnsite ? '<span class="badge badge-onsite me-1">Выездной</span>' : ''}
-                            ${!row.isBudget && !row.isUrgent && !row.isEtalon && !row.isOnsite ? '<span class="text-muted">—</span>' : ''}
+                            ${type === 'budget' ? '<span class="badge badge-budget me-1">Бюджет</span>' : ''}
+                            ${type === 'urgent' ? '<span class="badge badge-urgent me-1">Срочно</span>' : ''}
+                            ${place === 'etalon' ? '<span class="badge badge-etalon me-1">Эталон</span>' : ''}
+                            ${place === 'onsite' ? '<span class="badge badge-onsite me-1">Выездной</span>' : ''}
+                            ${type === 'common' && place === 'csm' ? '<span class="text-muted">—</span>' : ''}
                         </td>
                         ${distCell}
                         <td>
@@ -2247,20 +2348,20 @@
                         if (s === 'new' && row.status === 'new') return true;
                         if (s === 'inwork' && row.status === 'inwork') return true;
                         if (s === 'completed' && row.status === 'completed') return true;
-                        if (s === 'highlighted' && (row.isBudget || row.isUrgent || row.isEtalon || row.isOnsite)) return true;
+                        if (s === 'highlighted' && (row.place === 'etalon' || row.place === 'onsite' || row.type === 'budget' || row.type === 'urgent')) return true;
                         if (s === 'matched' && row.isMatched) return true;
                     }
                     return false;
                 });
             }
+            if (selectedPlaces.size > 0) {
+                dte = dte.filter(r => selectedPlaces.has(r.place || 'csm'));
+            }
+            if (selectedTypes.size > 0) {
+                dte = dte.filter(r => selectedTypes.has(r.type || 'common'));
+            }
             if (selectedSections.size > 0) {
-                dte = dte.filter(r => {
-                    for (const sec of selectedSections) {
-                        if (sec === 'distributed' && r.distributed) return true;
-                        if (sec !== 'distributed' && (r.section || 'common') === sec) return true;
-                    }
-                    return false;
-                });
+                dte = dte.filter(r => selectedSections.has('distributed') && r.distributed);
             }
             if (selectedDistributedUsers.size > 0) {
                 dte = dte.filter(r => selectedDistributedUsers.has(r.distributedTo));
@@ -2277,7 +2378,8 @@
                 return {
                     'Квитанция/Счет': row['Номер счета'],
                     'Владелец': (currentIsAdmin && viewingUid !== currentUser.uid) ? viewingName : '',
-                    'Раздел': sectionLabel(row.section || 'common'),
+                    'Место': placeLabel(row.place),
+                    'Тип': typeLabel(row.type),
                     'Дата выписки': row['Дата выписки'],
                     'Контрагент': row['Контингент'] || '',
                     'Прибор': row['Прибор'],
@@ -2288,9 +2390,6 @@
                     'Срочность': row.urgency,
                     'Статус': row.status,
                     'Изменил': row.statusChangedBy || '',
-                    'Бюджет': row.isBudget ? 'Да' : '',
-                    'Эталон': row.isEtalon ? 'Да' : '',
-                    'Выездной': row.isOnsite ? 'Да' : '',
                     'Распределён': row.distributedToName || ''
                 };
             });
@@ -2300,7 +2399,8 @@
             XLSX.utils.book_append_sheet(wb, ws, 'Счета');
             const parts = ['счета'];
             if (currentIsAdmin && viewingUid !== currentUser.uid) parts.push(viewingName);
-            if (selectedSections.size > 0) parts.push(Array.from(selectedSections).join('-'));
+            if (selectedPlaces.size > 0) parts.push(Array.from(selectedPlaces).join('-'));
+            if (selectedTypes.size > 0) parts.push(Array.from(selectedTypes).join('-'));
             if (selectedDevices.size > 0) parts.push('приборы');
             if (selectedStatuses.size > 0) parts.push(Array.from(selectedStatuses).join('-'));
             parts.push(new Date().toISOString().slice(0, 10));
