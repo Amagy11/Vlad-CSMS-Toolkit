@@ -232,6 +232,7 @@
                 👤 <span id="currentUserName">—</span>
                 <span id="adminBadge" class="badge badge-admin ms-1" style="display:none;">АДМИН</span>
                 <button class="btn btn-sm btn-outline-secondary ms-2" onclick="openAdminPanel()" id="adminPanelBtn" style="display:none;">Управление</button>
+                <button class="btn btn-sm btn-outline-warning ms-2" onclick="openChangePassword()">🔑 Сменить пароль</button>
                 <button class="btn btn-sm btn-outline-danger ms-2" onclick="logout()">Выйти</button>
             </span>
         </div>
@@ -284,26 +285,21 @@
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">📁 Загрузка таблиц</h5>
+                            <h5 class="mb-0">📁 Загрузка таблицы</h5>
                             <button class="help-btn" onclick="openHelp()" title="Как подготовить файл">?</button>
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Таблица 1 (счета с приборами):</label>
+                                <label class="form-label fw-bold">Таблица (счета с приборами):</label>
                                 <input type="file" id="table1File" class="form-control" accept=".xlsx,.xls">
                                 <small class="text-muted">
                                     Маркеры: <b>ЦСМС</b>, <b>БЮДЖЕТ</b>, <b>СРОЧНЫЕ</b>, <b>ЭТАЛОН</b>, <b>ВЫЕЗДНЫЕ</b>.
                                     Комбинации через пробел или слитно: <b>ЭТАЛОН БЮДЖЕТ</b> / <b>ЭТАЛОНБЮДЖЕТ</b>.
                                 </small>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Таблица 2 (квитанции с пометками):</label>
-                                <input type="file" id="table2File" class="form-control" accept=".xlsx,.xls">
-                            </div>
-                            <button class="btn btn-success" onclick="loadBothTables()">📥 Загрузить</button>
+                            <button class="btn btn-success" onclick="loadTable1()">📥 Загрузить</button>
                             <button class="btn btn-danger" onclick="clearAllData()">🗑 Очистить</button>
                             <div id="table1Info" class="alert alert-info table-info"></div>
-                            <div id="table2Info" class="alert alert-info table-info"></div>
                         </div>
                     </div>
                 </div>
@@ -319,7 +315,6 @@
                                     <button class="btn btn-outline-info status-btn" data-status="inwork" onclick="toggleStatus('inwork')">В работе</button>
                                     <button class="btn btn-outline-success status-btn" data-status="completed" onclick="toggleStatus('completed')">Выполненные</button>
                                     <button class="btn btn-outline-warning status-btn" data-status="highlighted" onclick="toggleStatus('highlighted')">С пометками</button>
-                                    <button class="btn btn-outline-dark status-btn" data-status="matched" onclick="toggleStatus('matched')">Совпавшие</button>
                                     <button class="btn btn-outline-secondary" onclick="clearStatus()">Сбросить</button>
                                 </div>
                             </div>
@@ -442,6 +437,35 @@
         </div>
     </div>
 
+    <!-- Модалка смены пароля -->
+    <div id="changePasswordModal" class="help-modal" onclick="if(event.target===this)closeChangePassword()">
+        <div class="help-modal-content" style="max-width: 450px;">
+            <div class="help-modal-header" style="background-color: #ffc107; color: #000;">
+                <h4 style="color: #000;">🔑 Смена пароля</h4>
+                <button class="help-close" style="color: #000;" onclick="closeChangePassword()">×</button>
+            </div>
+            <div class="help-modal-body">
+                <div id="pwdError" class="alert alert-danger" style="display:none;"></div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Текущий пароль</label>
+                    <input type="password" id="pwdCurrent" class="form-control" autocomplete="current-password">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Новый пароль</label>
+                    <input type="password" id="pwdNew" class="form-control" placeholder="Минимум 6 символов" autocomplete="new-password">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Повторите новый пароль</label>
+                    <input type="password" id="pwdConfirm" class="form-control" autocomplete="new-password">
+                </div>
+            </div>
+            <div class="help-modal-footer">
+                <button class="btn btn-secondary" onclick="closeChangePassword()">Отмена</button>
+                <button class="btn btn-warning ms-2" id="pwdSubmitBtn" onclick="submitChangePassword()">Сменить пароль</button>
+            </div>
+        </div>
+    </div>
+
     <div id="helpModal" class="help-modal" onclick="if(event.target===this)closeHelp()">
         <div class="help-modal-content">
             <div class="help-modal-header">
@@ -449,7 +473,7 @@
                 <button class="help-close" onclick="closeHelp()">×</button>
             </div>
             <div class="help-modal-body">
-                <h5>📄 Таблица 1 — счета с приборами</h5>
+                <h5>📄 Таблица — счета с приборами</h5>
                 <p>Файл содержит одну или несколько таблиц. Каждая таблица начинается с шапки, над которой может стоять маркер блока.</p>
 
                 <h6>📍 Место нахождения (по маркеру):</h6>
@@ -536,7 +560,8 @@
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import {
             getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-            signOut, onAuthStateChanged, updateProfile
+            signOut, onAuthStateChanged, updateProfile,
+            EmailAuthProvider, reauthenticateWithCredential, updatePassword
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -637,7 +662,6 @@
         }
 
         let table1Data = [];
-        let table2Data = [];
         let selectedStatuses = new Set();
         let selectedPlaces = new Set();
         let selectedTypes = new Set();
@@ -676,7 +700,7 @@
         window.handleAuthSubmit = handleAuthSubmit;
         window.switchAuthMode = switchAuthMode;
         window.logout = logout;
-        window.loadBothTables = loadBothTables;
+        window.loadTable1 = loadTable1;
         window.clearAllData = clearAllData;
         window.toggleStatus = toggleStatus;
         window.clearStatus = clearStatus;
@@ -705,6 +729,9 @@
         window.closeDistModal = closeDistModal;
         window.assignToUser = assignToUser;
         window.cancelDistribution = cancelDistribution;
+        window.openChangePassword = openChangePassword;
+        window.closeChangePassword = closeChangePassword;
+        window.submitChangePassword = submitChangePassword;
 
         function setSyncStatus(status, text) {
             const i = document.getElementById('syncIndicator');
@@ -722,8 +749,74 @@
         function closeAdminPanel() { document.getElementById('adminModal').classList.remove('open'); document.body.style.overflow = ''; }
         function closeDistModal() { document.getElementById('distModal').classList.remove('open'); document.body.style.overflow = ''; distributingRowKey = null; }
 
+        function openChangePassword() {
+            document.getElementById('pwdCurrent').value = '';
+            document.getElementById('pwdNew').value = '';
+            document.getElementById('pwdConfirm').value = '';
+            document.getElementById('pwdError').style.display = 'none';
+            document.getElementById('changePasswordModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeChangePassword() {
+            document.getElementById('changePasswordModal').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        async function submitChangePassword() {
+            const cur = document.getElementById('pwdCurrent').value;
+            const nw = document.getElementById('pwdNew').value;
+            const cf = document.getElementById('pwdConfirm').value;
+            const errEl = document.getElementById('pwdError');
+            errEl.style.display = 'none';
+
+            if (!cur || !nw || !cf) {
+                errEl.textContent = 'Заполните все поля';
+                errEl.style.display = 'block';
+                return;
+            }
+            if (nw.length < 6) {
+                errEl.textContent = 'Новый пароль минимум 6 символов';
+                errEl.style.display = 'block';
+                return;
+            }
+            if (nw !== cf) {
+                errEl.textContent = 'Новые пароли не совпадают';
+                errEl.style.display = 'block';
+                return;
+            }
+            if (nw === cur) {
+                errEl.textContent = 'Новый пароль не должен совпадать с текущим';
+                errEl.style.display = 'block';
+                return;
+            }
+
+            const btn = document.getElementById('pwdSubmitBtn');
+            btn.disabled = true; btn.textContent = 'Меняем...';
+
+            try {
+                const cred = EmailAuthProvider.credential(currentUser.email, cur);
+                await reauthenticateWithCredential(currentUser, cred);
+                await updatePassword(currentUser, nw);
+                alert('✅ Пароль успешно изменён');
+                closeChangePassword();
+            } catch (err) {
+                console.error(err);
+                let msg = err.message;
+                if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+                    msg = 'Неверный текущий пароль';
+                } else if (err.code === 'auth/weak-password') {
+                    msg = 'Новый пароль слишком простой (минимум 6 символов)';
+                } else if (err.code === 'auth/requires-recent-login') {
+                    msg = 'Сессия устарела. Войдите заново и попробуйте снова';
+                }
+                errEl.textContent = msg;
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false; btn.textContent = 'Сменить пароль';
+            }
+        }
+
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); }
+            if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); closeChangePassword(); }
         });
 
         const TRANSLIT_MAP = {
@@ -882,7 +975,7 @@
                 setSyncStatus('syncing', 'Подключение...');
             } else {
                 currentUser = null; currentUserName = ''; currentIsAdmin = false;
-                viewingUid = null; table1Data = []; table2Data = [];
+                viewingUid = null; table1Data = [];
                 sharedStatuses = {}; userInvoicesRef = null; sharedStatusesRef = null;
                 viewedDistributed = {}; viewedDistributedRef = null;
                 if (unsubViewed) { unsubViewed(); unsubViewed = null; }
@@ -1282,7 +1375,7 @@
             const sel = document.getElementById('adminUserSelect');
             const uid = sel.value;
             if (unsubInvoices) { unsubInvoices(); unsubInvoices = null; }
-            table1Data = []; table2Data = [];
+            table1Data = [];
             deviceTypes.clear(); selectedDevices.clear();
             selectedPlaces.clear(); selectedTypes.clear();
             selectedSections.clear(); selectedStatuses.clear();
@@ -1379,7 +1472,6 @@
                 distributedBy: oldRow.distributedBy || '',
                 distributedByName: oldRow.distributedByName || '',
                 copied: oldRow.copied || false,
-                isMatched: oldRow.isMatched || newRow.isMatched,
                 paymentStatus: newRow.paymentStatus || oldRow.paymentStatus || '',
                 urgency: newRow.urgency || oldRow.urgency || ''
             };
@@ -1494,7 +1586,6 @@
                                 'Дата оплаты': paymentDate || '',
                                 place: curPlace,
                                 type: curType,
-                                isMatched: false,
                                 distributed: false,
                                 distributedTo: '',
                                 distributedToName: '',
@@ -1522,7 +1613,7 @@
                     const before = allData.length;
                     allData = resolvePriorities(allData);
                     const removed = before - allData.length;
-                    console.log(`⚡ resolvePriorities: удалено ${removed} ЦСМС-дублей`);
+                    console.log(`⚡ resolvePriorities: удалено ${removed} дублей`);
                     const stats2 = {csm: 0, etalon: 0, onsite: 0};
                     allData.forEach(r => { stats2[r.place] = (stats2[r.place] || 0) + 1; });
                     console.log('📊 По местам (после):', stats2);
@@ -1536,81 +1627,9 @@
             reader.readAsArrayBuffer(file);
         }
 
-        function readTable2(file, callback) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    let allData = [];
-                    workbook.SheetNames.forEach(sheetName => {
-                        const sheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(sheet, {defval: '', raw: true, header: 1});
-                        let headerRowIndex = -1, headers = [];
-                        for (let i = 0; i < jsonData.length; i++) {
-                            const row = jsonData[i];
-                            if (isEmptyRow(row)) continue;
-                            if (isHeaderRow(row)) {
-                                headerRowIndex = i;
-                                headers = row.map(h => normalizeHeader(h));
-                                break;
-                            }
-                        }
-                        if (headerRowIndex === -1) return;
-                        let lastInv = '';
-                        for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
-                            const row = jsonData[i];
-                            if (isEmptyRow(row)) continue;
-                            let invoiceNumber = '', paymentDate = '', isBudget = false;
-                            let urgency = '', paymentStatus = '', contractor = '';
-                            let amount = '', device = '';
-                            row.forEach((value, index) => {
-                                const header = headers[index] || '';
-                                const h = header.toLowerCase();
-                                const cv = value ? value.toString().trim() : '';
-                                if (h.includes('квитанц') || h.includes('номер') || h.includes('счет')) {
-                                    if (cv && cv.includes('-')) invoiceNumber = cv;
-                                }
-                                if (h.includes('дата') && h.includes('оплат')) paymentDate = cv;
-                                if (h.includes('бюджет')) { if (['да','yes','1','+'].includes(cv.toLowerCase())) isBudget = true; }
-                                if (h.includes('срочн')) urgency = cv;
-                                if (h.includes('наличие') && h.includes('оплат')) paymentStatus = cv;
-                                if (h.includes('контрагент') || h.includes('наименование')) contractor = cv;
-                                if (h.includes('прибор')) device = cv;
-                                if (h.includes('сумм')) amount = cv;
-                            });
-                            if (!invoiceNumber && lastInv) {
-                                if (device || amount || urgency || paymentStatus) invoiceNumber = lastInv;
-                            }
-                            if (invoiceNumber) lastInv = invoiceNumber;
-                            if (invoiceNumber && invoiceNumber.includes('-')) {
-                                allData.push({
-                                    'Номер счета': invoiceNumber || '',
-                                    'Прибор': device || '',
-                                    'Дата оплаты': paymentDate || '',
-                                    'Б': isBudget ? 'Да' : '',
-                                    'С': urgency || '',
-                                    'З': '',
-                                    'Наличие оплаты': paymentStatus || '',
-                                    'Контрагент': contractor || '',
-                                    'Сумма': amount || ''
-                                });
-                            }
-                        }
-                    });
-                    console.log(`=== Т2: загружено ${allData.length} ===`);
-                    callback(allData);
-                } catch (error) {
-                    console.error(error);
-                    alert('Ошибка чтения Таблицы 2: ' + error.message);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
         function loadTable1() {
             const fi = document.getElementById('table1File');
-            if (!fi.files[0]) { alert('Выберите файл Таблицы 1'); return; }
+            if (!fi.files[0]) { alert('Выберите файл'); return; }
             const targetUid = viewingUid, targetName = viewingName;
             readTable1(fi.files[0], function(newData) {
                 if (targetUid !== viewingUid) { alert('Пользователь переключён — отмена'); return; }
@@ -1648,7 +1667,6 @@
 
                 console.log(`Т1: +${added}, ~${updated}, всего ${table1Data.length} (убрано дублей: ${cleaned})`);
                 applySharedStatuses();
-                matchTables();
                 saveToStorage();
                 renderTable();
                 updateDistributedBanner();
@@ -1661,122 +1679,14 @@
             });
         }
 
-        function loadTable2() {
-            const fi = document.getElementById('table2File');
-            if (!fi.files[0]) { alert('Выберите файл Таблицы 2'); return; }
-            const targetUid = viewingUid, targetName = viewingName;
-            readTable2(fi.files[0], function(newData) {
-                if (targetUid !== viewingUid) { alert('Пользователь переключён — отмена'); return; }
-                if (!newData.length) { alert('Счета не найдены'); return; }
-
-                const existing = {};
-                table2Data.forEach(r => {
-                    const k = rowKey(r);
-                    if (!k.startsWith('||')) existing[k] = r;
-                });
-                let added = 0, updated = 0;
-                newData.forEach(nr => {
-                    const k = rowKey(nr);
-                    if (existing[k]) {
-                        const e = existing[k];
-                        if (e['Б'] !== nr['Б'] || e['С'] !== nr['С'] || e['Дата оплаты'] !== nr['Дата оплаты'] ||
-                            e['Наличие оплаты'] !== nr['Наличие оплаты'] || e['Прибор'] !== nr['Прибор'] ||
-                            e['Сумма'] !== nr['Сумма'] || e['Контрагент'] !== nr['Контрагент']) {
-                            e['Б'] = nr['Б'] || e['Б'];
-                            e['С'] = nr['С'] || e['С'];
-                            e['Дата оплаты'] = nr['Дата оплаты'] || e['Дата оплаты'];
-                            e['Наличие оплаты'] = nr['Наличие оплаты'] || e['Наличие оплаты'];
-                            e['Прибор'] = nr['Прибор'] || e['Прибор'];
-                            e['Сумма'] = nr['Сумма'] || e['Сумма'];
-                            e['Контрагент'] = nr['Контрагент'] || e['Контрагент'];
-                            updated++;
-                        }
-                    } else {
-                        table2Data.push(nr);
-                        existing[k] = nr;
-                        added++;
-                    }
-                });
-                console.log(`Т2: +${added}, ~${updated}`);
-                matchTables();
-                saveToStorage();
-                renderTable();
-                updateDistributedBanner();
-                const d = document.getElementById('table2Info');
-                d.style.display = 'block';
-                const tl = (currentIsAdmin && targetUid !== currentUser.uid) ? ` в список «${escapeHtml(targetName)}»` : '';
-                d.innerHTML = `✅ Добавлено${tl}: <b>${added}</b>, обновлено: <b>${updated}</b>, всего: <b>${table2Data.length}</b>`;
-                setTimeout(() => d.style.display = 'none', 7000);
-            });
-        }
-
-        function loadBothTables() {
-            const f1 = document.getElementById('table1File').files[0];
-            const f2 = document.getElementById('table2File').files[0];
-            if (f1 && f2) { loadTable1(); setTimeout(loadTable2, 500); }
-            else if (f1) loadTable1();
-            else if (f2) loadTable2();
-            else alert('Выберите хотя бы один файл');
-        }
-
-        function matchTables() {
-            if (!table1Data.length || !table2Data.length) return;
-            const byKey = {}, byNum = {};
-            table2Data.forEach(row => {
-                const k = rowKey(row);
-                if (!k.startsWith('||')) byKey[k] = row;
-                const n = normalizeKey(row['Номер счета']);
-                if (n) {
-                    if (!byNum[n]) byNum[n] = [];
-                    byNum[n].push(row);
-                }
-            });
-            let mc = 0;
-            table1Data = table1Data.map(row => {
-                const k = rowKey(row);
-                const n = normalizeKey(row['Номер счета']);
-                let m = byKey[k];
-                if (!m && n && byNum[n]) {
-                    const d = normalizeKey(row['Прибор']);
-                    m = byNum[n].find(r => {
-                        const rd = normalizeKey(r['Прибор']);
-                        return !rd || rd === d;
-                    });
-                }
-                if (m) {
-                    mc++;
-                    const b2 = m['Б'] === 'Да' || m['Б'] === 'да' || m['Б'] === true;
-                    const u2 = !!(m['С'] && m['С'].toString().trim() !== '');
-                    let newType = row.type || 'common';
-                    if (newType === 'common') {
-                        if (b2) newType = 'budget';
-                        else if (u2) newType = 'urgent';
-                    }
-                    return {
-                        ...row,
-                        place: row.place || 'csm',
-                        type: newType,
-                        isMatched: true,
-                        urgency: m['С'] || row.urgency || '',
-                        paymentStatus: m['Наличие оплаты'] || row.paymentStatus || '',
-                        paymentDate: m['Дата оплаты'] || row.paymentDate || row['Дата оплаты'] || ''
-                    };
-                }
-                return { ...row, place: row.place || 'csm', type: row.type || 'common' };
-            });
-            console.log(`Совпадений: ${mc}`);
-        }
-
         function saveToStorage() {
             if (!viewingUid) return;
             localStorage.setItem('cache_' + viewingUid + '_table1', JSON.stringify(table1Data));
-            localStorage.setItem('cache_' + viewingUid + '_table2', JSON.stringify(table2Data));
             if (isRemoteUpdate) return;
             if (!currentUser || !userInvoicesRef) return;
             const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
-            const c2 = table2Data.map(r => stripUndefined(r));
             setSyncStatus('syncing', 'Синхронизация...');
-            set(userInvoicesRef, { table1Data: c1, table2Data: c2, updatedAt: new Date().toISOString() })
+            set(userInvoicesRef, { table1Data: c1, updatedAt: new Date().toISOString() })
                 .then(() => {
                     setSyncStatus('online', 'Синхронизировано');
                     setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000);
@@ -1791,9 +1701,7 @@
         function loadFromStorage() {
             if (!viewingUid) return;
             const c1 = localStorage.getItem('cache_' + viewingUid + '_table1');
-            const c2 = localStorage.getItem('cache_' + viewingUid + '_table2');
             if (c1) { try { table1Data = JSON.parse(c1); } catch(e) { table1Data = []; } } else table1Data = [];
-            if (c2) { try { table2Data = JSON.parse(c2); } catch(e) { table2Data = []; } } else table2Data = [];
             table1Data = table1Data.map(r => ({ ...r, place: r.place || 'csm', type: r.type || 'common' }));
             updateDeviceTypes();
             renderTable();
@@ -1808,13 +1716,12 @@
                 if (data) {
                     isRemoteUpdate = true;
                     table1Data = (data.table1Data || []).map(r => ({ ...r, place: r.place || 'csm', type: r.type || 'common' }));
-                    table2Data = data.table2Data || [];
                     applySharedStatuses();
                     updateDeviceTypes();
                     renderTable();
                     isRemoteUpdate = false;
                 } else {
-                    table1Data = []; table2Data = [];
+                    table1Data = [];
                     updateDeviceTypes();
                     renderTable();
                 }
@@ -1895,8 +1802,7 @@
             });
             if (userInvoicesRef) {
                 const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
-                const c2 = table2Data.map(r => stripUndefined(r));
-                set(userInvoicesRef, { table1Data: c1, table2Data: c2, updatedAt: now })
+                set(userInvoicesRef, { table1Data: c1, updatedAt: now })
                     .catch(err => console.error(err));
             }
             const sk = fbKey(key);
@@ -1917,7 +1823,7 @@
             const isOther = viewingUid !== currentUser.uid;
             const wl = isOther ? `пользователя «${viewingName}»` : 'свои';
             if (!confirm(`Удалить ВСЕ счета ${wl}?`)) return;
-            table1Data = []; table2Data = [];
+            table1Data = [];
             selectedDevices.clear(); selectedPlaces.clear(); selectedTypes.clear();
             selectedSections.clear(); selectedStatuses.clear();
             selectedDistributedUsers.clear();
@@ -1925,12 +1831,11 @@
             renderDeviceTags(); renderUserFilters(); hideCleanBanner();
             remove(ref(database, 'invoices/' + viewingUid)).catch(err => console.error(err));
             localStorage.removeItem('cache_' + viewingUid + '_table1');
-            localStorage.removeItem('cache_' + viewingUid + '_table2');
             updateDeviceTypes(); renderTable();
             updateDistributedBanner();
         }
 
-        // ⚡ ИЗМЕНЕНО: срок считается от «Дата оплаты», а не от «Дата выписки»
+        // Срок считается от «Дата оплаты»
         function calculateTerm(row) {
             const ds = row.paymentDate || row['Дата оплаты'];
             if (!ds) return { date: null, label: '' };
@@ -2112,14 +2017,10 @@
             try {
                 await set(ref(database, 'invoices/' + userUid + '/table1Data'), userTable1);
                 const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
-                await set(userInvoicesRef, {
-                    table1Data: c1,
-                    table2Data: table2Data.map(r => stripUndefined(r)),
-                    updatedAt: now
-                });
+                await set(userInvoicesRef, { table1Data: c1, updatedAt: now });
                 try {
                     await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key)));
-                } catch(e) { /* ok, если не было */ }
+                } catch(e) { }
                 setSyncStatus('online', 'Распределено');
                 setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000);
             } catch(e) {
@@ -2186,14 +2087,10 @@
             try {
                 await set(ref(database, 'invoices/' + userUid + '/table1Data'), userTable1);
                 const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
-                await set(userInvoicesRef, {
-                    table1Data: c1,
-                    table2Data: table2Data.map(r => stripUndefined(r)),
-                    updatedAt: now
-                });
+                await set(userInvoicesRef, { table1Data: c1, updatedAt: now });
                 try {
                     await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key)));
-                } catch(e) { /* ok */ }
+                } catch(e) { }
                 setSyncStatus('online', 'Отменено');
                 setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000);
             } catch(e) {
@@ -2245,7 +2142,6 @@
                         if (s === 'inwork' && row.status === 'inwork') return true;
                         if (s === 'completed' && row.status === 'completed') return true;
                         if (s === 'highlighted' && (row.place === 'etalon' || row.place === 'onsite' || row.type === 'budget' || row.type === 'urgent')) return true;
-                        if (s === 'matched' && row.isMatched) return true;
                     }
                     return false;
                 });
@@ -2325,7 +2221,7 @@
             document.getElementById('highlightedCount').textContent = table1Data.filter(r => r.place === 'etalon' || r.place === 'onsite' || r.type === 'budget' || r.type === 'urgent').length;
             document.getElementById('urgentCount').textContent = table1Data.filter(r => r.type === 'urgent').length;
 
-            const sl = { 'new':'Новые','inwork':'В работе','completed':'Выполненные','highlighted':'С пометками','matched':'Совпавшие' };
+            const sl = { 'new':'Новые','inwork':'В работе','completed':'Выполненные','highlighted':'С пометками' };
             let title = 'Все счета';
             if (currentIsAdmin && viewingUid !== currentUser.uid) title = `[${viewingName}] Все счета`;
             if (selectedStatuses.size > 0) title = Array.from(selectedStatuses).map(s => sl[s]).join(' + ');
@@ -2468,7 +2364,6 @@
                         if (s === 'inwork' && row.status === 'inwork') return true;
                         if (s === 'completed' && row.status === 'completed') return true;
                         if (s === 'highlighted' && (row.place === 'etalon' || row.place === 'onsite' || row.type === 'budget' || row.type === 'urgent')) return true;
-                        if (s === 'matched' && row.isMatched) return true;
                     }
                     return false;
                 });
