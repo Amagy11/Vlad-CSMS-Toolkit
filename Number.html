@@ -189,6 +189,76 @@
         .dist-user-item:last-child { border-bottom: none; }
         .dist-user-item:hover { background: #e7f1ff; }
         .dist-current { background: #e2d9f3; font-weight: bold; }
+
+        /* Стили для окна вставки */
+        .paste-modal-content {
+            background: white; border-radius: 10px;
+            max-width: 1200px; width: 100%; max-height: 92vh;
+            display: flex; flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            animation: helpSlideIn 0.25s ease-out;
+        }
+        .paste-modal-header {
+            background: linear-gradient(90deg, #198754 0%, #157347 100%);
+            color: white; padding: 15px 20px; border-radius: 10px 10px 0 0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .paste-modal-header h4 { margin: 0; }
+        .paste-modal-body { padding: 15px 20px; overflow: hidden; flex: 1; display: flex; flex-direction: column; }
+        .paste-modal-footer {
+            padding: 15px 20px; border-top: 1px solid #dee2e6;
+            background: #f8f9fa; border-radius: 0 0 10px 10px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .paste-table-wrapper {
+            flex: 1; overflow: auto;
+            border: 2px dashed #dee2e6; border-radius: 6px;
+            min-height: 300px; position: relative; background: #fdfdfd;
+        }
+        .paste-table-wrapper.drag-over {
+            border-color: #198754; background: #e8f5e9;
+        }
+        .paste-table-wrapper table {
+            width: 100%; border-collapse: collapse; font-size: 0.8em;
+        }
+        .paste-table-wrapper thead th {
+            position: sticky; top: 0; z-index: 10;
+            background-color: #212529; color: white;
+            padding: 6px 8px; text-align: left;
+            font-weight: 600; white-space: nowrap;
+            font-size: 0.85em;
+        }
+        .paste-table-wrapper tbody td {
+            padding: 4px 8px; border-bottom: 1px solid #e9ecef;
+            word-break: break-word; vertical-align: top;
+        }
+        .paste-table-wrapper tbody tr:hover { background: #f8f9fa; }
+        .paste-table-wrapper tbody tr.row-csm { background: rgba(108,117,125,0.05); }
+        .paste-table-wrapper tbody tr.row-etalon { background: rgba(25,135,84,0.08); }
+        .paste-table-wrapper tbody tr.row-onsite { background: rgba(13,110,253,0.08); }
+        .paste-table-wrapper tbody tr.row-budget { box-shadow: inset 4px 0 0 #ffc107; }
+        .paste-table-wrapper tbody tr.row-urgent { box-shadow: inset 4px 0 0 #dc3545; }
+        .paste-placeholder {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center; color: #6c757d; pointer-events: none;
+            font-size: 1.1em;
+        }
+        .paste-placeholder .big-icon { font-size: 3em; display: block; margin-bottom: 10px; }
+        .paste-marker-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 10px;
+            font-size: 0.75em; margin-right: 4px;
+        }
+        .marker-selected { font-weight: bold; box-shadow: 0 0 0 2px #007bff; }
+
+        .modal-backdrop-custom {
+            display: none; position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6); z-index: 2200;
+            align-items: center; justify-content: center;
+            padding: 20px; overflow-y: auto;
+        }
+        .modal-backdrop-custom.open { display: flex; }
     </style>
 </head>
 <body>
@@ -285,20 +355,19 @@
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">📁 Загрузка таблицы</h5>
+                            <h5 class="mb-0">📁 Загрузка данных</h5>
                             <button class="help-btn" onclick="openHelp()" title="Как подготовить файл">?</button>
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Таблица (счета с приборами):</label>
+                                <label class="form-label fw-bold">Из Excel-файла:</label>
                                 <input type="file" id="table1File" class="form-control" accept=".xlsx,.xls">
-                                <small class="text-muted">
-                                    Маркеры: <b>ЦСМС</b>, <b>БЮДЖЕТ</b>, <b>СРОЧНЫЕ</b>, <b>ЭТАЛОН</b>, <b>ВЫЕЗДНЫЕ</b>.
-                                    Комбинации через пробел или слитно: <b>ЭТАЛОН БЮДЖЕТ</b> / <b>ЭТАЛОНБЮДЖЕТ</b>.
-                                </small>
                             </div>
-                            <button class="btn btn-success" onclick="loadTable1()">📥 Загрузить</button>
-                            <button class="btn btn-danger" onclick="clearAllData()">🗑 Очистить</button>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <button class="btn btn-success" onclick="loadTable1()">📥 Загрузить файл</button>
+                                <button class="btn btn-primary" onclick="openPasteModal()">📋 Вставить из 1С</button>
+                                <button class="btn btn-danger" onclick="clearAllData()">🗑 Очистить</button>
+                            </div>
                             <div id="table1Info" class="alert alert-info table-info"></div>
                         </div>
                     </div>
@@ -437,6 +506,79 @@
         </div>
     </div>
 
+    <!-- Окно вставки из 1С -->
+    <div id="pasteModal" class="modal-backdrop-custom" onclick="if(event.target===this)closePasteModal()">
+        <div class="paste-modal-content" onclick="event.stopPropagation()">
+            <div class="paste-modal-header">
+                <h4>📋 Вставка данных из 1С</h4>
+                <button class="help-close" onclick="closePasteModal()">×</button>
+            </div>
+            <div class="paste-modal-body">
+                <!-- Выбор места -->
+                <div class="mb-2">
+                    <label class="fw-bold small">📍 Место:</label>
+                    <div class="btn-group btn-group-sm flex-wrap ms-2" role="group" id="pastePlaceGroup">
+                        <button class="btn btn-outline-dark place-paste-btn active" data-place="csm" onclick="setPastePlace('csm')">ЦСМС</button>
+                        <button class="btn btn-outline-success place-paste-btn" data-place="etalon" onclick="setPastePlace('etalon')">Эталон</button>
+                        <button class="btn btn-outline-primary place-paste-btn" data-place="onsite" onclick="setPastePlace('onsite')">Выездные</button>
+                    </div>
+                </div>
+                <!-- Выбор типа -->
+                <div class="mb-3">
+                    <label class="fw-bold small">🏷 Тип:</label>
+                    <div class="btn-group btn-group-sm flex-wrap ms-2" role="group" id="pasteTypeGroup">
+                        <button class="btn btn-outline-dark type-paste-btn active" data-type="common" onclick="setPasteType('common')">Общие</button>
+                        <button class="btn btn-outline-danger type-paste-btn" data-type="urgent" onclick="setPasteType('urgent')">Срочные</button>
+                        <button class="btn btn-outline-warning type-paste-btn" data-type="budget" onclick="setPasteType('budget')">Бюджет</button>
+                    </div>
+                </div>
+
+                <div class="alert alert-info py-2 small mb-2">
+                    <b>Как работать:</b> в 1С скопируй таблицу (Ctrl+C) → вернись сюда → нажми <b>Ctrl+V</b> в область ниже. Строки добавятся с выбранным местом и типом. Поменяй место/тип → вставь следующую порцию. В конце нажми <b>«💾 Сохранить»</b>.
+                </div>
+
+                <div class="paste-table-wrapper" id="pasteTableWrapper" tabindex="0">
+                    <table id="pasteTable">
+                        <thead>
+                            <tr>
+                                <th>Номер счёта</th>
+                                <th>Дата выписки</th>
+                                <th>Код</th>
+                                <th>Наименование</th>
+                                <th>Прибор</th>
+                                <th>Кол-во</th>
+                                <th>Сумма</th>
+                                <th>Всего по счету</th>
+                                <th>Дата оплаты</th>
+                                <th>Место</th>
+                                <th>Тип</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pasteTableBody"></tbody>
+                    </table>
+                    <div class="paste-placeholder" id="pastePlaceholder">
+                        <span class="big-icon">📋</span>
+                        <div>Нажми <b>Ctrl+V</b> здесь, чтобы вставить данные из 1С</div>
+                        <div class="small mt-2">Или скопируй таблицу и вернись в это окно</div>
+                    </div>
+                </div>
+            </div>
+            <div class="paste-modal-footer">
+                <div>
+                    <b>Всего строк:</b> <span id="pasteRowCount">0</span>
+                    &nbsp;|&nbsp;
+                    Текущее место: <span id="pasteCurrentPlace" class="badge badge-common">ЦСМС</span>
+                    Тип: <span id="pasteCurrentType" class="badge badge-common">Общие</span>
+                </div>
+                <div>
+                    <button class="btn btn-secondary" onclick="closePasteModal()">Закрыть</button>
+                    <button class="btn btn-warning ms-2" onclick="clearPasteTable()">Очистить</button>
+                    <button class="btn btn-success ms-2" onclick="savePasteTable()">💾 Сохранить в базу</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Модалка смены пароля -->
     <div id="changePasswordModal" class="help-modal" onclick="if(event.target===this)closeChangePassword()">
         <div class="help-modal-content" style="max-width: 450px;">
@@ -513,15 +655,8 @@
                     <li><code>ЦСМС БЮДЖЕТ</code> (или просто <code>БЮДЖЕТ</code>) → ЦСМС + Бюджет</li>
                 </ul>
                 <hr>
-                <h6>🔹 Правила:</h6>
-                <ul>
-                    <li>Квадратные скобки <code>[]</code> необязательны, регистр не важен.</li>
-                    <li>Пробел между словами необязателен.</li>
-                    <li>Пустая строка — сброс раздела на «Общую».</li>
-                    <li>Заголовок определяется по 2+ ключевым словам.</li>
-                    <li>Поддерживаются объединённые ячейки.</li>
-                    <li>Приоритет: <b>Выездные / Эталон</b> важнее <b>ЦСМС</b>.</li>
-                </ul>
+                <h5>📋 Вставка из 1С</h5>
+                <p>Кнопка <b>«📋 Вставить из 1С»</b> открывает окно. Выбери место и тип → скопируй таблицу из 1С (Ctrl+C) → нажми Ctrl+V в окне. Строки добавятся с выбранным маркером. Поменяй маркер → вставь следующую порцию. В конце — <b>«💾 Сохранить в базу»</b>.</p>
                 <hr>
                 <h5>📦 Распределение счетов</h5>
                 <p>Админ кликает по счёту в таблице → открывается окно распределения → выбирает пользователя. У пользователя счёт появляется с бейджем «Распределённый» и плашкой-уведомлением вверху. Плашка исчезает, когда пользователь открывает фильтр «📦 Распределённые».</p>
@@ -697,6 +832,11 @@
 
         let distributingRowKey = null;
 
+        // Состояние окна вставки
+        let pastePlace = 'csm';
+        let pasteType = 'common';
+        let pasteRows = [];
+
         window.handleAuthSubmit = handleAuthSubmit;
         window.switchAuthMode = switchAuthMode;
         window.logout = logout;
@@ -732,6 +872,12 @@
         window.openChangePassword = openChangePassword;
         window.closeChangePassword = closeChangePassword;
         window.submitChangePassword = submitChangePassword;
+        window.openPasteModal = openPasteModal;
+        window.closePasteModal = closePasteModal;
+        window.setPastePlace = setPastePlace;
+        window.setPasteType = setPasteType;
+        window.clearPasteTable = clearPasteTable;
+        window.savePasteTable = savePasteTable;
 
         function setSyncStatus(status, text) {
             const i = document.getElementById('syncIndicator');
@@ -768,26 +914,10 @@
             const errEl = document.getElementById('pwdError');
             errEl.style.display = 'none';
 
-            if (!cur || !nw || !cf) {
-                errEl.textContent = 'Заполните все поля';
-                errEl.style.display = 'block';
-                return;
-            }
-            if (nw.length < 6) {
-                errEl.textContent = 'Новый пароль минимум 6 символов';
-                errEl.style.display = 'block';
-                return;
-            }
-            if (nw !== cf) {
-                errEl.textContent = 'Новые пароли не совпадают';
-                errEl.style.display = 'block';
-                return;
-            }
-            if (nw === cur) {
-                errEl.textContent = 'Новый пароль не должен совпадать с текущим';
-                errEl.style.display = 'block';
-                return;
-            }
+            if (!cur || !nw || !cf) { errEl.textContent = 'Заполните все поля'; errEl.style.display = 'block'; return; }
+            if (nw.length < 6) { errEl.textContent = 'Новый пароль минимум 6 символов'; errEl.style.display = 'block'; return; }
+            if (nw !== cf) { errEl.textContent = 'Новые пароли не совпадают'; errEl.style.display = 'block'; return; }
+            if (nw === cur) { errEl.textContent = 'Новый пароль не должен совпадать с текущим'; errEl.style.display = 'block'; return; }
 
             const btn = document.getElementById('pwdSubmitBtn');
             btn.disabled = true; btn.textContent = 'Меняем...';
@@ -801,13 +931,9 @@
             } catch (err) {
                 console.error(err);
                 let msg = err.message;
-                if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-                    msg = 'Неверный текущий пароль';
-                } else if (err.code === 'auth/weak-password') {
-                    msg = 'Новый пароль слишком простой (минимум 6 символов)';
-                } else if (err.code === 'auth/requires-recent-login') {
-                    msg = 'Сессия устарела. Войдите заново и попробуйте снова';
-                }
+                if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') msg = 'Неверный текущий пароль';
+                else if (err.code === 'auth/weak-password') msg = 'Новый пароль слишком простой (минимум 6 символов)';
+                else if (err.code === 'auth/requires-recent-login') msg = 'Сессия устарела. Войдите заново и попробуйте снова';
                 errEl.textContent = msg;
                 errEl.style.display = 'block';
             } finally {
@@ -815,8 +941,310 @@
             }
         }
 
+        /* ========== ОКНО ВСТАВКИ ИЗ 1С ========== */
+
+        function openPasteModal() {
+            document.getElementById('pasteModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                document.getElementById('pasteTableWrapper').focus();
+            }, 100);
+        }
+        function closePasteModal() {
+            document.getElementById('pasteModal').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function setPastePlace(p) {
+            pastePlace = p;
+            document.querySelectorAll('.place-paste-btn').forEach(b => b.classList.toggle('active', b.dataset.place === p));
+            updatePasteFooter();
+        }
+        function setPasteType(t) {
+            pasteType = t;
+            document.querySelectorAll('.type-paste-btn').forEach(b => b.classList.toggle('active', b.dataset.type === t));
+            updatePasteFooter();
+        }
+
+        function updatePasteFooter() {
+            document.getElementById('pasteRowCount').textContent = pasteRows.length;
+            const pEl = document.getElementById('pasteCurrentPlace');
+            pEl.textContent = placeLabel(pastePlace);
+            pEl.className = 'badge ' + placeBadgeClass(pastePlace);
+            const tEl = document.getElementById('pasteCurrentType');
+            tEl.textContent = typeLabel(pasteType);
+            tEl.className = 'badge ' + typeBadgeClass(pasteType);
+        }
+
+        function clearPasteTable() {
+            if (pasteRows.length === 0) return;
+            if (!confirm('Очистить все добавленные строки?')) return;
+            pasteRows = [];
+            renderPasteTable();
+        }
+
+        // Парсинг вставленного текста
+        function parsePasteText(text) {
+            if (!text) return [];
+            const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+            const rows = [];
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (!line.trim()) continue;
+                const cells = line.split('\t').map(c => (c || '').trim());
+                if (cells.every(c => !c)) continue;
+
+                // Пропускаем строки-заголовки: ищем ключевые слова
+                const joined = cells.join(' ').toLowerCase();
+                const isHeaderish = (joined.includes('номер') && joined.includes('счет')) ||
+                                    (joined.includes('дата') && joined.includes('выписк')) ||
+                                    (joined.includes('код') && joined.includes('наименование') && cells.length < 6);
+                if (isHeaderish) continue;
+
+                // Пропускаем строки-маркеры (одна ячейка со словом типа "срочные")
+                if (cells.length <= 2 && cells.filter(c => c).length <= 1) {
+                    const only = cells.find(c => c) || '';
+                    if (only && only.length < 30 && !/\d/.test(only) && /^[А-ЯЁA-Zа-яёa-z\s\-_]+$/.test(only)) {
+                        // Похоже на маркер — пропускаем
+                        continue;
+                    }
+                }
+
+                rows.push(cells);
+            }
+            return rows;
+        }
+
+        // Извлекаем строку в поля
+        function buildPasteRow(cells) {
+            // Определяем, где что. Ожидаем формат из 1С:
+            // Номер | Дата | Код | Наименование | Прибор | Кол-во | Сумма | Всего | Оплата | Дата оплаты
+            // Но может быть и: Номер | Дата | Контрагент | Прибор | Кол-во | Сумма | ...
+            let invoiceNumber = '', invoiceDate = '', code = '', name = '', contractor = '';
+            let device = '', quantity = '', amount = '', totalAmount = '', paymentDate = '';
+
+            // Ищем ячейку с номером счёта (формат XXXX-XXXXXX)
+            let numIdx = -1;
+            for (let i = 0; i < cells.length; i++) {
+                if (/^\d{4}-\d{4,6}$/.test(cells[i])) { numIdx = i; invoiceNumber = cells[i]; break; }
+            }
+            if (numIdx === -1) {
+                // Может быть без дефиса или другой формат — берём первую ячейку
+                invoiceNumber = cells[0] || '';
+                numIdx = 0;
+            }
+
+            // Идём дальше от numIdx
+            let idx = numIdx + 1;
+            // Дата выписки
+            if (idx < cells.length && /\d{2}[.\/]\d{2}[.\/]\d{4}/.test(cells[idx])) {
+                invoiceDate = cells[idx];
+                idx++;
+            }
+
+            // Дальше — 1 или 2 поля до прибора (Код + Наименование, или просто Наименование)
+            // Проверяем: код обычно короткий (2-8 символов, только цифры/дефисы)
+            if (idx < cells.length && /^[\d\-]{2,10}$/.test(cells[idx])) {
+                code = cells[idx];
+                idx++;
+                if (idx < cells.length) { name = cells[idx]; idx++; }
+            } else if (idx < cells.length) {
+                name = cells[idx];
+                idx++;
+            }
+
+            // Прибор — обычно длинный текст с запятыми/словами
+            if (idx < cells.length) {
+                device = cells[idx];
+                idx++;
+            }
+
+            // Кол-во — число
+            if (idx < cells.length && /^\d+([.,]\d+)?$/.test(cells[idx])) {
+                quantity = cells[idx];
+                idx++;
+            }
+
+            // Сумма и Всего — числа (2 подряд)
+            if (idx < cells.length && /^\d+([.,]\d+)?$/.test(cells[idx])) {
+                amount = cells[idx];
+                idx++;
+                if (idx < cells.length && /^\d+([.,]\d+)?$/.test(cells[idx])) {
+                    totalAmount = cells[idx];
+                    idx++;
+                }
+            }
+
+            // Дата оплаты — в конце
+            for (let i = idx; i < cells.length; i++) {
+                if (/\d{2}[.\/]\d{2}[.\/]\d{4}/.test(cells[i])) {
+                    paymentDate = cells[i];
+                    break;
+                }
+            }
+
+            return {
+                'Номер счета': invoiceNumber,
+                'Дата выписки': invoiceDate,
+                'Код': code,
+                'Наименование': name,
+                'Контингент': (code && name) ? (code + ' ' + name) : (name || code || ''),
+                'Прибор': device,
+                'Кол-во': quantity,
+                'Сумма': amount,
+                'Всего по счету': totalAmount || amount || '',
+                'Дата оплаты': paymentDate,
+                place: pastePlace,
+                type: pasteType
+            };
+        }
+
+        function handlePaste(e) {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            if (!text) return;
+            const rows = parsePasteText(text);
+            if (!rows.length) { alert('Не удалось распознать данные'); return; }
+            let added = 0;
+            rows.forEach(cells => {
+                const row = buildPasteRow(cells);
+                if (row['Номер счета'] || row['Прибор'] || row['Сумма']) {
+                    pasteRows.push(row);
+                    added++;
+                }
+            });
+            console.log(`📋 Вставлено из буфера: ${added} строк (place=${pastePlace}, type=${pasteType})`);
+            renderPasteTable();
+        }
+
+        function renderPasteTable() {
+            const tbody = document.getElementById('pasteTableBody');
+            const placeholder = document.getElementById('pastePlaceholder');
+            tbody.innerHTML = '';
+
+            if (pasteRows.length === 0) {
+                placeholder.style.display = 'block';
+            } else {
+                placeholder.style.display = 'none';
+                pasteRows.forEach((r, i) => {
+                    const tr = document.createElement('tr');
+                    if (r.place === 'csm' && r.type === 'common') tr.classList.add('row-csm');
+                    else if (r.place === 'etalon') tr.classList.add('row-etalon');
+                    else if (r.place === 'onsite') tr.classList.add('row-onsite');
+                    if (r.type === 'budget') tr.classList.add('row-budget');
+                    if (r.type === 'urgent') tr.classList.add('row-urgent');
+
+                    tr.innerHTML = `
+                        <td>${r['Номер счета'] || ''}</td>
+                        <td>${r['Дата выписки'] || ''}</td>
+                        <td>${r['Код'] || ''}</td>
+                        <td>${r['Наименование'] || ''}</td>
+                        <td>${r['Прибор'] || ''}</td>
+                        <td>${r['Кол-во'] || ''}</td>
+                        <td>${r['Сумма'] || ''}</td>
+                        <td>${r['Всего по счету'] || ''}</td>
+                        <td>${r['Дата оплаты'] || ''}</td>
+                        <td><span class="badge ${placeBadgeClass(r.place)}">${placeLabel(r.place)}</span></td>
+                        <td><span class="badge ${typeBadgeClass(r.type)}">${typeLabel(r.type)}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            updatePasteFooter();
+        }
+
+        async function savePasteTable() {
+            if (!pasteRows.length) { alert('Нечего сохранять — таблица пуста'); return; }
+            if (!currentUser) { alert('Вы не залогинены'); return; }
+            const count = pasteRows.length;
+            if (!confirm(`Сохранить ${count} строк(и) в базу?`)) return;
+
+            // Готовим строки в формате базы
+            const now = new Date().toISOString();
+            const newData = pasteRows.map(r => ({
+                'Номер счета': r['Номер счета'] || '',
+                'Дата выписки': r['Дата выписки'] || '',
+                'Контрагент (Наименование)': r['Наименование'] || '',
+                'Контингент': r['Контингент'] || '',
+                'Прибор': r['Прибор'] || '',
+                'Кол-во': r['Кол-во'] || '',
+                'Сумма': r['Сумма'] || '',
+                'Всего по счету': r['Всего по счету'] || '',
+                'Оплата': '',
+                'Дата оплаты': r['Дата оплаты'] || '',
+                place: r.place || 'csm',
+                type: r.type || 'common',
+                distributed: false,
+                distributedTo: '',
+                distributedToName: '',
+                distributedAt: '',
+                distributedBy: '',
+                distributedByName: '',
+                copied: false,
+                status: 'new',
+                statusDate: null,
+                paymentStatus: '',
+                urgency: ''
+            }));
+
+            const before = table1Data.length;
+            const existing = new Map();
+            table1Data.forEach((r, i) => existing.set(rowKey(r), i));
+            let added = 0, updated = 0;
+
+            newData.forEach(nr => {
+                const k = rowKey(nr);
+                if (existing.has(k)) {
+                    table1Data[existing.get(k)] = mergeRow(table1Data[existing.get(k)], nr);
+                    updated++;
+                } else {
+                    table1Data.push(nr);
+                    existing.set(k, table1Data.length - 1);
+                    added++;
+                }
+            });
+
+            // Чистим приоритеты (Эталон/Выездные важнее ЦСМС)
+            table1Data = resolvePriorities(table1Data);
+            const cleaned = before + added + updated - table1Data.length;
+
+            console.log(`📋 Вставка из 1С: +${added}, ~${updated}, всего ${table1Data.length} (убрано дублей: ${cleaned})`);
+
+            applySharedStatuses();
+            saveToStorage();
+            renderTable();
+            updateDistributedBanner();
+            if (!autoCleanChecked) { autoCleanChecked = true; checkAutoClean(); }
+
+            pasteRows = [];
+            renderPasteTable();
+            closePasteModal();
+            alert(`✅ Сохранено: добавлено ${added}, обновлено ${updated}`);
+        }
+
+        // Навешиваем слушатель paste на wrapper
+        document.addEventListener('DOMContentLoaded', () => {
+            const w = document.getElementById('pasteTableWrapper');
+            if (w) {
+                w.addEventListener('paste', handlePaste);
+            }
+        });
+        // На случай, если DOMContentLoaded уже прошёл
+        setTimeout(() => {
+            const w = document.getElementById('pasteTableWrapper');
+            if (w && !w.dataset.listener) {
+                w.addEventListener('paste', handlePaste);
+                w.dataset.listener = '1';
+            }
+        }, 500);
+
+        /* ========== КОНЕЦ ОКНА ВСТАВКИ ========== */
+
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); closeChangePassword(); }
+            if (e.key === 'Escape') {
+                closeHelp(); closeAdminPanel(); closeDistModal();
+                closeChangePassword(); closePasteModal();
+            }
         });
 
         const TRANSLIT_MAP = {
@@ -1565,11 +1993,8 @@
 
                             if (DEBUG_INVOICE && invoiceNumber.includes(DEBUG_INVOICE)) {
                                 console.log('🐛 DEBUG строка:', {
-                                    'Номер': invoiceNumber,
-                                    'Прибор': device,
-                                    'Дата': invoiceDate,
-                                    'Сумма': totalAmount || amount,
-                                    'place': curPlace, 'type': curType
+                                    'Номер': invoiceNumber, 'Прибор': device, 'Дата': invoiceDate,
+                                    'Сумма': totalAmount || amount, 'place': curPlace, 'type': curType
                                 });
                             }
 
@@ -1602,18 +2027,12 @@
                     });
                     console.log(`=== Т1: загружено ${allData.length} ===`);
                     const stats = {csm: 0, etalon: 0, onsite: 0};
-                    const typeStats = {common: 0, budget: 0, urgent: 0};
-                    allData.forEach(r => {
-                        stats[r.place] = (stats[r.place] || 0) + 1;
-                        typeStats[r.type] = (typeStats[r.type] || 0) + 1;
-                    });
-                    console.log('📊 По местам (до resolvePriorities):', stats);
-                    console.log('📊 По типам (до resolvePriorities):', typeStats);
+                    allData.forEach(r => { stats[r.place] = (stats[r.place] || 0) + 1; });
+                    console.log('📊 По местам (до):', stats);
 
                     const before = allData.length;
                     allData = resolvePriorities(allData);
-                    const removed = before - allData.length;
-                    console.log(`⚡ resolvePriorities: удалено ${removed} дублей`);
+                    console.log(`⚡ resolvePriorities: удалено ${before - allData.length} дублей`);
                     const stats2 = {csm: 0, etalon: 0, onsite: 0};
                     allData.forEach(r => { stats2[r.place] = (stats2[r.place] || 0) + 1; });
                     console.log('📊 По местам (после):', stats2);
@@ -1802,8 +2221,7 @@
             });
             if (userInvoicesRef) {
                 const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
-                set(userInvoicesRef, { table1Data: c1, updatedAt: now })
-                    .catch(err => console.error(err));
+                set(userInvoicesRef, { table1Data: c1, updatedAt: now }).catch(err => console.error(err));
             }
             const sk = fbKey(key);
             if (newStatus === 'new') {
@@ -1976,12 +2394,7 @@
             if (adminRowIdx === -1) { closeDistModal(); return; }
 
             const adminRow = table1Data[adminRowIdx];
-            table1Data[adminRowIdx] = {
-                ...adminRow,
-                distributedTo: userUid,
-                distributedToName: userName,
-                distributedAt: now
-            };
+            table1Data[adminRowIdx] = { ...adminRow, distributedTo: userUid, distributedToName: userName, distributedAt: now };
 
             let userTable1 = [];
             try {
@@ -1992,24 +2405,9 @@
             const existsIdx = userTable1.findIndex(r => rowKey(r) === key);
 
             if (existsIdx >= 0) {
-                userTable1[existsIdx] = {
-                    ...userTable1[existsIdx],
-                    distributed: true,
-                    distributedBy: currentUser.uid,
-                    distributedByName: currentUserName,
-                    distributedAt: now
-                };
+                userTable1[existsIdx] = { ...userTable1[existsIdx], distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now };
             } else {
-                const copy = stripUndefined({
-                    ...adminRow,
-                    distributed: true,
-                    distributedBy: currentUser.uid,
-                    distributedByName: currentUserName,
-                    distributedAt: now,
-                    copied: true,
-                    distributedTo: '',
-                    distributedToName: ''
-                });
+                const copy = stripUndefined({ ...adminRow, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now, copied: true, distributedTo: '', distributedToName: '' });
                 userTable1.push(copy);
             }
 
@@ -2018,9 +2416,7 @@
                 await set(ref(database, 'invoices/' + userUid + '/table1Data'), userTable1);
                 const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
                 await set(userInvoicesRef, { table1Data: c1, updatedAt: now });
-                try {
-                    await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key)));
-                } catch(e) { }
+                try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key))); } catch(e) { }
                 setSyncStatus('online', 'Распределено');
                 setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000);
             } catch(e) {
@@ -2053,12 +2449,7 @@
 
             const idx = table1Data.findIndex(r => rowKey(r) === key);
             if (idx >= 0) {
-                table1Data[idx] = {
-                    ...table1Data[idx],
-                    distributedTo: '',
-                    distributedToName: '',
-                    distributedAt: ''
-                };
+                table1Data[idx] = { ...table1Data[idx], distributedTo: '', distributedToName: '', distributedAt: '' };
             }
 
             let userTable1 = [];
@@ -2070,17 +2461,8 @@
             const ui = userTable1.findIndex(r => rowKey(r) === key);
             if (ui >= 0) {
                 const uRow = userTable1[ui];
-                if (uRow.copied) {
-                    userTable1.splice(ui, 1);
-                } else {
-                    userTable1[ui] = {
-                        ...uRow,
-                        distributed: false,
-                        distributedBy: '',
-                        distributedByName: '',
-                        distributedAt: ''
-                    };
-                }
+                if (uRow.copied) userTable1.splice(ui, 1);
+                else userTable1[ui] = { ...uRow, distributed: false, distributedBy: '', distributedByName: '', distributedAt: '' };
             }
 
             setSyncStatus('syncing', 'Отмена распределения...');
@@ -2088,9 +2470,7 @@
                 await set(ref(database, 'invoices/' + userUid + '/table1Data'), userTable1);
                 const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
                 await set(userInvoicesRef, { table1Data: c1, updatedAt: now });
-                try {
-                    await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key)));
-                } catch(e) { }
+                try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key))); } catch(e) { }
                 setSyncStatus('online', 'Отменено');
                 setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000);
             } catch(e) {
@@ -2146,15 +2526,8 @@
                     return false;
                 });
             }
-
-            if (selectedPlaces.size > 0) {
-                fd = fd.filter(row => selectedPlaces.has(row.place || 'csm'));
-            }
-
-            if (selectedTypes.size > 0) {
-                fd = fd.filter(row => selectedTypes.has(row.type || 'common'));
-            }
-
+            if (selectedPlaces.size > 0) fd = fd.filter(row => selectedPlaces.has(row.place || 'csm'));
+            if (selectedTypes.size > 0) fd = fd.filter(row => selectedTypes.has(row.type || 'common'));
             if (selectedSections.size > 0) {
                 fd = fd.filter(row => {
                     for (const sec of selectedSections) {
@@ -2163,18 +2536,15 @@
                     return false;
                 });
             }
-
             if (currentIsAdmin && viewingUid === currentUser.uid && selectedDistributedUsers.size > 0) {
                 fd = fd.filter(row => selectedDistributedUsers.has(row.distributedTo));
             }
-
             if (selectedDevices.size > 0) {
                 fd = fd.filter(row => {
                     const d = (row['Прибор'] || '').split(' ').slice(0, 3).join(' ');
                     return selectedDevices.has(d);
                 });
             }
-
             if (sq) {
                 fd = fd.filter(row => {
                     const inv = safeString(row['Номер счета']);
@@ -2188,7 +2558,6 @@
                            pd.includes(sq) || ur.includes(sq) || pl.includes(sq) || ty.includes(sq);
                 });
             }
-
             if (sortByDate === 'earliest') {
                 fd.sort((a, b) => {
                     const da = parseDate(a.paymentDate || a['Дата оплаты']);
@@ -2270,8 +2639,7 @@
 
                     const pd = row.paymentDate || row['Дата оплаты'] || '';
                     const key = rowKey(row).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                    const changedBy = row.statusChangedBy
-                        ? `<br><small class="text-muted">${row.statusChangedBy}</small>` : '';
+                    const changedBy = row.statusChangedBy ? `<br><small class="text-muted">${row.statusChangedBy}</small>` : '';
 
                     const term = calculateTerm(row);
                     let termHtml = '—';
@@ -2283,12 +2651,8 @@
                         termHtml = `<span class="${cls}" title="${term.label}">${formatDate(term.date)}</span>`;
                     }
 
-                    const distributedBadge = row.distributed
-                        ? `<span class="badge badge-distributed ms-1">📦 Распределённый</span>` : '';
-
-                    const distCell = showDistCol
-                        ? `<td class="col-distributed">${row.distributedToName ? '👤 ' + escapeHtml(row.distributedToName) : '<span class="text-muted">—</span>'}</td>`
-                        : '';
+                    const distributedBadge = row.distributed ? `<span class="badge badge-distributed ms-1">📦 Распределённый</span>` : '';
+                    const distCell = showDistCol ? `<td class="col-distributed">${row.distributedToName ? '👤 ' + escapeHtml(row.distributedToName) : '<span class="text-muted">—</span>'}</td>` : '';
 
                     if (isAdminSelf) {
                         tr.classList.add('admin-clickable');
@@ -2368,18 +2732,10 @@
                     return false;
                 });
             }
-            if (selectedPlaces.size > 0) {
-                dte = dte.filter(r => selectedPlaces.has(r.place || 'csm'));
-            }
-            if (selectedTypes.size > 0) {
-                dte = dte.filter(r => selectedTypes.has(r.type || 'common'));
-            }
-            if (selectedSections.size > 0) {
-                dte = dte.filter(r => selectedSections.has('distributed') && r.distributed);
-            }
-            if (selectedDistributedUsers.size > 0) {
-                dte = dte.filter(r => selectedDistributedUsers.has(r.distributedTo));
-            }
+            if (selectedPlaces.size > 0) dte = dte.filter(r => selectedPlaces.has(r.place || 'csm'));
+            if (selectedTypes.size > 0) dte = dte.filter(r => selectedTypes.has(r.type || 'common'));
+            if (selectedSections.size > 0) dte = dte.filter(r => selectedSections.has('distributed') && r.distributed);
+            if (selectedDistributedUsers.size > 0) dte = dte.filter(r => selectedDistributedUsers.has(r.distributedTo));
             if (selectedDevices.size > 0) {
                 dte = dte.filter(r => {
                     const d = (r['Прибор'] || '').split(' ').slice(0, 3).join(' ');
