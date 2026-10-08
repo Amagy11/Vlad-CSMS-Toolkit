@@ -550,7 +550,6 @@
         };
 
         const EMAIL_DOMAIN = "@invoice.local";
-        // Для отладки конкретного счёта — впиши номер здесь, в консоли увидишь все строки с ним
         const DEBUG_INVOICE = '';
 
         let app, database, auth;
@@ -962,14 +961,12 @@
                 .toLowerCase();
         }
 
-        // Базовый ключ = номер счёта + прибор (для идентификации одной и той же позиции)
         function baseKey(row) {
             const num = normalizeKey(row['Номер счета']);
             const dev = normalizeKey(row['Прибор']);
             return `${num}||${dev}`;
         }
 
-        // Полный ключ = номер + прибор + place + type (для rowKey)
         function rowKey(row) {
             const bk = baseKey(row);
             const place = row.place || 'csm';
@@ -1006,7 +1003,6 @@
             return normalizeSpaces(s).toUpperCase().replace(/[\s\-_]+/g, '');
         }
 
-        // ⚡ ГЛАВНОЕ ИСПРАВЛЕНИЕ: не ловим контрагентов типа "Закрытое Акционерное Общество"
         function detectSectionMarker(row) {
             if (!row || !row.length) return null;
 
@@ -1017,11 +1013,8 @@
 
                 const rawStr = normalizeSpaces(raw);
                 if (!rawStr) continue;
-                // Не маркер, если есть цифры
                 if (/\d/.test(rawStr)) continue;
-                // Не маркер, если это длинная фраза (название контрагента)
                 if (rawStr.length > 25) continue;
-                // Только буквы, пробелы, дефисы, подчёркивания. Кавычки/точки/запятые — не маркер.
                 if (!/^[А-ЯЁA-Zа-яёa-z\s\-_]+$/.test(rawStr)) continue;
 
                 const up = rawStr.toUpperCase().replace(/[\[\]]/g, '');
@@ -1032,7 +1025,6 @@
                 let type = null;
                 let matched = false;
 
-                // Место — по началу (startsWith), чтобы не путать с "Гомельский ВСЗ" и т.п.
                 if (sq.startsWith('ЭТАЛОН') || sq.startsWith('ETALON') || sq.startsWith('ETAL')) {
                     place = 'etalon'; matched = true;
                 } else if (sq.startsWith('ВЫЕЗД') || sq.startsWith('ONSITE')) {
@@ -1041,13 +1033,11 @@
                     place = 'csm'; matched = true;
                 }
 
-                // Тип — подстрокой
                 if (sq.includes('БЮДЖЕТ') || sq.includes('BUDGET') || sq.includes('БЮД')) {
                     type = 'budget'; matched = true;
                 } else if (sq.includes('СРОЧН') || sq.includes('URGENT') || sq.includes('СРОЧ')) {
                     type = 'urgent'; matched = true;
                 }
-                // 'ОБЩ' УБРАНО — оно ловило "Общество"
 
                 if (!matched) continue;
                 if (!place) place = 'csm';
@@ -1108,14 +1098,11 @@
             }
         }
         function placePriority(place) {
-            // Эталон и Выездные приоритетнее ЦСМС
             if (place === 'etalon') return 3;
             if (place === 'onsite') return 3;
             return 1;
         }
 
-        // ⚡ ПРИОРИТЕТ: если один и тот же номер+прибор встречается в ЦСМС и в Эталон/Выездные —
-        // удаляем ЦСМС-версию, оставляем только приоритетную (Эталон/Выездные).
         function resolvePriorities(rows) {
             const groups = new Map();
             rows.forEach(r => {
@@ -1130,21 +1117,16 @@
                     result.push(group[0]);
                     return;
                 }
-                // Определяем максимальный приоритет места
                 let maxPriority = 0;
                 group.forEach(r => {
                     const p = placePriority(r.place || 'csm');
                     if (p > maxPriority) maxPriority = p;
                 });
                 if (maxPriority <= 1) {
-                    // Все ЦСМС — оставляем все (но лучше одну последнюю, чтобы не было дублей)
-                    // Оставляем самую свежую
                     result.push(group[group.length - 1]);
                     return;
                 }
-                // Есть приоритетные (Эталон/Выездные) — убираем ЦСМС-версии
                 const priorityRows = group.filter(r => placePriority(r.place || 'csm') >= maxPriority);
-                // Если приоритетных несколько (например, Эталон + Выездные) — оставляем все
                 priorityRows.forEach(r => result.push(r));
             });
 
@@ -1422,10 +1404,8 @@
                         for (let i = 0; i < jsonData.length; i++) {
                             const row = jsonData[i];
 
-                            // 1. Пустая строка — только сбрасываем headers
                             if (isEmptyRow(row)) { headers = null; continue; }
 
-                            // 2. Маркер
                             const marker = detectSectionMarker(row);
                             if (marker) {
                                 curPlace = marker.place;
@@ -1435,7 +1415,6 @@
                                 continue;
                             }
 
-                            // 3. Шапка
                             if (isHeaderRow(row)) {
                                 let hr = row;
                                 const next = jsonData[i + 1];
@@ -1455,7 +1434,6 @@
                                 continue;
                             }
 
-                            // 4. Данные
                             if (!headers) continue;
 
                             let invoiceNumber = '', invoiceDate = '', contractor = '';
@@ -1541,7 +1519,6 @@
                     console.log('📊 По местам (до resolvePriorities):', stats);
                     console.log('📊 По типам (до resolvePriorities):', typeStats);
 
-                    // ⚡ Приоритет: убираем ЦСМС-дубли, если есть Эталон/Выездные
                     const before = allData.length;
                     allData = resolvePriorities(allData);
                     const removed = before - allData.length;
@@ -1639,7 +1616,6 @@
                 if (targetUid !== viewingUid) { alert('Пользователь переключён — отмена'); return; }
                 if (!newData.length) { alert('Счета не найдены'); return; }
 
-                // Слияние с базой
                 const existing = new Map();
                 table1Data.forEach((r, i) => existing.set(rowKey(r), i));
                 let added = 0, updated = 0;
@@ -1666,7 +1642,6 @@
                     }
                 });
 
-                // ⚡ Финальная чистка базы: приоритет Эталон/Выездные над ЦСМС
                 const before = table1Data.length;
                 table1Data = resolvePriorities(table1Data);
                 const cleaned = before - table1Data.length;
@@ -1955,8 +1930,9 @@
             updateDistributedBanner();
         }
 
+        // ⚡ ИЗМЕНЕНО: срок считается от «Дата оплаты», а не от «Дата выписки»
         function calculateTerm(row) {
-            const ds = row['Дата выписки'];
+            const ds = row.paymentDate || row['Дата оплаты'];
             if (!ds) return { date: null, label: '' };
             const fast = row.type === 'budget' || row.type === 'urgent';
             if (fast) {
