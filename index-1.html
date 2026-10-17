@@ -148,6 +148,27 @@
             box-shadow: 0 4px 10px rgba(40, 90, 45, 0.12);
             color: #1f4a25;
         }
+
+        /* Красный пункт "Админ-панель" */
+        .sidebar a.admin-link {
+            background: rgba(220, 53, 69, 0.12);
+            color: #842029;
+            border: 1px solid rgba(220, 53, 69, 0.22);
+            box-shadow: 0 2px 5px rgba(220, 53, 69, 0.08);
+            display: none; /* Скрыто по умолчанию */
+        }
+
+        .sidebar a.admin-link::before {
+            content: "🛡️";
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        .sidebar a.admin-link:hover {
+            background: linear-gradient(135deg, #f8d7da 0%, #f1aeb5 100%);
+            border-color: rgba(220, 53, 69, 0.35);
+            color: #842029;
+        }
         
         /* Выпадающие списки */
         .dropdown {
@@ -422,6 +443,9 @@
 
             <!-- Инструменты -->
             <a href="index-2.html" class="instruments-link">Инструменты</a>
+
+            <!-- Админ-панель (скрыта по умолчанию) -->
+            <a href="admin.html" class="admin-link" id="adminLink">Управление</a>
         </nav>
 
         <main>
@@ -466,6 +490,7 @@
         
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
+        const db = firebase.database();
 
         const EMAIL_DOMAIN = "@invoice.local";
         let isAuthMode = 'login';
@@ -512,13 +537,13 @@
                 } else {
                     const cred = await auth.createUserWithEmailAndPassword(email, password);
                     await cred.user.updateProfile({ displayName: username });
-                    await firebase.database().ref('users/' + cred.user.uid).set({
+                    await db.ref('users/' + cred.user.uid).set({
                         username: norm,
                         displayName: username,
                         name: username,
                         createdAt: new Date().toISOString()
                     });
-                    await firebase.database().ref('usernames/' + norm).set(cred.user.uid);
+                    await db.ref('usernames/' + norm).set(cred.user.uid);
                 }
             } catch (err) {
                 console.error(err);
@@ -541,17 +566,47 @@
             if (confirm('Выйти?')) auth.signOut();
         });
 
-        // --- СЛЕЖКА ЗА СОСТОЯНИЕМ ВХОДА ---
-        auth.onAuthStateChanged(user => {
+        // --- СЛЕЖКА ЗА СОСТОЯНИЕМ ВХОДА И ПРОВЕРКА ОДОБРЕНИЯ ---
+        auth.onAuthStateChanged(async user => {
             document.getElementById('authLoading').style.display = 'none';
             
             if (user) {
+                let isApproved = false;
+                let isAdmin = false;
+                
+                try {
+                    const approvedSnap = await db.ref('approvedUsers/' + user.uid).once('value');
+                    isApproved = approvedSnap.exists();
+                    
+                    const adminSnap = await db.ref('admins/' + user.uid).once('value');
+                    isAdmin = adminSnap.val() === true;
+                } catch (err) {
+                    console.error('Ошибка проверки доступа:', err);
+                }
+
+                if (isAdmin) isApproved = true;
+
+                if (!isApproved) {
+                    document.getElementById('authScreen').style.display = 'block';
+                    document.getElementById('appContent').style.display = 'none';
+                    showAuthError('Ваша учётная запись ожидает одобрения администратором. Пожалуйста, свяжитесь с руководством.');
+                    return;
+                }
+
                 document.getElementById('authScreen').style.display = 'none';
                 document.getElementById('appContent').style.display = 'block';
                 document.getElementById('userNameDisplay').textContent = user.displayName || user.email.split('@')[0];
+
+                const adminLink = document.getElementById('adminLink');
+                if (isAdmin) {
+                    adminLink.style.display = 'flex';
+                } else {
+                    adminLink.style.display = 'none';
+                }
             } else {
                 document.getElementById('authScreen').style.display = 'block';
                 document.getElementById('appContent').style.display = 'none';
+                document.getElementById('adminLink').style.display = 'none';
             }
         });
 
