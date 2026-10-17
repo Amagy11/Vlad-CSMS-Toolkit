@@ -341,18 +341,6 @@
             cursor: pointer;
         }
         .logout-btn:hover { background: rgba(255, 255, 255, 0.3); }
-        
-        /* Стили для кнопки удаления профиля */
-        .delete-profile-btn {
-            background: #dc3545;
-            border: 1px solid #dc3545;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .delete-profile-btn:hover { background: #c82333; }
     </style>
     <!-- Firebase SDK (compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -390,7 +378,6 @@
             <div class="logo">Полезная информация</div>
             <div class="user-info">
                 <span id="userNameDisplay"></span>
-                <button class="delete-profile-btn" id="deleteProfileBtn" style="display:none;">Удалить профиль</button>
                 <button class="logout-btn" id="logoutBtn">Выйти</button>
             </div>
         </header>
@@ -460,7 +447,6 @@
 
         const EMAIL_DOMAIN = "@invoice.local";
         let isAuthMode = 'login';
-        let currentUser = null;
 
         // Транслитерация
         const TRANSLIT_MAP = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
@@ -533,49 +519,11 @@
             if (confirm('Выйти?')) auth.signOut();
         });
 
-        // --- УДАЛЕНИЕ СВОЕГО ПРОФИЛЯ ---
-        document.getElementById('deleteProfileBtn').addEventListener('click', async () => {
-            if (!currentUser) return;
-            if (!confirm('Вы уверены, что хотите удалить свой профиль? Это действие нельзя отменить.')) return;
-            
-            try {
-                const uid = currentUser.uid;
-                // Удаляем профиль и все связанные данные
-                await db.ref('users/' + uid).remove();
-                await db.ref('approvedUsers/' + uid).remove();
-                await db.ref('admins/' + uid).remove();
-                await db.ref('invoices/' + uid).remove();
-                
-                // Пытаемся удалить логин
-                try {
-                    const snap = await db.ref('usernames').once('value');
-                    const usernames = snap.val() || {};
-                    for (const [login, u] of Object.entries(usernames)) {
-                        if (u === uid) {
-                            await db.ref('usernames/' + login).remove();
-                            break;
-                        }
-                    }
-                } catch(e) { console.error('Ошибка удаления логина:', e); }
-
-                alert('Профиль удалён. Вы выйдете из системы.');
-                await auth.signOut();
-            } catch (e) {
-                console.error(e);
-                alert('Ошибка удаления профиля: ' + e.message);
-            }
-        });
-
         // --- СЛЕЖКА ЗА СОСТОЯНИЕМ ВХОДА И ПРОВЕРКА АДМИНА/ОДОБРЕНИЯ ---
         auth.onAuthStateChanged(async user => {
             document.getElementById('authLoading').style.display = 'none';
             
             if (user) {
-                currentUser = user;
-                
-                // Показываем кнопку удаления профиля (только когда вошёл)
-                document.getElementById('deleteProfileBtn').style.display = 'inline-block';
-
                 let isApproved = false;
                 let isAdmin = false;
                 
@@ -599,7 +547,6 @@
                     document.getElementById('authScreen').style.display = 'block';
                     document.getElementById('appContent').style.display = 'none';
                     showAuthError('Ваша учётная запись ожидает одобрения администратором. Пожалуйста, свяжитесь с руководством.');
-                    // Кнопку удаления профиля оставляем видимой, чтобы можно было удалить себя
                     return;
                 }
 
@@ -617,11 +564,9 @@
                 }
 
             } else {
-                currentUser = null;
                 document.getElementById('authScreen').style.display = 'block';
                 document.getElementById('appContent').style.display = 'none';
                 document.getElementById('adminLink').style.display = 'none';
-                document.getElementById('deleteProfileBtn').style.display = 'none'; // Скрываем при выходе
             }
         });
 
