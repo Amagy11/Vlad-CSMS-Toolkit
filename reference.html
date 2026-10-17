@@ -435,11 +435,33 @@
             if (confirm('Выйти?')) auth.signOut();
         });
 
-        // --- СЛЕЖКА ЗА СОСТОЯНИЕМ ВХОДА ---
-        auth.onAuthStateChanged(user => {
+        // --- СЛЕЖКА ЗА СОСТОЯНИЕМ ВХОДА И ПРОВЕРКА ОДОБРЕНИЯ ---
+        auth.onAuthStateChanged(async user => {
             document.getElementById('authLoading').style.display = 'none';
             
             if (user) {
+                let isApproved = false;
+                let isAdmin = false;
+                
+                try {
+                    const approvedSnap = await database.ref('approvedUsers/' + user.uid).once('value');
+                    isApproved = approvedSnap.exists();
+                    
+                    const adminSnap = await database.ref('admins/' + user.uid).once('value');
+                    isAdmin = adminSnap.val() === true;
+                } catch (err) {
+                    console.error('Ошибка проверки доступа:', err);
+                }
+
+                if (isAdmin) isApproved = true;
+
+                if (!isApproved) {
+                    document.getElementById('authScreen').style.display = 'block';
+                    document.getElementById('appContent').style.display = 'none';
+                    showAuthError('Ваша учётная запись ожидает одобрения администратором. Пожалуйста, свяжитесь с руководством.');
+                    return;
+                }
+
                 document.getElementById('authScreen').style.display = 'none';
                 document.getElementById('appContent').style.display = 'block';
                 document.getElementById('userNameDisplay').textContent = user.displayName || user.email.split('@')[0];
