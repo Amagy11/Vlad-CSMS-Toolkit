@@ -178,7 +178,7 @@
         <div class="header-actions">
             <span class="sync-status"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Подключение...</span></span>
             <span class="user-badge" id="user-badge">👁 Просмотр</span>
-            <button class="btn btn-login btn-sm" id="btn-login">🔑 Войти как админ</button>
+            <button class="btn btn-login btn-sm" id="btn-login">🔑 Войти</button>
             <button class="btn btn-success btn-sm" id="btn-download-excel">📥 Excel</button>
             <button class="btn btn-danger btn-sm" id="btn-clear-old" style="display:none;">🧹 Очистить</button>
             <button class="btn btn-primary" id="btn-add-event" style="display:none;">+ Выезд</button>
@@ -217,9 +217,9 @@
     <!-- ЛОГИН -->
     <div class="login-overlay" id="login-overlay">
         <div class="login-modal">
-            <h3>🔑 Вход для администратора</h3>
-            <div class="form-group"><label>Логин</label><input type="text" id="login-input" placeholder="User"></div>
-            <div class="form-group"><label>Пароль</label><input type="password" id="password-input" placeholder="••••••••"></div>
+            <h3>🔑 Вход</h3>
+            <div class="form-group"><label>Логин</label><input type="text" id="login-input" placeholder="Введите логин"></div>
+            <div class="form-group"><label>Пароль</label><input type="password" id="password-input" placeholder="Минимум 6 символов"></div>
             <button class="btn btn-primary" id="btn-do-login">Войти</button>
             <button class="btn btn-outline" id="btn-cancel-login" style="margin-top:6px;">Отмена</button>
             <div class="login-error" id="login-error"></div>
@@ -273,10 +273,12 @@
 
     <div class="toast" id="toast"></div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
+    <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
             authDomain: "vlad-csms-af6df.firebaseapp.com",
@@ -287,22 +289,23 @@
             appId: "1:417297799117:web:0a93dce429cd37db499684"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const employeesRef = ref(db, 'employees');
-        const clientsRef = ref(db, 'clients');
-        const eventsRef = ref(db, 'events');
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
 
-        // ====================================================
-        // ⚠️ НАСТРОЙКИ ДОСТУПА — ЗДЕСЬ МЕНЯЙ ЛОГИН И ПАРОЛЬ
-        // ====================================================
-        const ADMIN_LOGIN = 'admin';
-        const ADMIN_PASSWORD = '2150TTI';
-        // ====================================================
+        const employeesRef = db.ref('employees');
+        const clientsRef = db.ref('clients');
+        const eventsRef = db.ref('events');
+
+        const EMAIL_DOMAIN = "@invoice.local";
+        const TRANSLIT_MAP = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
+        function transliterate(s) { let r = ''; for (const c of s) { const l = c.toLowerCase(); r += (TRANSLIT_MAP[l] !== undefined) ? TRANSLIT_MAP[l] : c; } return r; }
+        function usernameToEmail(u) { const n = u.toLowerCase().trim(); return transliterate(n).replace(/[^a-z0-9._-]/g, '.') + EMAIL_DOMAIN; }
 
         let appData = { employees: [], clients: [], events: [] };
         let dataLoaded = false;
         let isAdmin = false;
+        let currentUser = null;
         let selectedEmpId = null;
         let selectedClientId = null;
         let selectedDate = null;
@@ -315,8 +318,7 @@
         let pickEnd = null;
 
         function setSyncStatus(s) {
-            const d = document.getElementById('sync-dot'),
-                t = document.getElementById('sync-text');
+            const d = document.getElementById('sync-dot'), t = document.getElementById('sync-text');
             d.className = 'sync-dot ' + s;
             t.textContent = s === 'online' ? 'Онлайн' : s === 'offline' ? 'Офлайн' : 'Синхр...';
         }
@@ -335,7 +337,7 @@
             } else {
                 badge.textContent = '👁 Просмотр';
                 badge.classList.remove('admin');
-                btnLogin.textContent = '🔑 Войти как админ';
+                btnLogin.textContent = '🔑 Войти';
                 btnAddEvent.style.display = 'none';
                 btnClearOld.style.display = 'none';
             }
@@ -360,7 +362,7 @@
             setSyncStatus('online');
         }
 
-        const connectedRef = ref(db, '.info/connected');
+        const connectedRef = db.ref('.info/connected');
         onValue(connectedRef, (snap) => setSyncStatus(snap.val() === true ? 'online' : 'offline'));
 
         function saveEmployeeToFB(emp) { if (!isAdmin) return Promise.reject(); const nr = push(employeesRef); return set(nr, { name: emp.name, color: emp.color }); }
@@ -583,7 +585,6 @@
 
         function deleteEventById(id) { if (!confirm('Удалить этот выезд?')) return; deleteEventFromFB(id); showToast('Выезд удалён'); }
 
-        // === СКАЧИВАНИЕ НАСТОЯЩЕГО EXCEL ===
         function downloadExcel() {
             const events = getFilteredEvents();
             if (events.length === 0) return showToast('Нет заявок для скачивания');
@@ -601,38 +602,18 @@
                 const sd = parseDate(ev.start);
                 const ed = parseDate(ev.end);
                 const days = Math.round((ed - sd) / 86400000) + 1;
-                data.push([
-                    index + 1,
-                    emp ? emp.name : '—',
-                    cli ? cli.name : '—',
-                    sd.toLocaleDateString('ru-RU'),
-                    ed.toLocaleDateString('ru-RU'),
-                    days,
-                    ev.note || ''
-                ]);
+                data.push([index + 1, emp ? emp.name : '—', cli ? cli.name : '—', sd.toLocaleDateString('ru-RU'), ed.toLocaleDateString('ru-RU'), days, ev.note || '']);
             });
 
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.aoa_to_sheet(data);
-            ws['!cols'] = [
-                { wch: 4 },
-                { wch: 25 },
-                { wch: 25 },
-                { wch: 15 },
-                { wch: 15 },
-                { wch: 18 },
-                { wch: 40 },
-            ];
-            ws['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
-                { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
-            ];
+            ws['!cols'] = [{ wch: 4 }, { wch: 25 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 40 }];
+            ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } }];
             XLSX.utils.book_append_sheet(wb, ws, 'Выезды');
             XLSX.writeFile(wb, `Выезды_поверителей_${new Date().toLocaleDateString('ru-RU').replace(/\./g, '-')}.xlsx`);
             showToast('Файл Excel скачан!');
         }
 
-        // === ОЧИСТКА СТАРЫХ ДАННЫХ ===
         function openClearModal() {
             if (!isAdmin) return;
             const yearsList = document.getElementById('clear-years-list');
@@ -698,7 +679,6 @@
             XLSX.writeFile(wb, fileName + '.xlsx');
         }
 
-        // === МОДАЛЬНЫЙ КАЛЕНДАРЬ ===
         function renderModalCalendar() {
             const c = document.getElementById('modal-calendar');
             if (modalCalendarView === 'months') {
@@ -848,7 +828,7 @@
             t._timeout = setTimeout(() => t.classList.remove('show'), 2000);
         }
 
-        // === ЛОГИН ===
+        // === ВХОД ===
         function showLogin() {
             document.getElementById('login-error').textContent = '';
             document.getElementById('login-input').value = '';
@@ -858,24 +838,26 @@
 
         function hideLogin() { document.getElementById('login-overlay').classList.remove('show'); }
 
-        function doLogin() {
+        async function doLogin() {
             const login = document.getElementById('login-input').value.trim();
             const password = document.getElementById('password-input').value;
-            if (login === ADMIN_LOGIN && password === ADMIN_PASSWORD) {
-                isAdmin = true;
+            if (!login || !password) {
+                document.getElementById('login-error').textContent = 'Заполните поля';
+                return;
+            }
+            try {
+                await auth.signInWithEmailAndPassword(usernameToEmail(login), password);
                 hideLogin();
-                updateAdminUI();
-                showToast('Вы вошли как администратор');
-            } else {
+                showToast('Вы вошли');
+            } catch (e) {
                 document.getElementById('login-error').textContent = 'Неверный логин или пароль';
             }
         }
 
-        function doLogout() {
-            if (!confirm('Выйти из режима администратора?')) return;
-            isAdmin = false;
-            updateAdminUI();
-            showToast('Вы вышли из режима администратора');
+        async function doLogout() {
+            if (!confirm('Выйти?')) return;
+            await auth.signOut();
+            showToast('Вы вышли');
         }
 
         document.getElementById('btn-login').addEventListener('click', () => { if (isAdmin) doLogout(); else showLogin(); });
@@ -896,8 +878,50 @@
         document.getElementById('modal-clear').addEventListener('click', function(e) { if (e.target === this) closeModal('modal-clear'); });
         document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { closeModal('modal-event'); closeModal('modal-clear'); } });
 
-        subscribeToData();
+        // === СЛЕЖКА ЗА СОСТОЯНИЕМ ВХОДА ===
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                
+                let isApproved = false;
+                let isAdminFlag = false;
+                
+                try {
+                    const approvedSnap = await db.ref('approvedUsers/' + user.uid).once('value');
+                    isApproved = approvedSnap.exists();
+                    
+                    const adminSnap = await db.ref('admins/' + user.uid).once('value');
+                    isAdminFlag = adminSnap.val() === true;
+                } catch (err) {
+                    console.error('Ошибка проверки доступа:', err);
+                }
+
+                if (isAdminFlag) isApproved = true;
+
+                if (!isApproved) {
+                    // Не одобрен — показываем экран логина с сообщением
+                    showLogin();
+                    document.getElementById('login-error').textContent = 'Ваша учётная запись ожидает одобрения администратором.';
+                    isAdmin = false;
+                    currentUser = null;
+                    updateAdminUI();
+                    return;
+                }
+
+                isAdmin = isAdminFlag;
+                updateAdminUI();
+                subscribeToData();
+            } else {
+                currentUser = null;
+                isAdmin = false;
+                updateAdminUI();
+                subscribeToData();
+            }
+        });
+
+        // Инициализация
         updateAdminUI();
+        subscribeToData();
     </script>
 </body>
 </html>
