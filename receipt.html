@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -175,587 +175,354 @@
             padding: 10px;
             border-radius: 8px;
         }
-
-        /* --- Стили для логина --- */
-        .auth-container {
-            max-width: 400px;
-            margin: 50px auto;
-            background: #fff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0, 34, 68, 0.15);
-        }
-        .auth-title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #003366;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .auth-field { margin-bottom: 15px; }
-        .auth-field label { display: block; margin-bottom: 5px; color: #003366; font-weight: 500; }
-        .auth-field input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #e0e6ed;
-            border-radius: 6px;
-            background: #f8f9fb;
-        }
-        .auth-btn {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(to bottom, #0066cc 0%, #003366 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .auth-btn:hover { background: linear-gradient(to bottom, #0088ff 0%, #0055aa 100%); }
-        .auth-switch {
-            display: block;
-            width: 100%;
-            text-align: center;
-            margin-top: 15px;
-            background: none;
-            border: none;
-            color: #0066cc;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .auth-switch:hover { text-decoration: underline; }
-        .auth-error {
-            background: #ffebee;
-            color: #d32f2f;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            font-size: 14px;
-            display: none;
-        }
-        .user-info {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 10px;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-        .logout-btn {
-            background: #dc3545;
-            border: 1px solid #dc3545;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .logout-btn:hover { background: #c82333; }
     </style>
-    <!-- Firebase SDK (compat) -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 </head>
 <body>
-
-    <!-- Экран загрузки -->
-    <div id="authLoading" style="text-align:center; padding-top:100px; font-size:18px; color:#003366;">
-        Проверка входа...
-    </div>
-
-    <!-- Экран логина -->
-    <div id="authScreen" class="auth-container" style="display:none;">
-        <div class="auth-title" id="authTitle">Вход</div>
-        <div id="authError" class="auth-error"></div>
-        
-        <div class="auth-field">
-            <label>Логин</label>
-            <input type="text" id="authUsername" placeholder="Введите логин" maxlength="30">
+<div class="container">
+    <h1>🔍 Сравнение реестра поверок</h1>
+    <div class="upload-panel">
+        <div class="upload-box">
+            <h3>📁 Файл №1 (База белгим)</h3>
+            <label>CSV / TXT файл (первый файл — export.csv):</label>
+            <input type="file" id="file1Input" accept=".csv,.txt,.xlsx,.xls">
+            <div class="file-info" id="file1Info">Файл не выбран</div>
+            <div class="preview" id="file1Preview">— Предпросмотр первых строк —</div>
         </div>
-        <div class="auth-field">
-            <label>Пароль</label>
-            <input type="password" id="authPassword" placeholder="Минимум 6 символов">
-        </div>
-        
-        <button class="auth-btn" id="authSubmitBtn">Войти</button>
-        <button class="auth-switch" id="authSwitchBtn">Нет аккаунта? Зарегистрироваться</button>
-    </div>
-
-    <!-- Основной контент (скрыт до входа) -->
-    <div id="appContent" style="display:none;">
-        <div class="container">
-            <div class="user-info">
-                <span id="userNameDisplay"></span>
-                <button class="logout-btn" id="logoutBtn">Выйти</button>
-            </div>
-
-            <h1>🔍 Сравнение реестра поверок</h1>
-            <div class="upload-panel">
-                <div class="upload-box">
-                    <h3>📁 Файл №1 (База белгим)</h3>
-                    <label>CSV / TXT файл (первый файл — export.csv):</label>
-                    <input type="file" id="file1Input" accept=".csv,.txt,.xlsx,.xls">
-                    <div class="file-info" id="file1Info">Файл не выбран</div>
-                    <div class="preview" id="file1Preview">— Предпросмотр первых строк —</div>
-                </div>
-                <div class="upload-box">
-                    <h3>📁 Файл №2 (База ОЕИ)</h3>
-                    <label>CSV / TXT файл (второй файл — номера свидетельств):</label>
-                    <input type="file" id="file2Input" accept=".csv,.txt,.xlsx,.xls">
-                    <div class="file-info" id="file2Info">Файл не выбран</div>
-                    <div class="preview" id="file2Preview">— Предпросмотр первых строк —</div>
-                </div>
-            </div>
-            <div class="controls">
-                <button id="compareBtn">🚀 Сравнить и найти неотгруженные</button>
-            </div>
-            <div id="resultContainer" class="result-section" style="display: none;">
-                <h3>📋 Результат: <span id="resultTitle"></span></h3>
-                <div class="stats" id="statsInfo"></div>
-                <div class="table-wrapper" id="resultTableWrapper">
-                    <table id="resultTable">
-                        <thead id="resultHeader"></thead>
-                        <tbody id="resultBody"></tbody>
-                    </table>
-                </div>
-                <div style="margin-top: 20px;">
-                    <button id="copyBtn" style="background: #2c3e66; margin-right: 10px;">📋 Копировать результат (CSV)</button>
-                    <button id="downloadBtn" style="background: #2c3e66;">💾 Скачать результат (CSV)</button>
-                </div>
-            </div>
-            <div class="footer">
-                Правило: номер документа из первого файла ищется в номере свидетельства из второго файла как подстрока (например, 223705 → 15-000223705-2026).<br>
-                Выводятся ПОЛНЫЕ строки из первого файла, для которых НЕ найдено совпадение.
-            </div>
+        <div class="upload-box">
+            <h3>📁 Файл №2 (База ОЕИ)</h3>
+            <label>CSV / TXT файл (второй файл — номера свидетельств):</label>
+            <input type="file" id="file2Input" accept=".csv,.txt,.xlsx,.xls">
+            <div class="file-info" id="file2Info">Файл не выбран</div>
+            <div class="preview" id="file2Preview">— Предпросмотр первых строк —</div>
         </div>
     </div>
+    <div class="controls">
+        <button id="compareBtn">🚀 Сравнить и найти неотгруженные</button>
+    </div>
+    <div id="resultContainer" class="result-section" style="display: none;">
+        <h3>📋 Результат: <span id="resultTitle"></span></h3>
+        <div class="stats" id="statsInfo"></div>
+        <div class="table-wrapper" id="resultTableWrapper">
+            <table id="resultTable">
+                <thead id="resultHeader"></thead>
+                <tbody id="resultBody"></tbody>
+            </table>
+        </div>
+        <div style="margin-top: 20px;">
+            <button id="copyBtn" style="background: #2c3e66; margin-right: 10px;">📋 Копировать результат (CSV)</button>
+            <button id="downloadBtn" style="background: #2c3e66;">💾 Скачать результат (CSV)</button>
+        </div>
+    </div>
+    <div class="footer">
+        Правило: номер документа из первого файла ищется в номере свидетельства из второго файла как подстрока (например, 223705 → 15-000223705-2026).<br>
+        Выводятся ПОЛНЫЕ строки из первого файла, для которых НЕ найдено совпадение.
+    </div>
+</div>
 
-    <script>
-        // Конфигурация Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
-            authDomain: "vlad-csms-af6df.firebaseapp.com",
-            databaseURL: "https://vlad-csms-af6df-default-rtdb.firebaseio.com",
-            projectId: "vlad-csms-af6df",
-            storageBucket: "vlad-csms-af6df.firebasestorage.app",
-            messagingSenderId: "417297799117",
-            appId: "1:417297799117:web:07ce2915cbfe0cb1499684",
-            measurementId: "G-0EMQB4HYSQ"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.database();
-
-        const EMAIL_DOMAIN = "@invoice.local";
-        let isAuthMode = 'login';
-        let currentUser = null;
-
-        // Транслитерация
-        const TRANSLIT_MAP = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
-        function transliterate(s) { let r = ''; for (const c of s) { const l = c.toLowerCase(); r += (TRANSLIT_MAP[l] !== undefined) ? TRANSLIT_MAP[l] : c; } return r; }
-        function usernameToEmail(u) { const n = u.toLowerCase().trim(); return transliterate(n).replace(/[^a-z0-9._-]/g, '.') + EMAIL_DOMAIN; }
-        function validateUsername(u) { const t = u.trim(); if (t.length < 2 || t.length > 30) return false; return /^[а-яёa-z0-9\s._-]+$/i.test(t); }
-
-        // --- ЛОГИКА АВТОРИЗАЦИИ ---
-        function showAuthError(msg) {
-            const e = document.getElementById('authError');
-            e.textContent = msg;
-            e.style.display = 'block';
-        }
-
-        document.getElementById('authSwitchBtn').addEventListener('click', () => {
-            isAuthMode = isAuthMode === 'login' ? 'register' : 'login';
-            document.getElementById('authTitle').textContent = isAuthMode === 'login' ? 'Вход' : 'Регистрация';
-            document.getElementById('authSubmitBtn').textContent = isAuthMode === 'login' ? 'Войти' : 'Зарегистрироваться';
-            document.getElementById('authSwitchBtn').textContent = isAuthMode === 'login' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти';
-            document.getElementById('authError').style.display = 'none';
-        });
-
-        document.getElementById('authSubmitBtn').addEventListener('click', async () => {
-            const username = document.getElementById('authUsername').value.trim();
-            const password = document.getElementById('authPassword').value;
-            
-            if (!username || !password) { showAuthError('Заполните все поля'); return; }
-            if (!validateUsername(username)) { showAuthError('Логин: 2-30 символов (буквы, цифры, пробел, . _ -)'); return; }
-            if (password.length < 6) { showAuthError('Пароль должен быть минимум 6 символов'); return; }
-            
-            const btn = document.getElementById('authSubmitBtn');
-            btn.disabled = true;
-            btn.textContent = 'Загрузка...';
-            
-            const email = usernameToEmail(username);
-            const norm = username.toLowerCase().trim();
-            
-            try {
-                if (isAuthMode === 'login') {
-                    await auth.signInWithEmailAndPassword(email, password);
-                } else {
-                    const cred = await auth.createUserWithEmailAndPassword(email, password);
-                    await cred.user.updateProfile({ displayName: username });
-                    await db.ref('users/' + cred.user.uid).set({
-                        username: norm,
-                        displayName: username,
-                        name: username,
-                        createdAt: new Date().toISOString()
-                    });
-                    await db.ref('usernames/' + norm).set(cred.user.uid);
-                }
-            } catch (err) {
-                console.error(err);
-                const M = {
-                    'auth/user-not-found':'Пользователь не найден',
-                    'auth/wrong-password':'Неверный пароль',
-                    'auth/invalid-credential':'Неверный логин или пароль',
-                    'auth/invalid-email':'Некорректный логин',
-                    'auth/email-already-in-use':'Логин занят',
-                    'auth/weak-password':'Слабый пароль'
-                };
-                showAuthError(M[err.code] || err.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = isAuthMode === 'login' ? 'Войти' : 'Зарегистрироваться';
-            }
-        });
-
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            if (confirm('Выйти?')) auth.signOut();
-        });
-
-        // --- СЛЕЖКА ЗА СОСТОЯНИЕМ ВХОДА И ПРОВЕРКА ОДОБРЕНИЯ ---
-        auth.onAuthStateChanged(async user => {
-            document.getElementById('authLoading').style.display = 'none';
-            
-            if (user) {
-                currentUser = user;
-                
-                let isApproved = false;
-                let isAdmin = false;
-                
-                try {
-                    const approvedSnap = await db.ref('approvedUsers/' + user.uid).once('value');
-                    isApproved = approvedSnap.exists();
-                    
-                    const adminSnap = await db.ref('admins/' + user.uid).once('value');
-                    isAdmin = adminSnap.val() === true;
-                } catch (err) {
-                    console.error('Ошибка проверки доступа:', err);
-                }
-
-                if (isAdmin) isApproved = true;
-
-                if (!isApproved) {
-                    document.getElementById('authScreen').style.display = 'block';
-                    document.getElementById('appContent').style.display = 'none';
-                    showAuthError('Ваша учётная запись ожидает одобрения администратором. Пожалуйста, свяжитесь с руководством.');
-                    return;
-                }
-
-                document.getElementById('authScreen').style.display = 'none';
-                document.getElementById('appContent').style.display = 'block';
-                document.getElementById('userNameDisplay').textContent = user.displayName || user.email.split('@')[0];
+<script>
+    // Глобальные переменные
+    let firstData = [];       // массив строк (сырые строки)
+    let firstHeaders = [];    // заголовки CSV
+    let firstRows = [];       // строки разбитые по колонкам (для таблицы)
+    let secondCertNumbers = new Set(); // множество номеров свидетельств (из второго файла)
+    
+    // Парсинг CSV строки с учётом кавычек (простой вариант)
+    function parseCSVLine(line) {
+        const result = [];
+        let inQuote = false;
+        let current = '';
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') {
+                inQuote = !inQuote;
+            } else if (ch === ';' && !inQuote) {
+                result.push(current.trim());
+                current = '';
             } else {
-                currentUser = null;
-                document.getElementById('authScreen').style.display = 'block';
-                document.getElementById('appContent').style.display = 'none';
+                current += ch;
             }
-        });
-
-        // --- ЛОГИКА СРАВНЕНИЯ ---
-        let firstData = [];
-        let firstHeaders = [];
-        let firstRows = [];
-        let secondCertNumbers = new Set();
-
-        function parseCSVLine(line) {
-            const result = [];
-            let inQuote = false;
-            let current = '';
-            for (let i = 0; i < line.length; i++) {
-                const ch = line[i];
-                if (ch === '"') {
-                    inQuote = !inQuote;
-                } else if (ch === ';' && !inQuote) {
-                    result.push(current.trim());
-                    current = '';
-                } else {
-                    current += ch;
-                }
-            }
-            result.push(current.trim());
-            return result;
         }
+        result.push(current.trim());
+        return result;
+    }
 
-        function cleanFirstChar(str) {
-            if (str.charCodeAt(0) === 0xFEFF) return str.slice(1);
-            return str;
-        }
+    // Очистка от BOM и лишних символов
+    function cleanFirstChar(str) {
+        if (str.charCodeAt(0) === 0xFEFF) return str.slice(1);
+        return str;
+    }
 
-        // === ИСПРАВЛЕННАЯ ФУНКЦИЯ ЧТЕНИЯ ФАЙЛА (определяет кодировку) ===
-        function readFileAsText(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const buffer = e.target.result;
-                    let text = new TextDecoder('utf-8').decode(buffer);
-                    // Если есть символы-заменители (кракозябры) — пробуем windows-1251
-                    if (text.includes('\uFFFD') || /[ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ]/.test(text)) {
-                        try {
-                            text = new TextDecoder('windows-1251').decode(buffer);
-                        } catch (err) {
-                            console.error('Не удалось декодировать в windows-1251', err);
-                        }
-                    }
-                    resolve(text);
-                };
-                reader.onerror = (e) => reject(e);
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
-        async function loadFirstFile(file) {
-            const content = await readFileAsText(file);
-            const cleanContent = cleanFirstChar(content);
-            const lines = cleanContent.split(/\r?\n/).filter(l => l.trim().length > 0);
-            if (lines.length === 0) throw new Error('Файл пуст');
-            
-            const rawHeaders = lines[0].split(';');
-            firstHeaders = rawHeaders.map(h => h.replace(/^"|"$/g, '').trim());
-            
-            firstRows = [];
-            firstData = [];
-            for (let i = 1; i < lines.length; i++) {
-                const rawLine = lines[i];
-                const values = parseCSVLine(rawLine);
-                firstData.push(rawLine);
-                firstRows.push(values);
-            }
-            
-            return { headers: firstHeaders, rows: firstRows, rawLines: firstData, total: firstData.length };
-        }
-
-        async function loadSecondFile(file) {
-            const content = await readFileAsText(file);
-            const cleanContent = cleanFirstChar(content);
-            const lines = cleanContent.split(/\r?\n/).filter(l => l.trim().length > 0);
-            if (lines.length === 0) throw new Error('Второй файл пуст');
-            
-            const certNumbers = new Set();
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                const parts = parseCSVLine(line);
-                if (parts.length > 0) {
-                    let candidate = parts[0].replace(/^"|"$/g, '').trim();
-                    if (candidate) certNumbers.add(candidate);
-                }
-            }
-            return certNumbers;
-        }
-
-        function updatePreview(fileInput, previewDiv, infoDiv) {
-            const file = fileInput.files[0];
-            if (!file) {
-                infoDiv.innerText = 'Файл не выбран';
-                previewDiv.innerText = '— Предпросмотр —';
-                return;
-            }
-            infoDiv.innerText = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    // Чтение файла как текст
+    function readFileAsText(file) {
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = (e) => {
-                const buffer = e.target.result;
-                let text = new TextDecoder('utf-8').decode(buffer);
-                if (text.includes('\uFFFD')) {
-                    try { text = new TextDecoder('windows-1251').decode(buffer); } catch(e) {}
-                }
-                const lines = text.split(/\r?\n/).slice(0, 5).join('\n');
-                previewDiv.innerText = lines.substring(0, 500) + (lines.length > 500 ? '…' : '');
-            };
-            reader.readAsArrayBuffer(file);
-        }
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(e);
+            reader.readAsText(file, 'UTF-8');
+        });
+    }
 
-        function isMatch(docNumber, certNumber) {
-            if (!docNumber || !certNumber) return false;
-            const docStr = String(docNumber).trim();
-            const certStr = String(certNumber).trim();
-            return certStr.includes(docStr);
+    // Загрузка и парсинг ПЕРВОГО файла
+    async function loadFirstFile(file) {
+        const content = await readFileAsText(file);
+        const cleanContent = cleanFirstChar(content);
+        const lines = cleanContent.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length === 0) throw new Error('Файл пуст');
+        
+        // Заголовки
+        const rawHeaders = lines[0].split(';');
+        firstHeaders = rawHeaders.map(h => h.replace(/^"|"$/g, '').trim());
+        
+        firstRows = [];
+        firstData = [];
+        for (let i = 1; i < lines.length; i++) {
+            const rawLine = lines[i];
+            const values = parseCSVLine(rawLine);
+            // сохраняем сырую строку для вывода
+            firstData.push(rawLine);
+            firstRows.push(values);
         }
+        
+        return { headers: firstHeaders, rows: firstRows, rawLines: firstData, total: firstData.length };
+    }
 
-        function findMissing() {
-            if (!firstRows.length) throw new Error('Нет данных в первом файле');
-            if (secondCertNumbers.size === 0) throw new Error('Нет данных во втором файле (номера свидетельств)');
-            
-            let docColIndex = -1;
+    // Загрузка и парсинг ВТОРОГО файла – извлекаем номера свидетельств (первая колонка обычно)
+    async function loadSecondFile(file) {
+        const content = await readFileAsText(file);
+        const cleanContent = cleanFirstChar(content);
+        const lines = cleanContent.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length === 0) throw new Error('Второй файл пуст');
+        
+        const certNumbers = new Set();
+        // Ищем колонку с номером свидетельства (чаще всего первая колонка, но перебором)
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const parts = parseCSVLine(line);
+            if (parts.length > 0) {
+                let candidate = parts[0].replace(/^"|"$/g, '').trim();
+                if (candidate) certNumbers.add(candidate);
+                // дополнительно если в других колонках есть длинные номера — но по заданию номер свидетельства в первой колонке
+            }
+        }
+        return certNumbers;
+    }
+
+    // Обновить предпросмотр
+    function updatePreview(fileInput, previewDiv, infoDiv) {
+        const file = fileInput.files[0];
+        if (!file) {
+            infoDiv.innerText = 'Файл не выбран';
+            previewDiv.innerText = '— Предпросмотр —';
+            return;
+        }
+        infoDiv.innerText = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target.result;
+            const lines = text.split(/\r?\n/).slice(0, 5).join('\n');
+            previewDiv.innerText = lines.substring(0, 500) + (lines.length > 500 ? '…' : '');
+        };
+        reader.readAsText(file, 'UTF-8');
+    }
+
+    // Поиск номера документа в номере свидетельства: из номера свидетельства извлекаем "чистую" часть
+    function isMatch(docNumber, certNumber) {
+        if (!docNumber || !certNumber) return false;
+        const docStr = String(docNumber).trim();
+        const certStr = String(certNumber).trim();
+        // Ищем полное вхождение docStr в certStr
+        return certStr.includes(docStr);
+    }
+
+    // Главная логика сравнения
+    function findMissing() {
+        if (!firstRows.length) throw new Error('Нет данных в первом файле');
+        if (secondCertNumbers.size === 0) throw new Error('Нет данных во втором файле (номера свидетельств)');
+        
+        // Определяем индекс колонки "Номер документа" (разные варианты написания)
+        let docColIndex = -1;
+        const possibleNames = ['Номер документа', 'Номер документа', 'Документ', '№ документа', 'НомерДокумента'];
+        for (let i = 0; i < firstHeaders.length; i++) {
+            const h = firstHeaders[i].toLowerCase();
+            if (h.includes('номер документа') || h === 'номер документа' || h === 'документ') {
+                docColIndex = i;
+                break;
+            }
+        }
+        // если не нашли, пробуем последнюю надежду – колонка с номером 7 (индекс 7) по примеру
+        if (docColIndex === -1 && firstHeaders.length > 7) {
+            if (firstHeaders[7].toLowerCase().includes('номер') || firstHeaders[7].toLowerCase().includes('документ')) {
+                docColIndex = 7;
+            }
+        }
+        if (docColIndex === -1) {
+            // в крайнем случае: ищем колонку где есть "223705" подобное в первых строках
             for (let i = 0; i < firstHeaders.length; i++) {
-                const h = firstHeaders[i].toLowerCase();
-                if (h.includes('номер документа') || h === 'номер документа' || h === 'документ') {
-                    docColIndex = i;
-                    break;
-                }
-            }
-            if (docColIndex === -1 && firstHeaders.length > 7) {
-                if (firstHeaders[7].toLowerCase().includes('номер') || firstHeaders[7].toLowerCase().includes('документ')) {
-                    docColIndex = 7;
-                }
-            }
-            if (docColIndex === -1) {
-                for (let i = 0; i < firstHeaders.length; i++) {
-                    for (let r = 0; r < Math.min(3, firstRows.length); r++) {
-                        const val = firstRows[r][i];
-                        if (val && /^\d{5,7}$/.test(val)) {
-                            docColIndex = i;
-                            break;
-                        }
-                    }
-                    if (docColIndex !== -1) break;
-                }
-            }
-            if (docColIndex === -1) throw new Error('Не удалось определить колонку "Номер документа" в первом файле');
-            
-            const missingIndices = [];
-            for (let i = 0; i < firstRows.length; i++) {
-                const row = firstRows[i];
-                const docNumber = row[docColIndex] ? row[docColIndex].replace(/^'|'$/g, '').trim() : '';
-                if (!docNumber) continue;
-                
-                let found = false;
-                for (let cert of secondCertNumbers) {
-                    if (isMatch(docNumber, cert)) {
-                        found = true;
+                for (let r = 0; r < Math.min(3, firstRows.length); r++) {
+                    const val = firstRows[r][i];
+                    if (val && /^\d{5,7}$/.test(val)) {
+                        docColIndex = i;
                         break;
                     }
                 }
-                if (!found) {
-                    missingIndices.push(i);
-                }
+                if (docColIndex !== -1) break;
             }
-            return { missingIndices, docColIndex };
         }
-
-        function renderResult(missingIndices, docColIndex) {
-            if (missingIndices.length === 0) {
-                document.getElementById('resultTitle').innerHTML = '✅ Все свидетельства отгружены';
-                document.getElementById('statsInfo').innerHTML = `<span class="success">🎉 Найдены все! Нет пропущенных строк.</span>`;
-                document.getElementById('resultTableWrapper').innerHTML = '<div style="padding: 20px; text-align:center;">Нет неотгруженных свидетельств</div>';
-                document.getElementById('resultContainer').style.display = 'block';
-                return;
-            }
+        if (docColIndex === -1) throw new Error('Не удалось определить колонку "Номер документа" в первом файле');
+        
+        const missingIndices = [];
+        for (let i = 0; i < firstRows.length; i++) {
+            const row = firstRows[i];
+            const docNumber = row[docColIndex] ? row[docColIndex].replace(/^'|'$/g, '').trim() : '';
+            if (!docNumber) continue;
             
-            document.getElementById('resultTitle').innerHTML = `❌ Найдено ${missingIndices.length} неотгруженных записей`;
-            document.getElementById('statsInfo').innerHTML = `<span class="badge">Не отгружено: ${missingIndices.length}</span> из ${firstRows.length} записей в первом файле`;
-            
-            const thead = document.getElementById('resultHeader');
-            const tbody = document.getElementById('resultBody');
-            thead.innerHTML = '';
-            tbody.innerHTML = '';
-            
-            let headerRow = '<tr>';
-            for (let h of firstHeaders) {
-                headerRow += `<th>${escapeHtml(h)}</th>`;
-            }
-            headerRow += '</tr>';
-            thead.innerHTML = headerRow;
-            
-            for (let idx of missingIndices) {
-                const row = firstRows[idx];
-                let tr = '<tr>';
-                for (let cell of row) {
-                    tr += `<td>${escapeHtml(cell)}</td>`;
+            let found = false;
+            for (let cert of secondCertNumbers) {
+                if (isMatch(docNumber, cert)) {
+                    found = true;
+                    break;
                 }
-                tr += '</tr>';
-                tbody.innerHTML += tr;
             }
-            
+            if (!found) {
+                missingIndices.push(i);
+            }
+        }
+        return { missingIndices, docColIndex };
+    }
+
+    // Отрисовка результата
+    function renderResult(missingIndices, docColIndex) {
+        if (missingIndices.length === 0) {
+            document.getElementById('resultTitle').innerHTML = '✅ Все свидетельства отгружены';
+            document.getElementById('statsInfo').innerHTML = `<span class="success">🎉 Найдены все! Нет пропущенных строк.</span>`;
+            document.getElementById('resultTableWrapper').innerHTML = '<div style="padding: 20px; text-align:center;">Нет неотгруженных свидетельств</div>';
             document.getElementById('resultContainer').style.display = 'block';
+            return;
         }
-
-        function getMissingCSV(missingIndices) {
-            let csvRows = [];
-            csvRows.push(firstHeaders.join(';'));
-            for (let idx of missingIndices) {
-                csvRows.push(firstData[idx]);
-            }
-            return csvRows.join('\n');
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
-                return c;
-            });
-        }
-
-        // Обработчики
-        document.getElementById('file1Input').addEventListener('change', () => {
-            updatePreview(document.getElementById('file1Input'), document.getElementById('file1Preview'), document.getElementById('file1Info'));
-        });
-        document.getElementById('file2Input').addEventListener('change', () => {
-            updatePreview(document.getElementById('file2Input'), document.getElementById('file2Preview'), document.getElementById('file2Info'));
-        });
         
-        document.getElementById('compareBtn').addEventListener('click', async () => {
-            const file1 = document.getElementById('file1Input').files[0];
-            const file2 = document.getElementById('file2Input').files[0];
-            if (!file1 || !file2) {
-                alert('Выберите оба файла!');
-                return;
+        document.getElementById('resultTitle').innerHTML = `❌ Найдено ${missingIndices.length} неотгруженных записей`;
+        document.getElementById('statsInfo').innerHTML = `<span class="badge">Не отгружено: ${missingIndices.length}</span> из ${firstRows.length} записей в первом файле`;
+        
+        // Строим таблицу
+        const thead = document.getElementById('resultHeader');
+        const tbody = document.getElementById('resultBody');
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+        
+        // Заголовки
+        let headerRow = '<tr>';
+        for (let h of firstHeaders) {
+            headerRow += `<th>${escapeHtml(h)}</th>`;
+        }
+        headerRow += '</tr>';
+        thead.innerHTML = headerRow;
+        
+        // Строки
+        for (let idx of missingIndices) {
+            const row = firstRows[idx];
+            let tr = '<tr>';
+            for (let cell of row) {
+                tr += `<td>${escapeHtml(cell)}</td>`;
             }
+            tr += '</tr>';
+            tbody.innerHTML += tr;
+        }
+        
+        document.getElementById('resultContainer').style.display = 'block';
+    }
+    
+    // Экспорт CSV для скачивания (полные строки из первого файла для пропущенных)
+    function getMissingCSV(missingIndices) {
+        let csvRows = [];
+        // Заголовки
+        csvRows.push(firstHeaders.join(';'));
+        for (let idx of missingIndices) {
+            csvRows.push(firstData[idx]);
+        }
+        return csvRows.join('\n');
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+            return c;
+        });
+    }
+
+    // Обработчики UI
+    document.getElementById('file1Input').addEventListener('change', () => {
+        updatePreview(document.getElementById('file1Input'), document.getElementById('file1Preview'), document.getElementById('file1Info'));
+    });
+    document.getElementById('file2Input').addEventListener('change', () => {
+        updatePreview(document.getElementById('file2Input'), document.getElementById('file2Preview'), document.getElementById('file2Info'));
+    });
+    
+    document.getElementById('compareBtn').addEventListener('click', async () => {
+        const file1 = document.getElementById('file1Input').files[0];
+        const file2 = document.getElementById('file2Input').files[0];
+        if (!file1 || !file2) {
+            alert('Выберите оба файла!');
+            return;
+        }
+        
+        try {
+            // Загружаем первый файл
+            const firstResult = await loadFirstFile(file1);
+            // Загружаем второй файл
+            secondCertNumbers = await loadSecondFile(file2);
             
-            try {
-                const firstResult = await loadFirstFile(file1);
-                secondCertNumbers = await loadSecondFile(file2);
-                
-                if (firstResult.total === 0) throw new Error('Первый файл не содержит данных');
-                if (secondCertNumbers.size === 0) throw new Error('Второй файл не содержит номеров свидетельств');
-                
-                const { missingIndices, docColIndex } = findMissing();
-                renderResult(missingIndices, docColIndex);
-                
-                window._lastMissingIndices = missingIndices;
-                
-            } catch (err) {
-                alert('Ошибка: ' + err.message);
-                console.error(err);
-                document.getElementById('resultContainer').style.display = 'block';
-                document.getElementById('resultTitle').innerHTML = 'Ошибка';
-                document.getElementById('statsInfo').innerHTML = `<div class="error">${err.message}</div>`;
-                document.getElementById('resultTableWrapper').innerHTML = '';
-            }
-        });
-        
-        document.getElementById('copyBtn').addEventListener('click', () => {
-            if (!window._lastMissingIndices || window._lastMissingIndices.length === 0) {
-                alert('Нет данных для копирования');
-                return;
-            }
-            const csv = getMissingCSV(window._lastMissingIndices);
-            navigator.clipboard.writeText(csv).then(() => {
-                alert('CSV скопирован в буфер обмена');
-            }).catch(() => alert('Не удалось скопировать'));
-        });
-        
-        document.getElementById('downloadBtn').addEventListener('click', () => {
-            if (!window._lastMissingIndices || window._lastMissingIndices.length === 0) {
-                alert('Нет данных для скачивания');
-                return;
-            }
-            const csv = getMissingCSV(window._lastMissingIndices);
-            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.href = url;
-            link.setAttribute('download', 'neotgruzhennye.csv');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        });
-    </script>
+            if (firstResult.total === 0) throw new Error('Первый файл не содержит данных');
+            if (secondCertNumbers.size === 0) throw new Error('Второй файл не содержит номеров свидетельств');
+            
+            // Сравнение
+            const { missingIndices, docColIndex } = findMissing();
+            renderResult(missingIndices, docColIndex);
+            
+            // Сохраняем missingIndices для копирования/скачивания
+            window._lastMissingIndices = missingIndices;
+            
+        } catch (err) {
+            alert('Ошибка: ' + err.message);
+            console.error(err);
+            document.getElementById('resultContainer').style.display = 'block';
+            document.getElementById('resultTitle').innerHTML = 'Ошибка';
+            document.getElementById('statsInfo').innerHTML = `<div class="error">${err.message}</div>`;
+            document.getElementById('resultTableWrapper').innerHTML = '';
+        }
+    });
+    
+    document.getElementById('copyBtn').addEventListener('click', () => {
+        if (!window._lastMissingIndices || window._lastMissingIndices.length === 0) {
+            alert('Нет данных для копирования');
+            return;
+        }
+        const csv = getMissingCSV(window._lastMissingIndices);
+        navigator.clipboard.writeText(csv).then(() => {
+            alert('CSV скопирован в буфер обмена');
+        }).catch(() => alert('Не удалось скопировать'));
+    });
+    
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+        if (!window._lastMissingIndices || window._lastMissingIndices.length === 0) {
+            alert('Нет данных для скачивания');
+            return;
+        }
+        const csv = getMissingCSV(window._lastMissingIndices);
+        const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.setAttribute('download', 'neotgruzhennye.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    });
+</script>
 </body>
 </html>
