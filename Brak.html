@@ -401,6 +401,9 @@
     import {
       getDatabase, ref, onValue, push, update, remove
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import {
+      getAuth, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
@@ -414,365 +417,378 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const auth = getAuth(app);
 
-    let sections = {};
-    let items = {};
-    let editMode = false;
-    let searchQuery = '';
-    const openSections = new Set();
-
-    const sectionsList = document.getElementById('sectionsList');
-    const searchInput = document.getElementById('searchInput');
-    const editModeBtn = document.getElementById('editModeBtn');
-    const addBar = document.getElementById('addBar');
-    const addBtn = document.getElementById('addBtn');
-    const overlay = document.getElementById('overlay');
-    const modal = document.getElementById('modal');
-    const toast = document.getElementById('toast');
-    const statusEl = document.getElementById('status');
-    const statusText = document.getElementById('statusText');
-
-    function showToast(msg, ms = 1500) {
-      toast.textContent = msg;
-      toast.classList.add('show');
-      clearTimeout(showToast._t);
-      showToast._t = setTimeout(() => toast.classList.remove('show'), ms);
-    }
-
-    async function copyText(text, btn) {
-      try {
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(text);
-        } else {
-          const ta = document.createElement('textarea');
-          ta.value = text;
-          ta.style.position = 'fixed';
-          ta.style.opacity = '0';
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-        }
-        if (btn) {
-          btn.classList.add('copied');
-          btn.innerHTML = '✓';
-          setTimeout(() => {
-            btn.classList.remove('copied');
-            btn.innerHTML = '📋';
-          }, 1200);
-        }
-        showToast('✓ Скопировано');
-      } catch (e) {
-        showToast('Ошибка копирования');
-      }
-    }
-
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, c => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-      })[c]);
-    }
-
-    function render() {
-      const q = searchQuery.trim().toLowerCase();
-      const list = Object.entries(sections)
-        .map(([id, s]) => ({ id, ...s }))
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
-
-      if (list.length === 0) {
-        sectionsList.innerHTML = `
-          <div class="empty">
-            <div class="empty-icon">📂</div>
-            Пока нет разделов.<br>
-            ${editMode ? 'Нажми «Добавить раздел» внизу.' : 'Включи режим редактирования ✏️ и добавь разделы.'}
-          </div>`;
+    // Ждём, пока Firebase восстановит сессию, и только потом запускаем страницу
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        // не вошёл — на страницу логина
+        window.location.href = 'login.html';
         return;
       }
+      initApp();
+    });
 
-      let html = '';
-      for (const s of list) {
-        const secItems = Object.entries(items)
-          .map(([id, it]) => ({ id, ...it }))
-          .filter(it => it.sectionId === s.id)
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    function initApp() {
+      let sections = {};
+      let items = {};
+      let editMode = false;
+      let searchQuery = '';
+      const openSections = new Set();
 
-        const secMatches = s.name.toLowerCase().includes(q);
-        const filteredItems = secItems.filter(it =>
-          secMatches ||
-          (it.label || '').toLowerCase().includes(q) ||
-          (it.text || '').toLowerCase().includes(q)
-        );
+      const sectionsList = document.getElementById('sectionsList');
+      const searchInput = document.getElementById('searchInput');
+      const editModeBtn = document.getElementById('editModeBtn');
+      const addBar = document.getElementById('addBar');
+      const addBtn = document.getElementById('addBtn');
+      const overlay = document.getElementById('overlay');
+      const modal = document.getElementById('modal');
+      const toast = document.getElementById('toast');
+      const statusEl = document.getElementById('status');
+      const statusText = document.getElementById('statusText');
 
-        if (q && !secMatches && filteredItems.length === 0) continue;
+      function showToast(msg, ms = 1500) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => toast.classList.remove('show'), ms);
+      }
 
-        const isOpen = q ? true : openSections.has(s.id);
-        const shownItems = q ? filteredItems : secItems;
+      async function copyText(text, btn) {
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+          if (btn) {
+            btn.classList.add('copied');
+            btn.innerHTML = '✓';
+            setTimeout(() => {
+              btn.classList.remove('copied');
+              btn.innerHTML = '📋';
+            }, 1200);
+          }
+          showToast('✓ Скопировано');
+        } catch (e) {
+          showToast('Ошибка копирования');
+        }
+      }
 
-        html += `
-          <div class="section ${isOpen ? 'open' : ''}" data-section-id="${s.id}">
-            <div class="section-header" data-toggle="${s.id}">
-              <span class="section-arrow">▶</span>
-              <span class="section-name">${escapeHtml(s.name)}</span>
-              <span class="section-count">${secItems.length}</span>
-              ${editMode ? `
-                <button class="icon-btn" style="width:2rem;height:2rem;font-size:0.85rem;" data-edit-section="${s.id}" title="Переименовать">✏️</button>
-                <button class="icon-btn" style="width:2rem;height:2rem;font-size:0.85rem;" data-delete-section="${s.id}" title="Удалить">🗑️</button>
-              ` : ''}
-            </div>
-            <div class="section-body">
-              ${shownItems.length === 0 ? `
-                <div class="empty" style="padding:1.2rem;">
-                  ${editMode ? 'Нет текстов. Нажми «＋ Текст» ниже.' : 'В этом разделе пока нет текстов.'}
-                </div>
-              ` : shownItems.map(it => `
-                <div class="item" data-item-id="${it.id}">
-                  <div class="item-head">
-                    <div class="item-label">${escapeHtml(it.label || 'Без названия')}</div>
-                    ${editMode ? `
-                      <button class="icon-btn" style="width:1.9rem;height:1.9rem;font-size:0.8rem;" data-edit-item="${it.id}" title="Изменить">✏️</button>
-                      <button class="icon-btn" style="width:1.9rem;height:1.9rem;font-size:0.8rem;" data-delete-item="${it.id}" title="Удалить">🗑️</button>
-                    ` : ''}
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[c]);
+      }
+
+      function render() {
+        const q = searchQuery.trim().toLowerCase();
+        const list = Object.entries(sections)
+          .map(([id, s]) => ({ id, ...s }))
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
+
+        if (list.length === 0) {
+          sectionsList.innerHTML = `
+            <div class="empty">
+              <div class="empty-icon">📂</div>
+              Пока нет разделов.<br>
+              ${editMode ? 'Нажми «Добавить раздел» внизу.' : 'Включи режим редактирования ✏️ и добавь разделы.'}
+            </div>`;
+          return;
+        }
+
+        let html = '';
+        for (const s of list) {
+          const secItems = Object.entries(items)
+            .map(([id, it]) => ({ id, ...it }))
+            .filter(it => it.sectionId === s.id)
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+          const secMatches = s.name.toLowerCase().includes(q);
+          const filteredItems = secItems.filter(it =>
+            secMatches ||
+            (it.label || '').toLowerCase().includes(q) ||
+            (it.text || '').toLowerCase().includes(q)
+          );
+
+          if (q && !secMatches && filteredItems.length === 0) continue;
+
+          const isOpen = q ? true : openSections.has(s.id);
+          const shownItems = q ? filteredItems : secItems;
+
+          html += `
+            <div class="section ${isOpen ? 'open' : ''}" data-section-id="${s.id}">
+              <div class="section-header" data-toggle="${s.id}">
+                <span class="section-arrow">▶</span>
+                <span class="section-name">${escapeHtml(s.name)}</span>
+                <span class="section-count">${secItems.length}</span>
+                ${editMode ? `
+                  <button class="icon-btn" style="width:2rem;height:2rem;font-size:0.85rem;" data-edit-section="${s.id}" title="Переименовать">✏️</button>
+                  <button class="icon-btn" style="width:2rem;height:2rem;font-size:0.85rem;" data-delete-section="${s.id}" title="Удалить">🗑️</button>
+                ` : ''}
+              </div>
+              <div class="section-body">
+                ${shownItems.length === 0 ? `
+                  <div class="empty" style="padding:1.2rem;">
+                    ${editMode ? 'Нет текстов. Нажми «＋ Текст» ниже.' : 'В этом разделе пока нет текстов.'}
                   </div>
-                  <div class="item-content">
-                    <div class="item-text" data-text-id="${it.id}">${escapeHtml(it.text || '')}</div>
-                    <button class="copy-sq" data-copy="${it.id}" title="Скопировать">📋</button>
+                ` : shownItems.map(it => `
+                  <div class="item" data-item-id="${it.id}">
+                    <div class="item-head">
+                      <div class="item-label">${escapeHtml(it.label || 'Без названия')}</div>
+                      ${editMode ? `
+                        <button class="icon-btn" style="width:1.9rem;height:1.9rem;font-size:0.8rem;" data-edit-item="${it.id}" title="Изменить">✏️</button>
+                        <button class="icon-btn" style="width:1.9rem;height:1.9rem;font-size:0.8rem;" data-delete-item="${it.id}" title="Удалить">🗑️</button>
+                      ` : ''}
+                    </div>
+                    <div class="item-content">
+                      <div class="item-text" data-text-id="${it.id}">${escapeHtml(it.text || '')}</div>
+                      <button class="copy-sq" data-copy="${it.id}" title="Скопировать">📋</button>
+                    </div>
+                    <button class="btn-expand" data-expand="${it.id}" style="display:none;">Показать полностью ▾</button>
                   </div>
-                  <button class="btn-expand" data-expand="${it.id}" style="display:none;">Показать полностью ▾</button>
-                </div>
-              `).join('')}
-              ${editMode ? `<button class="add-btn" style="margin-top:0.5rem;padding:0.7rem;font-size:0.9rem;box-shadow:none;" data-add-item="${s.id}">＋ Текст</button>` : ''}
+                `).join('')}
+                ${editMode ? `<button class="add-btn" style="margin-top:0.5rem;padding:0.7rem;font-size:0.9rem;box-shadow:none;" data-add-item="${s.id}">＋ Текст</button>` : ''}
+              </div>
             </div>
+          `;
+        }
+
+        sectionsList.innerHTML = html || `
+          <div class="empty">
+            <div class="empty-icon">🔍</div>
+            Ничего не найдено
+          </div>`;
+
+        requestAnimationFrame(() => {
+          document.querySelectorAll('.item-text').forEach(el => {
+            const expandBtn = el.parentElement.parentElement.querySelector('.btn-expand');
+            if (expandBtn && el.scrollHeight > el.clientHeight + 2) {
+              expandBtn.style.display = 'inline-block';
+            }
+          });
+        });
+      }
+
+      const sectionsRef = ref(db, 'sections');
+      const itemsRef = ref(db, 'items');
+
+      onValue(ref(db, '.info/connected'), snap => {
+        const online = snap.val() === true;
+        statusEl.classList.toggle('online', online);
+        statusEl.classList.toggle('offline', !online);
+        statusText.textContent = online ? 'online' : 'offline';
+      });
+
+      onValue(sectionsRef, snap => {
+        sections = snap.val() || {};
+        render();
+      }, err => {
+        console.error(err);
+        showToast('Ошибка доступа к Firebase');
+      });
+
+      onValue(itemsRef, snap => {
+        items = snap.val() || {};
+        render();
+      });
+
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        render();
+      });
+
+      editModeBtn.addEventListener('click', () => {
+        editMode = !editMode;
+        editModeBtn.classList.toggle('active', editMode);
+        addBar.style.display = editMode ? 'block' : 'none';
+        render();
+        showToast(editMode ? 'Режим редактирования включён' : 'Режим просмотра');
+      });
+
+      sectionsList.addEventListener('click', async (e) => {
+        const t = e.target;
+
+        const toggle = t.closest('[data-toggle]');
+        if (toggle && !t.closest('[data-edit-section]') && !t.closest('[data-delete-section]')) {
+          const id = toggle.dataset.toggle;
+          if (openSections.has(id)) openSections.delete(id);
+          else openSections.add(id);
+          render();
+          return;
+        }
+
+        const expand = t.closest('[data-expand]');
+        if (expand) {
+          const itemEl = expand.closest('.item');
+          const textEl = itemEl.querySelector('.item-text');
+          textEl.classList.toggle('expanded');
+          const isExp = textEl.classList.contains('expanded');
+          expand.textContent = isExp ? 'Свернуть ▴' : 'Показать полностью ▾';
+          return;
+        }
+
+        const copyBtn = t.closest('[data-copy]');
+        if (copyBtn) {
+          const id = copyBtn.dataset.copy;
+          const it = items[id];
+          if (it) await copyText(it.text || '', copyBtn);
+          return;
+        }
+
+        const addItem = t.closest('[data-add-item]');
+        if (addItem) {
+          openItemModal(null, addItem.dataset.addItem);
+          return;
+        }
+
+        const editSec = t.closest('[data-edit-section]');
+        if (editSec) {
+          const s = sections[editSec.dataset.editSection];
+          if (s) openSectionModal(editSec.dataset.editSection, s.name);
+          return;
+        }
+
+        const delSec = t.closest('[data-delete-section]');
+        if (delSec) {
+          const id = delSec.dataset.deleteSection;
+          const s = sections[id];
+          const count = Object.values(items).filter(it => it.sectionId === id).length;
+          if (confirm(`Удалить раздел «${s?.name}»?` + (count ? `\nВсе тексты в нём (${count}) тоже удалятся.` : ''))) {
+            const updates = {};
+            updates[`sections/${id}`] = null;
+            Object.entries(items).forEach(([iid, it]) => {
+              if (it.sectionId === id) updates[`items/${iid}`] = null;
+            });
+            await update(ref(db), updates);
+            openSections.delete(id);
+            showToast('Раздел удалён');
+          }
+          return;
+        }
+
+        const editIt = t.closest('[data-edit-item]');
+        if (editIt) {
+          const it = items[editIt.dataset.editItem];
+          if (it) openItemModal(editIt.dataset.editItem, it.sectionId, it);
+          return;
+        }
+
+        const delIt = t.closest('[data-delete-item]');
+        if (delIt) {
+          const id = delIt.dataset.deleteItem;
+          const it = items[id];
+          if (confirm(`Удалить текст «${it?.label || 'без названия'}»?`)) {
+            await remove(ref(db, `items/${id}`));
+            showToast('Текст удалён');
+          }
+          return;
+        }
+      });
+
+      addBtn.addEventListener('click', () => openSectionModal(null));
+
+      function openSectionModal(id, currentName = '') {
+        const isEdit = !!id;
+        modal.innerHTML = `
+          <div class="modal-title">${isEdit ? 'Переименовать раздел' : 'Новый раздел'}</div>
+          <div class="field">
+            <label>Название раздела</label>
+            <input type="text" id="mSectionName" placeholder="Например: Ответы клиентам" value="${escapeHtml(currentName)}">
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-cancel" id="mCancel">Отмена</button>
+            <button class="btn btn-save" id="mSave">${isEdit ? 'Сохранить' : 'Создать'}</button>
           </div>
         `;
-      }
+        overlay.classList.add('open');
+        setTimeout(() => modal.querySelector('#mSectionName').focus(), 50);
 
-      sectionsList.innerHTML = html || `
-        <div class="empty">
-          <div class="empty-icon">🔍</div>
-          Ничего не найдено
-        </div>`;
-
-      requestAnimationFrame(() => {
-        document.querySelectorAll('.item-text').forEach(el => {
-          const expandBtn = el.parentElement.parentElement.querySelector('.btn-expand');
-          if (expandBtn && el.scrollHeight > el.clientHeight + 2) {
-            expandBtn.style.display = 'inline-block';
+        const close = () => overlay.classList.remove('open');
+        modal.querySelector('#mCancel').onclick = close;
+        modal.querySelector('#mSave').onclick = async () => {
+          const name = modal.querySelector('#mSectionName').value.trim();
+          if (!name) { showToast('Введите название'); return; }
+          if (isEdit) {
+            await update(ref(db, `sections/${id}`), { name });
+          } else {
+            const order = Date.now();
+            await push(ref(db, 'sections'), { name, order });
           }
+          close();
+          showToast(isEdit ? 'Переименовано' : 'Раздел создан');
+        };
+        modal.querySelector('#mSectionName').addEventListener('keydown', e => {
+          if (e.key === 'Enter') modal.querySelector('#mSave').click();
         });
+      }
+
+      function openItemModal(id, sectionId, current = null) {
+        const isEdit = !!id;
+        const sectionOptions = Object.entries(sections)
+          .map(([sid, s]) => ({ id: sid, ...s }))
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
+
+        modal.innerHTML = `
+          <div class="modal-title">${isEdit ? 'Изменить текст' : 'Новый текст'}</div>
+          <div class="field">
+            <label>Раздел</label>
+            <select id="mSection">
+              ${sectionOptions.map(s => `
+                <option value="${s.id}" ${s.id === sectionId ? 'selected' : ''}>${escapeHtml(s.name)}</option>
+              `).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label>Название (чтобы было понятно, что копируешь)</label>
+            <input type="text" id="mLabel" placeholder="Например: Приветствие" value="${escapeHtml(current?.label || '')}">
+          </div>
+          <div class="field">
+            <label>Текст для копирования</label>
+            <textarea id="mText" placeholder="Вставь сюда текст...">${escapeHtml(current?.text || '')}</textarea>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-cancel" id="mCancel">Отмена</button>
+            <button class="btn btn-save" id="mSave">${isEdit ? 'Сохранить' : 'Создать'}</button>
+          </div>
+        `;
+        overlay.classList.add('open');
+        setTimeout(() => modal.querySelector('#mLabel').focus(), 50);
+
+        const close = () => overlay.classList.remove('open');
+        modal.querySelector('#mCancel').onclick = close;
+        modal.querySelector('#mSave').onclick = async () => {
+          const label = modal.querySelector('#mLabel').value.trim();
+          const text = modal.querySelector('#mText').value;
+          const sid = modal.querySelector('#mSection').value;
+          if (!label) { showToast('Введите название'); return; }
+          if (!text.trim()) { showToast('Введите текст'); return; }
+          if (isEdit) {
+            await update(ref(db, `items/${id}`), { label, text, sectionId: sid });
+          } else {
+            const order = Date.now();
+            await push(ref(db, 'items'), { label, text, sectionId: sid, order });
+          }
+          close();
+          showToast(isEdit ? 'Текст обновлён' : 'Текст добавлен');
+        };
+      }
+
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.classList.remove('open');
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') overlay.classList.remove('open');
       });
     }
-
-    const sectionsRef = ref(db, 'sections');
-    const itemsRef = ref(db, 'items');
-
-    onValue(ref(db, '.info/connected'), snap => {
-      const online = snap.val() === true;
-      statusEl.classList.toggle('online', online);
-      statusEl.classList.toggle('offline', !online);
-      statusText.textContent = online ? 'online' : 'offline';
-    });
-
-    onValue(sectionsRef, snap => {
-      sections = snap.val() || {};
-      render();
-    }, err => {
-      console.error(err);
-      showToast('Ошибка доступа к Firebase');
-    });
-
-    onValue(itemsRef, snap => {
-      items = snap.val() || {};
-      render();
-    });
-
-    searchInput.addEventListener('input', (e) => {
-      searchQuery = e.target.value;
-      render();
-    });
-
-    editModeBtn.addEventListener('click', () => {
-      editMode = !editMode;
-      editModeBtn.classList.toggle('active', editMode);
-      addBar.style.display = editMode ? 'block' : 'none';
-      render();
-      showToast(editMode ? 'Режим редактирования включён' : 'Режим просмотра');
-    });
-
-    sectionsList.addEventListener('click', async (e) => {
-      const t = e.target;
-
-      const toggle = t.closest('[data-toggle]');
-      if (toggle && !t.closest('[data-edit-section]') && !t.closest('[data-delete-section]')) {
-        const id = toggle.dataset.toggle;
-        if (openSections.has(id)) openSections.delete(id);
-        else openSections.add(id);
-        render();
-        return;
-      }
-
-      const expand = t.closest('[data-expand]');
-      if (expand) {
-        const itemEl = expand.closest('.item');
-        const textEl = itemEl.querySelector('.item-text');
-        textEl.classList.toggle('expanded');
-        const isExp = textEl.classList.contains('expanded');
-        expand.textContent = isExp ? 'Свернуть ▴' : 'Показать полностью ▾';
-        return;
-      }
-
-      const copyBtn = t.closest('[data-copy]');
-      if (copyBtn) {
-        const id = copyBtn.dataset.copy;
-        const it = items[id];
-        if (it) await copyText(it.text || '', copyBtn);
-        return;
-      }
-
-      const addItem = t.closest('[data-add-item]');
-      if (addItem) {
-        openItemModal(null, addItem.dataset.addItem);
-        return;
-      }
-
-      const editSec = t.closest('[data-edit-section]');
-      if (editSec) {
-        const s = sections[editSec.dataset.editSection];
-        if (s) openSectionModal(editSec.dataset.editSection, s.name);
-        return;
-      }
-
-      const delSec = t.closest('[data-delete-section]');
-      if (delSec) {
-        const id = delSec.dataset.deleteSection;
-        const s = sections[id];
-        const count = Object.values(items).filter(it => it.sectionId === id).length;
-        if (confirm(`Удалить раздел «${s?.name}»?` + (count ? `\nВсе тексты в нём (${count}) тоже удалятся.` : ''))) {
-          const updates = {};
-          updates[`sections/${id}`] = null;
-          Object.entries(items).forEach(([iid, it]) => {
-            if (it.sectionId === id) updates[`items/${iid}`] = null;
-          });
-          await update(ref(db), updates);
-          openSections.delete(id);
-          showToast('Раздел удалён');
-        }
-        return;
-      }
-
-      const editIt = t.closest('[data-edit-item]');
-      if (editIt) {
-        const it = items[editIt.dataset.editItem];
-        if (it) openItemModal(editIt.dataset.editItem, it.sectionId, it);
-        return;
-      }
-
-      const delIt = t.closest('[data-delete-item]');
-      if (delIt) {
-        const id = delIt.dataset.deleteItem;
-        const it = items[id];
-        if (confirm(`Удалить текст «${it?.label || 'без названия'}»?`)) {
-          await remove(ref(db, `items/${id}`));
-          showToast('Текст удалён');
-        }
-        return;
-      }
-    });
-
-    addBtn.addEventListener('click', () => openSectionModal(null));
-
-    function openSectionModal(id, currentName = '') {
-      const isEdit = !!id;
-      modal.innerHTML = `
-        <div class="modal-title">${isEdit ? 'Переименовать раздел' : 'Новый раздел'}</div>
-        <div class="field">
-          <label>Название раздела</label>
-          <input type="text" id="mSectionName" placeholder="Например: Ответы клиентам" value="${escapeHtml(currentName)}">
-        </div>
-        <div class="modal-actions">
-          <button class="btn btn-cancel" id="mCancel">Отмена</button>
-          <button class="btn btn-save" id="mSave">${isEdit ? 'Сохранить' : 'Создать'}</button>
-        </div>
-      `;
-      overlay.classList.add('open');
-      setTimeout(() => modal.querySelector('#mSectionName').focus(), 50);
-
-      const close = () => overlay.classList.remove('open');
-      modal.querySelector('#mCancel').onclick = close;
-      modal.querySelector('#mSave').onclick = async () => {
-        const name = modal.querySelector('#mSectionName').value.trim();
-        if (!name) { showToast('Введите название'); return; }
-        if (isEdit) {
-          await update(ref(db, `sections/${id}`), { name });
-        } else {
-          const order = Date.now();
-          await push(ref(db, 'sections'), { name, order });
-        }
-        close();
-        showToast(isEdit ? 'Переименовано' : 'Раздел создан');
-      };
-      modal.querySelector('#mSectionName').addEventListener('keydown', e => {
-        if (e.key === 'Enter') modal.querySelector('#mSave').click();
-      });
-    }
-
-    function openItemModal(id, sectionId, current = null) {
-      const isEdit = !!id;
-      const sectionOptions = Object.entries(sections)
-        .map(([sid, s]) => ({ id: sid, ...s }))
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
-
-      modal.innerHTML = `
-        <div class="modal-title">${isEdit ? 'Изменить текст' : 'Новый текст'}</div>
-        <div class="field">
-          <label>Раздел</label>
-          <select id="mSection">
-            ${sectionOptions.map(s => `
-              <option value="${s.id}" ${s.id === sectionId ? 'selected' : ''}>${escapeHtml(s.name)}</option>
-            `).join('')}
-          </select>
-        </div>
-        <div class="field">
-          <label>Название (чтобы было понятно, что копируешь)</label>
-          <input type="text" id="mLabel" placeholder="Например: Приветствие" value="${escapeHtml(current?.label || '')}">
-        </div>
-        <div class="field">
-          <label>Текст для копирования</label>
-          <textarea id="mText" placeholder="Вставь сюда текст...">${escapeHtml(current?.text || '')}</textarea>
-        </div>
-        <div class="modal-actions">
-          <button class="btn btn-cancel" id="mCancel">Отмена</button>
-          <button class="btn btn-save" id="mSave">${isEdit ? 'Сохранить' : 'Создать'}</button>
-        </div>
-      `;
-      overlay.classList.add('open');
-      setTimeout(() => modal.querySelector('#mLabel').focus(), 50);
-
-      const close = () => overlay.classList.remove('open');
-      modal.querySelector('#mCancel').onclick = close;
-      modal.querySelector('#mSave').onclick = async () => {
-        const label = modal.querySelector('#mLabel').value.trim();
-        const text = modal.querySelector('#mText').value;
-        const sid = modal.querySelector('#mSection').value;
-        if (!label) { showToast('Введите название'); return; }
-        if (!text.trim()) { showToast('Введите текст'); return; }
-        if (isEdit) {
-          await update(ref(db, `items/${id}`), { label, text, sectionId: sid });
-        } else {
-          const order = Date.now();
-          await push(ref(db, 'items'), { label, text, sectionId: sid, order });
-        }
-        close();
-        showToast(isEdit ? 'Текст обновлён' : 'Текст добавлен');
-      };
-    }
-
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) overlay.classList.remove('open');
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') overlay.classList.remove('open');
-    });
   </script>
 </body>
 </html>
