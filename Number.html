@@ -321,11 +321,6 @@ function updatePasteFooter() {
 function clearPasteTable() { if (!pasteRows.length) return; if (!confirm('Очистить?')) return; pasteRows = []; renderPasteTable(); }
 
 /* ============ НОВЫЙ ПАРСЕР ============ */
-// Парсер понимает структуру из 12 столбцов:
-// 0=Номер, 1=Дата выписки, 2=Код, 3=Наименование, 4=пусто, 5=Прибор, 6=пусто,
-// 7=Кол-во, 8=Сумма, 9=Всего, 10=Оплата, 11=Дата оплаты.
-// Плюс — склеивает "продолжения" (строки без номера счёта, но с числами/датами).
-
 function isRowWithInvoice(cells) {
   if (!cells || !cells.length) return false;
   return cells.slice(0, 3).some(c => /^\d{4}-\d{4,6}$/.test(c));
@@ -334,7 +329,6 @@ function isRowWithInvoice(cells) {
 function isContinuationRow(cells) {
   if (!cells || !cells.length) return false;
   if (isRowWithInvoice(cells)) return false;
-  // Должны быть числа или даты, и при этом НЕТ длинного текста типа "Наименование"
   const hasNum = cells.some(c => /^\d+[.,]?\d*$/.test(c.replace(/\s/g, '')));
   const hasDate = cells.some(c => /^\d{2}[.\/]\d{2}[.\/]\d{4}$/.test(c));
   return hasNum || hasDate;
@@ -348,14 +342,12 @@ function parsePasteText(text) {
     if (!line.trim()) continue;
     const cells = line.split('\t').map(c => (c || '').trim());
     if (cells.every(c => !c)) continue;
-    // Шапки
     const joined = cells.join(' ').toLowerCase();
     if (joined.includes('номер') && (joined.includes('счет') || joined.includes('счёт'))) continue;
     if (joined.includes('дата') && joined.includes('выписк')) continue;
     if (joined.includes('код') && joined.includes('наименование') && cells.length < 6) continue;
     if (joined.includes('контрагент') && cells.length < 6) continue;
     if (joined.includes('прибор') && cells.length < 6) continue;
-    // Маркер раздела
     if (cells.filter(c => c).length <= 1) {
       const only = cells.find(c => c) || '';
       if (only && only.length < 30 && !/\d/.test(only) && /^[А-ЯЁA-Zа-яёa-z\s\-_]+$/.test(only)) continue;
@@ -363,8 +355,6 @@ function parsePasteText(text) {
     rawRows.push(cells);
   }
 
-  // Склейка: каждая строка с номером счёта — начало новой записи.
-  // Последующие строки без номера, но с числами/датами — продолжение.
   const merged = [];
   let current = null;
   for (const cells of rawRows) {
@@ -387,32 +377,24 @@ function pickCell(cells, idx) {
 }
 
 function buildPasteRow(cells) {
-  // Позиционная разборка (по 12 колонкам).
-  // Но если в массиве только 5-6 ячеек (данные подряд) — используем содержимое.
   let invoiceNumber = '', invoiceDate = '', code = '', name = '', device = '', qty = '', amount = '', total = '', paymentDate = '';
 
-  // Ищем номер счёта
   let numIdx = -1;
   for (let i = 0; i < cells.length; i++) {
     if (/^\d{4}-\d{4,6}$/.test(cells[i])) { numIdx = i; invoiceNumber = cells[i]; break; }
   }
   if (numIdx === -1) { invoiceNumber = cells[0] || ''; numIdx = 0; }
 
-  // Стандартные позиции от номера
   const base = numIdx;
   invoiceDate = pickCell(cells, base + 1);
   code        = pickCell(cells, base + 2);
   name        = pickCell(cells, base + 3);
-  // base+4 — пусто
   device      = pickCell(cells, base + 5);
-  // base+6 — пусто
   qty         = pickCell(cells, base + 7);
   amount      = pickCell(cells, base + 8);
   total       = pickCell(cells, base + 9);
-  // base+10 — Оплата
   paymentDate = pickCell(cells, base + 11);
 
-  // Если Прибор пусто — попробуем найти его по ключевым словам (на случай другой структуры)
   if (!device) {
     const kws = ['ГИГРОМЕТР','ТЕРМОМЕТР','ПРИБОР','ИЗМЕРИТЕЛЬ','МАНОМЕТР','ДАТЧИК','СЧЁТЧИК','СЧЕТЧИК','АНЕМОМЕТР','ПСИХРОМЕТР'];
     for (let i = base + 1; i < cells.length; i++) {
@@ -423,7 +405,6 @@ function buildPasteRow(cells) {
     }
   }
 
-  // Если qty/amount/total пусто — ищем 3 числа подряд ПОСЛЕ Прибора
   if (!qty && !amount && !total && device) {
     const devIdx = cells.indexOf(device);
     if (devIdx >= 0) {
@@ -440,7 +421,6 @@ function buildPasteRow(cells) {
     }
   }
 
-  // Если дата оплаты не найдена — берём последнюю дату в строке (не первую)
   if (!paymentDate) {
     const dates = [];
     for (let i = base + 1; i < cells.length; i++) {
@@ -596,8 +576,17 @@ async function logout() {
 
 onAuthStateChanged(auth, async (user) => {
   document.getElementById('loadingScreen').style.display = 'none';
+  
   if (user) {
     currentUser = user;
+    
+    // --- ПРОВЕРКА ОДОБРЕНИЯ ---
+    let isApproved = false;
+    try {
+      const approvedSnap = await get(ref(database, 'approvedUsers/' + user.uid));
+      isApproved = approvedSnap.exists();
+    } catch(e) { console.error('Ошибка проверки одобрения:', e); }
+
     let name = user.displayName || user.email.split('@')[0];
     let isAdmin = false;
     try {
@@ -606,6 +595,19 @@ onAuthStateChanged(auth, async (user) => {
       const a = await get(ref(database, 'admins/' + user.uid));
       if (a.exists() && a.val() === true) isAdmin = true;
     } catch(e) {}
+    
+    // Админ всегда одобрен
+    if (isAdmin) isApproved = true;
+
+    // Если не одобрен — показываем экран логина с сообщением
+    if (!isApproved) {
+      document.getElementById('authScreen').style.display = 'block';
+      document.getElementById('appScreen').style.display = 'none';
+      showAuthError('Ваша учётная запись ожидает одобрения администратором. Пожалуйста, свяжитесь с руководством.');
+      return; // Прерываем выполнение, не подписываемся на данные!
+    }
+
+    // Дальше все как обычно
     currentUserName = name; currentIsAdmin = isAdmin;
     document.getElementById('authScreen').style.display = 'none';
     document.getElementById('appScreen').style.display = 'block';
