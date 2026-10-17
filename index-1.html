@@ -128,7 +128,7 @@
             box-shadow: 0 4px 8px rgba(0, 51, 102, 0.1);
         }
 
-        /* Зелёный пункт "Инструменты" — чуть больше насыщенности */
+        /* Зелёный пункт "Инструменты" */
         .sidebar a.instruments-link {
             background: rgba(55, 135, 65, 0.12);
             color: #1f4a25;
@@ -275,77 +275,291 @@
             50% { transform: scale(1.02); }
             100% { transform: scale(1); }
         }
+
+        /* --- Стили для логина --- */
+        .auth-container {
+            max-width: 400px;
+            margin: 50px auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 34, 68, 0.15);
+        }
+        .auth-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #003366;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .auth-field { margin-bottom: 15px; }
+        .auth-field label { display: block; margin-bottom: 5px; color: #003366; font-weight: 500; }
+        .auth-field input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e0e6ed;
+            border-radius: 6px;
+            background: #f8f9fb;
+        }
+        .auth-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(to bottom, #0066cc 0%, #003366 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .auth-btn:hover { background: linear-gradient(to bottom, #0088ff 0%, #0055aa 100%); }
+        .auth-switch {
+            display: block;
+            width: 100%;
+            text-align: center;
+            margin-top: 15px;
+            background: none;
+            border: none;
+            color: #0066cc;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .auth-switch:hover { text-decoration: underline; }
+        .auth-error {
+            background: #ffebee;
+            color: #d32f2f;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .logout-btn:hover { background: rgba(255, 255, 255, 0.3); }
     </style>
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 </head>
 <body>
-    <header>
-        <div class="logo">Полезная информация</div>
-    </header>
-    
-    <a href="Reestrs.html" class="long-button">Ссылки на базы реестров РБ/РФ</a>
 
-    <nav class="sidebar" role="navigation">
-        <!-- Примеры свидетельств и заключений -->
-        <a href="#" onclick="toggleDropdown('certificateList')">Примеры свидетельств и заключений</a>
-        <div id="certificateList" class="dropdown" aria-hidden="true">
-            <p><a href="Заключение-о-непригодности-в-не-сферы.pdf" target="_blank">Пример заключения об непригодности вне сферы законодательной метрологии</a></p>
+    <!-- Экран загрузки -->
+    <div id="authLoading" style="text-align:center; padding-top:100px; font-size:18px; color:#003366;">
+        Проверка входа...
+    </div>
+
+    <!-- Экран логина -->
+    <div id="authScreen" class="auth-container" style="display:none;">
+        <div class="auth-title" id="authTitle">Вход</div>
+        <div id="authError" class="auth-error"></div>
+        
+        <div class="auth-field">
+            <label>Логин</label>
+            <input type="text" id="authUsername" placeholder="Введите логин" maxlength="30">
+        </div>
+        <div class="auth-field">
+            <label>Пароль</label>
+            <input type="password" id="authPassword" placeholder="Минимум 6 символов">
         </div>
         
-        <!-- Поверка -->
-        <a href="#" onclick="toggleDropdown('verificationList')">Поверка</a>
-        <div id="verificationList" class="dropdown" aria-hidden="true">
-            <p><a href="Term-table.html" target="_blank">Поверяемые градусные отметки в зависимости от цены деления шкалы</a></p>
-            <p><a href="index-1.html">Реестры и межповерочные интервалы</a></p>
-        </div>
-        
-        <!-- Калибровка -->
-        <a href="#" onclick="toggleDropdown('calibrationList')">Калибровка</a>
-        <div id="calibrationList" class="dropdown" aria-hidden="true">
-            <p><a href="calibration.html" target="_blank">Методики калибровки и стандартные неопределенности ИТЭ</a></p>
-            <p><a href="Окр-ср.html" target="_blank">Окружающая среда</a></p>
-        </div>
-        
-        <!-- Эталоны -->
-        <a href="#" onclick="toggleDropdown('referenceList')">Эталоны</a>
-        <div id="referenceList" class="dropdown" aria-hidden="true">
-            <p><a href="reference.html" target="_blank">Состояние эталонов</a></p>
-        </div>
+        <button class="auth-btn" id="authSubmitBtn">Войти</button>
+        <button class="auth-switch" id="authSwitchBtn">Нет аккаунта? Зарегистрироваться</button>
+    </div>
 
-        <!-- Инструменты (зелёный, чуть насыщеннее) -->
-        <a href="index-2.html" class="instruments-link">Инструменты</a>
-    </nav>
+    <!-- Основной контент (скрыт до входа) -->
+    <div id="appContent" style="display:none;">
+        <header>
+            <div class="logo">Полезная информация</div>
+            <div class="user-info">
+                <span id="userNameDisplay"></span>
+                <button class="logout-btn" id="logoutBtn">Выйти</button>
+            </div>
+        </header>
+        
+        <a href="Reestrs.html" class="long-button">Ссылки на базы реестров РБ/РФ</a>
 
-    <main>
-        <div style="height: 100px;"></div> 
-        <ul class="normative-list">
-            <h2 class="category-header">Температура:</h2>
-            <li>   
-                <a href="Gigro.html" class="normative-link">гигрометры психометрические Вит</a>
-            </li>
-            <li>   
-                <a href="El-term.html" class="normative-link">Термометры электронные цифровые</a>
-            </li>
-            <li>
-                <a href="Term-glass.html" class="normative-link">Термометры стеклянные</a>
-            </li>
-            <li>
-                <a href="Term-glass-el.html" class="normative-link">Термометры стеклянные ртутные электроконтактные</a>
-            </li>
-            <li>   
-                <a href="Infra-el-term.html" class="normative-link">Термометры инфракрасные</a>
-            </li>
-            <h2 class="category-header">Давление:</h2>
-            <li>
-                <a href="Mano.html" class="normative-link">Манометры</a>
-            </li>
-        </ul>
-    </main>
+        <nav class="sidebar" role="navigation">
+            <!-- Примеры свидетельств и заключений -->
+            <a href="#" onclick="toggleDropdown('certificateList')">Примеры свидетельств и заключений</a>
+            <div id="certificateList" class="dropdown" aria-hidden="true">
+                <p><a href="Заключение-о-непригодности-в-не-сферы.pdf" target="_blank">Пример заключения об непригодности вне сферы законодательной метрологии</a></p>
+            </div>
+            
+            <!-- Поверка -->
+            <a href="#" onclick="toggleDropdown('verificationList')">Поверка</a>
+            <div id="verificationList" class="dropdown" aria-hidden="true">
+                <p><a href="Term-table.html" target="_blank">Поверяемые градусные отметки в зависимости от цены деления шкалы</a></p>
+                <p><a href="index-1.html">Реестры и межповерочные интервалы</a></p>
+            </div>
+            
+            <!-- Калибровка -->
+            <a href="#" onclick="toggleDropdown('calibrationList')">Калибровка</a>
+            <div id="calibrationList" class="dropdown" aria-hidden="true">
+                <p><a href="calibration.html" target="_blank">Методики калибровки и стандартные неопределенности ИТЭ</a></p>
+                <p><a href="Окр-ср.html" target="_blank">Окружающая среда</a></p>
+            </div>
+            
+            <!-- Эталоны -->
+            <a href="#" onclick="toggleDropdown('referenceList')">Эталоны</a>
+            <div id="referenceList" class="dropdown" aria-hidden="true">
+                <p><a href="reference.html" target="_blank">Состояние эталонов</a></p>
+            </div>
+
+            <!-- Инструменты -->
+            <a href="index-2.html" class="instruments-link">Инструменты</a>
+        </nav>
+
+        <main>
+            <div style="height: 100px;"></div> 
+            <ul class="normative-list">
+                <h2 class="category-header">Температура:</h2>
+                <li>   
+                    <a href="Gigro.html" class="normative-link">гигрометры психометрические Вит</a>
+                </li>
+                <li>   
+                    <a href="El-term.html" class="normative-link">Термометры электронные цифровые</a>
+                </li>
+                <li>
+                    <a href="Term-glass.html" class="normative-link">Термометры стеклянные</a>
+                </li>
+                <li>
+                    <a href="Term-glass-el.html" class="normative-link">Термометры стеклянные ртутные электроконтактные</a>
+                </li>
+                <li>   
+                    <a href="Infra-el-term.html" class="normative-link">Термометры инфракрасные</a>
+                </li>
+                <h2 class="category-header">Давление:</h2>
+                <li>
+                    <a href="Mano.html" class="normative-link">Манометры</a>
+                </li>
+            </ul>
+        </main>
+    </div>
 
     <script>
+        // Конфигурация Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
+            authDomain: "vlad-csms-af6df.firebaseapp.com",
+            databaseURL: "https://vlad-csms-af6df-default-rtdb.firebaseio.com",
+            projectId: "vlad-csms-af6df",
+            storageBucket: "vlad-csms-af6df.firebasestorage.app",
+            messagingSenderId: "417297799117",
+            appId: "1:417297799117:web:07ce2915cbfe0cb1499684",
+            measurementId: "G-0EMQB4HYSQ"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        const EMAIL_DOMAIN = "@invoice.local";
+        let isAuthMode = 'login';
+
+        // Транслитерация
+        const TRANSLIT_MAP = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
+        function transliterate(s) { let r = ''; for (const c of s) { const l = c.toLowerCase(); r += (TRANSLIT_MAP[l] !== undefined) ? TRANSLIT_MAP[l] : c; } return r; }
+        function usernameToEmail(u) { const n = u.toLowerCase().trim(); return transliterate(n).replace(/[^a-z0-9._-]/g, '.') + EMAIL_DOMAIN; }
+        function validateUsername(u) { const t = u.trim(); if (t.length < 2 || t.length > 30) return false; return /^[а-яёa-z0-9\s._-]+$/i.test(t); }
+
+        // --- ЛОГИКА АВТОРИЗАЦИИ ---
+        function showAuthError(msg) {
+            const e = document.getElementById('authError');
+            e.textContent = msg;
+            e.style.display = 'block';
+        }
+
+        document.getElementById('authSwitchBtn').addEventListener('click', () => {
+            isAuthMode = isAuthMode === 'login' ? 'register' : 'login';
+            document.getElementById('authTitle').textContent = isAuthMode === 'login' ? 'Вход' : 'Регистрация';
+            document.getElementById('authSubmitBtn').textContent = isAuthMode === 'login' ? 'Войти' : 'Зарегистрироваться';
+            document.getElementById('authSwitchBtn').textContent = isAuthMode === 'login' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти';
+            document.getElementById('authError').style.display = 'none';
+        });
+
+        document.getElementById('authSubmitBtn').addEventListener('click', async () => {
+            const username = document.getElementById('authUsername').value.trim();
+            const password = document.getElementById('authPassword').value;
+            
+            if (!username || !password) { showAuthError('Заполните все поля'); return; }
+            if (!validateUsername(username)) { showAuthError('Логин: 2-30 символов (буквы, цифры, пробел, . _ -)'); return; }
+            if (password.length < 6) { showAuthError('Пароль должен быть минимум 6 символов'); return; }
+            
+            const btn = document.getElementById('authSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Загрузка...';
+            
+            const email = usernameToEmail(username);
+            const norm = username.toLowerCase().trim();
+            
+            try {
+                if (isAuthMode === 'login') {
+                    await auth.signInWithEmailAndPassword(email, password);
+                } else {
+                    const cred = await auth.createUserWithEmailAndPassword(email, password);
+                    await cred.user.updateProfile({ displayName: username });
+                    await firebase.database().ref('users/' + cred.user.uid).set({
+                        username: norm,
+                        displayName: username,
+                        name: username,
+                        createdAt: new Date().toISOString()
+                    });
+                    await firebase.database().ref('usernames/' + norm).set(cred.user.uid);
+                }
+            } catch (err) {
+                console.error(err);
+                const M = {
+                    'auth/user-not-found':'Пользователь не найден',
+                    'auth/wrong-password':'Неверный пароль',
+                    'auth/invalid-credential':'Неверный логин или пароль',
+                    'auth/invalid-email':'Некорректный логин',
+                    'auth/email-already-in-use':'Логин занят',
+                    'auth/weak-password':'Слабый пароль'
+                };
+                showAuthError(M[err.code] || err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = isAuthMode === 'login' ? 'Войти' : 'Зарегистрироваться';
+            }
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            if (confirm('Выйти?')) auth.signOut();
+        });
+
+        // --- СЛЕЖКА ЗА СОСТОЯНИЕМ ВХОДА ---
+        auth.onAuthStateChanged(user => {
+            document.getElementById('authLoading').style.display = 'none';
+            
+            if (user) {
+                document.getElementById('authScreen').style.display = 'none';
+                document.getElementById('appContent').style.display = 'block';
+                document.getElementById('userNameDisplay').textContent = user.displayName || user.email.split('@')[0];
+            } else {
+                document.getElementById('authScreen').style.display = 'block';
+                document.getElementById('appContent').style.display = 'none';
+            }
+        });
+
+        // --- СКРИПТЫ ДЛЯ МЕНЮ ---
         function toggleDropdown(listId) {
             const dropdown = document.getElementById(listId);
             dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-            dropdown.setAttribute("aria-hidden", dropdown.style.display === "none");
+            dropdown.setAttribute('aria-hidden', dropdown.style.display === 'none');
         }
 
         window.onclick = function(event) {
