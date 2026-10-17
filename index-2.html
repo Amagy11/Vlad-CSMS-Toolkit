@@ -232,14 +232,6 @@
             border-left: 4px solid #0066cc;
         }
 
-        .gost-icon {
-            width: 24px;
-            height: 24px;
-            fill: #d50000;
-            margin-right: 15px;
-            flex-shrink: 0;
-        }
-
         .normative-link {
             color: inherit;
             text-decoration: none;
@@ -264,48 +256,15 @@
 
         /* Адаптивность */
         @media (max-width: 900px) {
-            .sidebar {
-                width: 200px;
-                top: 60px;
-            }
-            main {
-                margin-left: 220px;
-            }
-            .long-button {
-                right: 20px;
-                width: 260px;
-            }
+            .sidebar { width: 200px; top: 60px; }
+            main { margin-left: 220px; }
+            .long-button { right: 20px; width: 260px; }
         }
 
         @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-                top: 0;
-                box-shadow: 0 4px 8px rgba(0, 34, 68, 0.1);
-                border-right: none;
-                border-bottom: 1px solid #e0e6ed;
-            }
-            main {
-                margin-left: 0;
-                padding: 20px;
-            }
-            .long-button {
-                position: relative;
-                top: 0;
-                right: 0;
-                width: 100%;
-                margin: 15px 0;
-                border-radius: 0;
-            }
-        }
-
-        /* Анимации */
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-            100% { transform: scale(1); }
+            .sidebar { width: 100%; height: auto; position: relative; top: 0; border-right: none; border-bottom: 1px solid #e0e6ed; }
+            main { margin-left: 0; padding: 20px; }
+            .long-button { position: relative; top: 0; right: 0; width: 100%; margin: 15px 0; border-radius: 0; }
         }
 
         /* --- Стили для логина --- */
@@ -560,33 +519,54 @@
             if (confirm('Выйти?')) auth.signOut();
         });
 
-        // --- СЛЕЖКА ЗА СОСТОЯНИЕМ ВХОДА И ПРОВЕРКА АДМИНА ---
+        // --- СЛЕЖКА ЗА СОСТОЯНИЕМ ВХОДА И ПРОВЕРКА АДМИНА/ОДОБРЕНИЯ ---
         auth.onAuthStateChanged(async user => {
             document.getElementById('authLoading').style.display = 'none';
             
             if (user) {
+                let isApproved = false;
+                let isAdmin = false;
+                
+                try {
+                    // Проверка одобрения
+                    const approvedSnap = await db.ref('approvedUsers/' + user.uid).once('value');
+                    isApproved = approvedSnap.exists();
+                    
+                    // Проверка админа
+                    const adminSnap = await db.ref('admins/' + user.uid).once('value');
+                    isAdmin = adminSnap.val() === true;
+                } catch (err) {
+                    console.error('Ошибка проверки доступа:', err);
+                }
+
+                // Админ всегда одобрен
+                if (isAdmin) isApproved = true;
+
+                // Если не одобрен — показываем экран логина
+                if (!isApproved) {
+                    document.getElementById('authScreen').style.display = 'block';
+                    document.getElementById('appContent').style.display = 'none';
+                    showAuthError('Ваша учётная запись ожидает одобрения администратором. Пожалуйста, свяжитесь с руководством.');
+                    return;
+                }
+
+                // Если одобрен — показываем контент
                 document.getElementById('authScreen').style.display = 'none';
                 document.getElementById('appContent').style.display = 'block';
                 document.getElementById('userNameDisplay').textContent = user.displayName || user.email.split('@')[0];
 
-                // Проверяем, админ ли пользователь, чтобы показать ссылку
-                try {
-                    const adminSnap = await db.ref('admins/' + user.uid).once('value');
-                    const isAdmin = adminSnap.val() === true;
-                    const adminLink = document.getElementById('adminLink');
-                    
-                    if (isAdmin) {
-                        adminLink.style.display = 'flex'; // Показываем ссылку
-                    } else {
-                        adminLink.style.display = 'none'; // Скрываем
-                    }
-                } catch (err) {
-                    console.error('Ошибка проверки админа:', err);
+                // Показываем ссылку на админку, если это админ
+                const adminLink = document.getElementById('adminLink');
+                if (isAdmin) {
+                    adminLink.style.display = 'flex';
+                } else {
+                    adminLink.style.display = 'none';
                 }
+
             } else {
                 document.getElementById('authScreen').style.display = 'block';
                 document.getElementById('appContent').style.display = 'none';
-                document.getElementById('adminLink').style.display = 'none'; // Скрываем при выходе
+                document.getElementById('adminLink').style.display = 'none';
             }
         });
 
