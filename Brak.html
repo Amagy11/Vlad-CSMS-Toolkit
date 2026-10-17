@@ -363,13 +363,38 @@
     .status.online .status-dot { background: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,0.2); }
     .status.offline .status-dot { background: #dc2626; }
 
+    #authLoading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      flex-direction: column;
+      gap: 1rem;
+      color: #64748b;
+      font-size: 0.95rem;
+    }
+    .spinner {
+      width: 2.5rem; height: 2.5rem;
+      border: 3px solid #e2e8f0;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     @media (max-width: 400px) {
       .title { font-size: 1.2rem; }
     }
   </style>
 </head>
 <body>
-  <div class="app">
+  <!-- Экран загрузки, пока Firebase восстанавливает сессию -->
+  <div id="authLoading">
+    <div class="spinner"></div>
+    <div>Проверка входа...</div>
+  </div>
+
+  <div class="app" id="appContent" style="display:none;">
     <div class="topbar">
       <div class="title">Быстрые <span>тексты</span></div>
       <div style="display:flex; gap:0.4rem; align-items:center;">
@@ -419,13 +444,21 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    // Ждём, пока Firebase восстановит сессию, и только потом запускаем страницу
-    onAuthStateChanged(auth, (user) => {
+    // Ждём, пока Firebase восстановит сессию.
+    // Пока идёт проверка — показываем спиннер, НЕ редиректим.
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      // Отписываемся — нам нужен только первый «настоящий» ответ
+      unsubAuth();
+
       if (!user) {
-        // не вошёл — на страницу логина
-        window.location.href = 'login.html';
+        // Сессии нет — на страницу логина
+        window.location.replace('login.html');
         return;
       }
+
+      // Сессия есть — показываем приложение и запускаем код
+      document.getElementById('authLoading').style.display = 'none';
+      document.getElementById('appContent').style.display = 'block';
       initApp();
     });
 
