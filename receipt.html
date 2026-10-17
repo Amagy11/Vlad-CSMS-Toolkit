@@ -463,7 +463,7 @@
             }
         });
 
-        // --- ЛОГИКА СРАВНЕНИЯ (без изменений) ---
+        // --- ЛОГИКА СРАВНЕНИЯ ---
         let firstData = [];
         let firstHeaders = [];
         let firstRows = [];
@@ -493,12 +493,25 @@
             return str;
         }
 
+        // === ИСПРАВЛЕННАЯ ФУНКЦИЯ ЧТЕНИЯ ФАЙЛА (определяет кодировку) ===
         function readFileAsText(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
+                reader.onload = (e) => {
+                    const buffer = e.target.result;
+                    let text = new TextDecoder('utf-8').decode(buffer);
+                    // Если есть символы-заменители (кракозябры) — пробуем windows-1251
+                    if (text.includes('\uFFFD') || /[ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ]/.test(text)) {
+                        try {
+                            text = new TextDecoder('windows-1251').decode(buffer);
+                        } catch (err) {
+                            console.error('Не удалось декодировать в windows-1251', err);
+                        }
+                    }
+                    resolve(text);
+                };
                 reader.onerror = (e) => reject(e);
-                reader.readAsText(file, 'UTF-8');
+                reader.readAsArrayBuffer(file);
             });
         }
 
@@ -551,11 +564,15 @@
             infoDiv.innerText = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
             const reader = new FileReader();
             reader.onload = (e) => {
-                const text = e.target.result;
+                const buffer = e.target.result;
+                let text = new TextDecoder('utf-8').decode(buffer);
+                if (text.includes('\uFFFD')) {
+                    try { text = new TextDecoder('windows-1251').decode(buffer); } catch(e) {}
+                }
                 const lines = text.split(/\r?\n/).slice(0, 5).join('\n');
                 previewDiv.innerText = lines.substring(0, 500) + (lines.length > 500 ? '…' : '');
             };
-            reader.readAsText(file, 'UTF-8');
+            reader.readAsArrayBuffer(file);
         }
 
         function isMatch(docNumber, certNumber) {
