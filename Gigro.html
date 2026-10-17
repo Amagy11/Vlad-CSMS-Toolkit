@@ -29,6 +29,9 @@
             box-shadow: 0 4px 12px rgba(0, 34, 68, 0.2);
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .logo {
@@ -129,84 +132,325 @@
                 font-size: 16px;
             }
         }
+
+        /* --- Стили для логина --- */
+        .auth-container {
+            max-width: 400px;
+            margin: 50px auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 34, 68, 0.15);
+        }
+        .auth-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #003366;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .auth-field { margin-bottom: 15px; }
+        .auth-field label { display: block; margin-bottom: 5px; color: #003366; font-weight: 500; }
+        .auth-field input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e0e6ed;
+            border-radius: 6px;
+            background: #f8f9fb;
+        }
+        .auth-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(to bottom, #0066cc 0%, #003366 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .auth-btn:hover { background: linear-gradient(to bottom, #0088ff 0%, #0055aa 100%); }
+        .auth-switch {
+            display: block;
+            width: 100%;
+            text-align: center;
+            margin-top: 15px;
+            background: none;
+            border: none;
+            color: #0066cc;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .auth-switch:hover { text-decoration: underline; }
+        .auth-error {
+            background: #ffebee;
+            color: #d32f2f;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .logout-btn:hover { background: rgba(255, 255, 255, 0.3); }
     </style>
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 </head>
 <body>
     
-
-    <div class="content">
-        <h1>Гигрометры психометрические ВИТ</h1>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Реестр</th>
-                    <th>Название</th>
-                    <th>Срок действия</th>
-                    <th>Интервал между гос поверками</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>РБ 03 09 2059 23</td>
-                    <td>термоприбор-РФ(Вит1/Вит2)</td>
-                    <td>29.10.2003-12.03.2028</td>
-                    <td>24 месяца</td>
-                </tr>
-                <tr>
-                    <td>РБ 03 09 6804 18</td>
-                    <td>Шатлыгин-РФ(Вит1/Вит2)</td>
-                    <td>30.11.2018-04.12.2022</td>
-                    <td>24 месяца</td>
-                </tr>
-                <tr>
-                    <td>РБ 03 09 4032 15</td>
-                    <td>Шатлыгин-Укр(Вит-ш-1/Вит-ш-2/Вит-ш-3)</td>
-                    <td>29.04.2009-05.08.2017</td>
-                    <td>24 месяца</td>
-                </tr>
-                <tr>
-                    <td>РБ 03 09 1470 15</td>
-                    <td>Стеклоприбор-Укр(Вит-1/Вит-2/Вит-3)</td>
-                    <td>04.12.2001-28.04.2017</td>
-                    <td>24 месяца</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <p class="bold">Гигрометр психометрические ВИТ шатлыгин в сфере законодательной метрологии.</p>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Номер п/п</th>
-                    <th>Год выпуска</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td>Я0523/20</td><td>2020</td></tr>
-                <tr><td>в3747</td><td>2020</td></tr>
-                <tr><td>Н2181/30</td><td>2019</td></tr>
-                <tr><td>е0064/31</td><td>2021</td></tr>
-                <tr><td>АВН760/29</td><td>2021</td></tr>
-                <tr><td>А2838/40</td><td>2019</td></tr>
-                <tr><td>АВВ</td><td>2021</td></tr>
-                <tr><td>АВН</td><td>2021</td></tr>
-                <tr><td>ААВ</td><td>2021</td></tr>
-                <tr><td>AAR</td><td>2021</td></tr>
-                <tr><td>ASM</td><td>2022</td></tr>
-                <tr><td>ASN</td><td>2022</td></tr>
-                <tr><td>P0374</td><td>2019</td></tr>
-                <tr><td>АСМ7421/32</td><td>2022</td></tr>
-                <tr><td>АСД</td><td>2022</td></tr>
-                <tr><td>АКl2468/6</td><td>2022</td></tr>
-                <tr><td>AFN0129/18</td><td>2021</td></tr>
-                <tr><td>AET2048</td><td>2021</td></tr>
-                <tr><td>АСМ1167</td><td>2021</td></tr>
-            </tbody>
-        </table>
-
-        <a href="index.html" class="back-button">Назад</a>
+    <!-- Экран загрузки -->
+    <div id="authLoading" style="text-align:center; padding-top:100px; font-size:18px; color:#003366;">
+        Проверка входа...
     </div>
+
+    <!-- Экран логина -->
+    <div id="authScreen" class="auth-container" style="display:none;">
+        <div class="auth-title" id="authTitle">Вход</div>
+        <div id="authError" class="auth-error"></div>
+        
+        <div class="auth-field">
+            <label>Логин</label>
+            <input type="text" id="authUsername" placeholder="Введите логин" maxlength="30">
+        </div>
+        <div class="auth-field">
+            <label>Пароль</label>
+            <input type="password" id="authPassword" placeholder="Минимум 6 символов">
+        </div>
+        
+        <button class="auth-btn" id="authSubmitBtn">Войти</button>
+        <button class="auth-switch" id="authSwitchBtn">Нет аккаунта? Зарегистрироваться</button>
+    </div>
+
+    <!-- Основной контент (скрыт до входа) -->
+    <div id="appContent" style="display:none;">
+        <header>
+            <div class="logo">Гигрометры психометрические ВИТ</div>
+            <div class="user-info">
+                <span id="userNameDisplay"></span>
+                <button class="logout-btn" id="logoutBtn">Выйти</button>
+            </div>
+        </header>
+
+        <div class="content">
+            <h1>Гигрометры психометрические ВИТ</h1>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Реестр</th>
+                        <th>Название</th>
+                        <th>Срок действия</th>
+                        <th>Интервал между гос поверками</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>РБ 03 09 2059 23</td>
+                        <td>термоприбор-РФ(Вит1/Вит2)</td>
+                        <td>29.10.2003-12.03.2028</td>
+                        <td>24 месяца</td>
+                    </tr>
+                    <tr>
+                        <td>РБ 03 09 6804 18</td>
+                        <td>Шатлыгин-РФ(Вит1/Вит2)</td>
+                        <td>30.11.2018-04.12.2022</td>
+                        <td>24 месяца</td>
+                    </tr>
+                    <tr>
+                        <td>РБ 03 09 4032 15</td>
+                        <td>Шатлыгин-Укр(Вит-ш-1/Вит-ш-2/Вит-ш-3)</td>
+                        <td>29.04.2009-05.08.2017</td>
+                        <td>24 месяца</td>
+                    </tr>
+                    <tr>
+                        <td>РБ 03 09 1470 15</td>
+                        <td>Стеклоприбор-Укр(Вит-1/Вит-2/Вит-3)</td>
+                        <td>04.12.2001-28.04.2017</td>
+                        <td>24 месяца</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="bold">Гигрометр психометрические ВИТ шатлыгин в сфере законодательной метрологии.</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Номер п/п</th>
+                        <th>Год выпуска</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Я0523/20</td><td>2020</td></tr>
+                    <tr><td>в3747</td><td>2020</td></tr>
+                    <tr><td>Н2181/30</td><td>2019</td></tr>
+                    <tr><td>е0064/31</td><td>2021</td></tr>
+                    <tr><td>АВН760/29</td><td>2021</td></tr>
+                    <tr><td>А2838/40</td><td>2019</td></tr>
+                    <tr><td>АВВ</td><td>2021</td></tr>
+                    <tr><td>АВН</td><td>2021</td></tr>
+                    <tr><td>ААВ</td><td>2021</td></tr>
+                    <tr><td>AAR</td><td>2021</td></tr>
+                    <tr><td>ASM</td><td>2022</td></tr>
+                    <tr><td>ASN</td><td>2022</td></tr>
+                    <tr><td>P0374</td><td>2019</td></tr>
+                    <tr><td>АСМ7421/32</td><td>2022</td></tr>
+                    <tr><td>АСД</td><td>2022</td></tr>
+                    <tr><td>АКl2468/6</td><td>2022</td></tr>
+                    <tr><td>AFN0129/18</td><td>2021</td></tr>
+                    <tr><td>AET2048</td><td>2021</td></tr>
+                    <tr><td>АСМ1167</td><td>2021</td></tr>
+                </tbody>
+            </table>
+
+            <a href="index.html" class="back-button">Назад</a>
+        </div>
+    </div>
+
+    <script>
+        // Конфигурация Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
+            authDomain: "vlad-csms-af6df.firebaseapp.com",
+            databaseURL: "https://vlad-csms-af6df-default-rtdb.firebaseio.com",
+            projectId: "vlad-csms-af6df",
+            storageBucket: "vlad-csms-af6df.firebasestorage.app",
+            messagingSenderId: "417297799117",
+            appId: "1:417297799117:web:07ce2915cbfe0cb1499684",
+            measurementId: "G-0EMQB4HYSQ"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        const EMAIL_DOMAIN = "@invoice.local";
+        let isAuthMode = 'login';
+        let currentUser = null;
+
+        // Транслитерация
+        const TRANSLIT_MAP = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
+        function transliterate(s) { let r = ''; for (const c of s) { const l = c.toLowerCase(); r += (TRANSLIT_MAP[l] !== undefined) ? TRANSLIT_MAP[l] : c; } return r; }
+        function usernameToEmail(u) { const n = u.toLowerCase().trim(); return transliterate(n).replace(/[^a-z0-9._-]/g, '.') + EMAIL_DOMAIN; }
+        function validateUsername(u) { const t = u.trim(); if (t.length < 2 || t.length > 30) return false; return /^[а-яёa-z0-9\s._-]+$/i.test(t); }
+
+        // --- ЛОГИКА АВТОРИЗАЦИИ ---
+        function showAuthError(msg) {
+            const e = document.getElementById('authError');
+            e.textContent = msg;
+            e.style.display = 'block';
+        }
+
+        document.getElementById('authSwitchBtn').addEventListener('click', () => {
+            isAuthMode = isAuthMode === 'login' ? 'register' : 'login';
+            document.getElementById('authTitle').textContent = isAuthMode === 'login' ? 'Вход' : 'Регистрация';
+            document.getElementById('authSubmitBtn').textContent = isAuthMode === 'login' ? 'Войти' : 'Зарегистрироваться';
+            document.getElementById('authSwitchBtn').textContent = isAuthMode === 'login' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти';
+            document.getElementById('authError').style.display = 'none';
+        });
+
+        document.getElementById('authSubmitBtn').addEventListener('click', async () => {
+            const username = document.getElementById('authUsername').value.trim();
+            const password = document.getElementById('authPassword').value;
+            
+            if (!username || !password) { showAuthError('Заполните все поля'); return; }
+            if (!validateUsername(username)) { showAuthError('Логин: 2-30 символов (буквы, цифры, пробел, . _ -)'); return; }
+            if (password.length < 6) { showAuthError('Пароль должен быть минимум 6 символов'); return; }
+            
+            const btn = document.getElementById('authSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Загрузка...';
+            
+            const email = usernameToEmail(username);
+            const norm = username.toLowerCase().trim();
+            
+            try {
+                if (isAuthMode === 'login') {
+                    await auth.signInWithEmailAndPassword(email, password);
+                } else {
+                    const cred = await auth.createUserWithEmailAndPassword(email, password);
+                    await cred.user.updateProfile({ displayName: username });
+                    await db.ref('users/' + cred.user.uid).set({
+                        username: norm,
+                        displayName: username,
+                        name: username,
+                        createdAt: new Date().toISOString()
+                    });
+                    await db.ref('usernames/' + norm).set(cred.user.uid);
+                }
+            } catch (err) {
+                console.error(err);
+                const M = {
+                    'auth/user-not-found':'Пользователь не найден',
+                    'auth/wrong-password':'Неверный пароль',
+                    'auth/invalid-credential':'Неверный логин или пароль',
+                    'auth/invalid-email':'Некорректный логин',
+                    'auth/email-already-in-use':'Логин занят',
+                    'auth/weak-password':'Слабый пароль'
+                };
+                showAuthError(M[err.code] || err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = isAuthMode === 'login' ? 'Войти' : 'Зарегистрироваться';
+            }
+        });
+
+        document.getElementById('logoutBtn')?.addEventListener('click', () => {
+            if (confirm('Выйти?')) auth.signOut();
+        });
+
+        // --- СЛЕЖКА ЗА СОСТОЯНИЕМ ВХОДА И ПРОВЕРКА ОДОБРЕНИЯ ---
+        auth.onAuthStateChanged(async user => {
+            document.getElementById('authLoading').style.display = 'none';
+            
+            if (user) {
+                currentUser = user;
+                
+                let isApproved = false;
+                let isAdmin = false;
+                
+                try {
+                    const approvedSnap = await db.ref('approvedUsers/' + user.uid).once('value');
+                    isApproved = approvedSnap.exists();
+                    
+                    const adminSnap = await db.ref('admins/' + user.uid).once('value');
+                    isAdmin = adminSnap.val() === true;
+                } catch (err) {
+                    console.error('Ошибка проверки доступа:', err);
+                }
+
+                if (isApproved || isAdmin) {
+                    document.getElementById('authScreen').style.display = 'none';
+                    document.getElementById('appContent').style.display = 'block';
+                    document.getElementById('userNameDisplay').textContent = user.displayName || user.email.split('@')[0];
+                } else {
+                    document.getElementById('authScreen').style.display = 'block';
+                    document.getElementById('appContent').style.display = 'none';
+                    showAuthError('Ваша учётная запись ожидает одобрения администратором. Пожалуйста, свяжитесь с руководством.');
+                }
+            } else {
+                currentUser = null;
+                document.getElementById('authScreen').style.display = 'block';
+                document.getElementById('appContent').style.display = 'none';
+            }
+        });
+    </script>
 </body>
 </html>
