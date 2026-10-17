@@ -17,6 +17,54 @@
         .badge-approved { background: #10b981; color: white; }
         .badge-pending { background: #f59e0b; color: white; }
         .badge-admin { background: #ef4444; color: white; }
+        
+        /* Стили для модального окна */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 450px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .modal-box h3 {
+            margin-top: 0;
+            color: #dc3545;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+        .modal-box p {
+            font-size: 14px;
+            color: #475569;
+            margin-bottom: 15px;
+        }
+        .modal-box input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .modal-box input:focus {
+            border-color: #dc3545;
+            outline: none;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
     </style>
 </head>
 <body>
@@ -61,6 +109,20 @@
         </div>
     </div>
 
+    <!-- Модальное окно для удаления -->
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3>⚠️ Удаление пользователя</h3>
+            <p>Вы уверены, что хотите <b>навсегда удалить</b> пользователя <b id="deleteUserName"></b>?<br>Это действие нельзя отменить.</p>
+            <p>Чтобы подтвердить, введите слово <b>удалить</b> в поле ниже:</p>
+            <input type="text" id="deleteConfirmInput" placeholder="Введите слово 'удалить'">
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Отмена</button>
+                <button class="btn btn-danger" onclick="confirmDeleteUser()">Удалить</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDK (compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -85,6 +147,8 @@
         let isAdmin = false;
         let allUsers = {};
         let approvedUsers = {};
+        let pendingDeleteUid = null;
+        let pendingDeleteName = '';
 
         const EMAIL_DOMAIN = "@invoice.local";
         const TRANSLIT_MAP = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
@@ -144,7 +208,7 @@
             }
         });
 
-        // Загрузка списков (исправлено для гарантированной загрузки всех)
+        // Загрузка списков
         function loadUsers() {
             let usersLoaded = false;
             let approvedLoaded = false;
@@ -161,7 +225,7 @@
                 tryRender();
             }, err => {
                 console.error('Ошибка загрузки users:', err);
-                usersLoaded = true; // Чтобы не блокировать рендер
+                usersLoaded = true;
                 tryRender();
             });
 
@@ -181,7 +245,6 @@
             const container = document.getElementById('userList');
             if (!container) return;
             
-            // Формируем список из всех пользователей
             const arr = Object.entries(allUsers).map(([uid, u]) => ({
                 uid,
                 ...u,
@@ -214,7 +277,8 @@
                     } else {
                         actionBtn = `<button class="btn btn-sm btn-outline-warning me-2" onclick="revokeUser('${u.uid}')">⛔ Забрать доступ</button>`;
                     }
-                    actionBtn += `<button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${u.uid}')">🗑 Удалить</button>`;
+                    // Кнопка удаления теперь вызывает модальное окно
+                    actionBtn += `<button class="btn btn-sm btn-outline-danger" onclick="openDeleteModal('${u.uid}', '${escapeHtml(name).replace(/'/g, "\\'")}')">🗑 Удалить</button>`;
                 } else {
                     actionBtn = '<span class="text-muted small">Это вы</span>';
                 }
@@ -245,17 +309,50 @@
             } catch (e) { alert('Ошибка: ' + e.message); }
         }
 
-        async function deleteUser(uid) {
-            if (!confirm('Удалить пользователя НАВСЕГДА? (Вместе с его данными)')) return;
+        // Открытие модального окна удаления
+        function openDeleteModal(uid, name) {
+            pendingDeleteUid = uid;
+            pendingDeleteName = name;
+            document.getElementById('deleteUserName').textContent = name;
+            document.getElementById('deleteConfirmInput').value = '';
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+            pendingDeleteUid = null;
+            pendingDeleteName = '';
+        }
+
+        // Подтверждение удаления
+        async function confirmDeleteUser() {
+            const input = document.getElementById('deleteConfirmInput').value.trim().toLowerCase();
+            if (input !== 'удалить') {
+                alert('Введите слово "удалить" для подтверждения.');
+                return;
+            }
+
+            const uid = pendingDeleteUid;
+            const name = pendingDeleteName;
+            if (!uid) return;
+
             try {
+                // Удаляем все связанные данные
                 await db.ref('users/' + uid).remove();
                 await db.ref('approvedUsers/' + uid).remove();
                 await db.ref('admins/' + uid).remove();
                 await db.ref('invoices/' + uid).remove();
+                
                 // Логин тоже удаляем
                 const u = allUsers[uid];
                 if (u && u.username) await db.ref('usernames/' + u.username).remove();
-            } catch (e) { alert('Ошибка: ' + e.message); }
+
+                alert(`Пользователь "${name}" удалён.`);
+                closeDeleteModal();
+            } catch (e) {
+                console.error(e);
+                alert('Ошибка удаления: ' + e.message);
+            }
         }
 
         function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
