@@ -41,6 +41,7 @@
             margin-bottom: 20px;
             border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative;
         }
         
         h1 {
@@ -393,16 +394,126 @@
                 flex-direction: column;
             }
         }
+
+        /* --- Стили для логина --- */
+        .auth-container {
+            max-width: 400px;
+            margin: 50px auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 34, 68, 0.15);
+        }
+        .auth-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #003366;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .auth-field { margin-bottom: 15px; }
+        .auth-field label { display: block; margin-bottom: 5px; color: #003366; font-weight: 500; }
+        .auth-field input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e0e6ed;
+            border-radius: 6px;
+            background: #f8f9fb;
+        }
+        .auth-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(to bottom, #0066cc 0%, #003366 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .auth-btn:hover { background: linear-gradient(to bottom, #0088ff 0%, #0055aa 100%); }
+        .auth-switch {
+            display: block;
+            width: 100%;
+            text-align: center;
+            margin-top: 15px;
+            background: none;
+            border: none;
+            color: #0066cc;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .auth-switch:hover { text-decoration: underline; }
+        .auth-error {
+            background: #ffebee;
+            color: #d32f2f;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .logout-btn:hover { background: rgba(255, 255, 255, 0.3); }
     </style>
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 </head>
 <body>
-    <!-- Основное содержимое -->
-    <div id="main-content">
+    
+    <!-- Экран загрузки -->
+    <div id="authLoading" style="text-align:center; padding-top:100px; font-size:18px; color:#003366;">
+        Проверка входа...
+    </div>
+
+    <!-- Экран логина -->
+    <div id="authScreen" class="auth-container" style="display:none;">
+        <div class="auth-title" id="authTitle">Вход</div>
+        <div id="authError" class="auth-error"></div>
+        
+        <div class="auth-field">
+            <label>Логин</label>
+            <input type="text" id="authUsername" placeholder="Введите логин" maxlength="30">
+        </div>
+        <div class="auth-field">
+            <label>Пароль</label>
+            <input type="password" id="authPassword" placeholder="Минимум 6 символов">
+        </div>
+        
+        <button class="auth-btn" id="authSubmitBtn">Войти</button>
+        <button class="auth-switch" id="authSwitchBtn">Нет аккаунта? Зарегистрироваться</button>
+    </div>
+
+    <!-- Основное содержимое (скрыто до входа) -->
+    <div id="main-content" style="display:none;">
         <div class="sync-status" id="sync-status">Загрузка...</div>
         
         <header>
             <div class="container">
                 <h1>Система инвентаризации имущества</h1>
+                <div class="user-info">
+                    <span id="userNameDisplay"></span>
+                    <button class="logout-btn" id="logoutBtn">Выйти</button>
+                </div>
             </div>
         </header>
         
@@ -651,12 +762,8 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"></script>
-    
     <script>
-        // Firebase configuration
+        // Конфигурация Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I",
             authDomain: "vlad-csms-af6df.firebaseapp.com",
@@ -668,20 +775,132 @@
             measurementId: "G-0EMQB4HYSQ"
         };
 
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
         const database = firebase.database();
 
-        // Данные приложения
+        const EMAIL_DOMAIN = "@invoice.local";
+        let isAuthMode = 'login';
+        let currentUser = null;
+
+        // Транслитерация
+        const TRANSLIT_MAP = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
+        function transliterate(s) { let r = ''; for (const c of s) { const l = c.toLowerCase(); r += (TRANSLIT_MAP[l] !== undefined) ? TRANSLIT_MAP[l] : c; } return r; }
+        function usernameToEmail(u) { const n = u.toLowerCase().trim(); return transliterate(n).replace(/[^a-z0-9._-]/g, '.') + EMAIL_DOMAIN; }
+        function validateUsername(u) { const t = u.trim(); if (t.length < 2 || t.length > 30) return false; return /^[а-яёa-z0-9\s._-]+$/i.test(t); }
+
+        // --- ЛОГИКА АВТОРИЗАЦИИ ---
+        function showAuthError(msg) {
+            const e = document.getElementById('authError');
+            e.textContent = msg;
+            e.style.display = 'block';
+        }
+
+        document.getElementById('authSwitchBtn').addEventListener('click', () => {
+            isAuthMode = isAuthMode === 'login' ? 'register' : 'login';
+            document.getElementById('authTitle').textContent = isAuthMode === 'login' ? 'Вход' : 'Регистрация';
+            document.getElementById('authSubmitBtn').textContent = isAuthMode === 'login' ? 'Войти' : 'Зарегистрироваться';
+            document.getElementById('authSwitchBtn').textContent = isAuthMode === 'login' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти';
+            document.getElementById('authError').style.display = 'none';
+        });
+
+        document.getElementById('authSubmitBtn').addEventListener('click', async () => {
+            const username = document.getElementById('authUsername').value.trim();
+            const password = document.getElementById('authPassword').value;
+            
+            if (!username || !password) { showAuthError('Заполните все поля'); return; }
+            if (!validateUsername(username)) { showAuthError('Логин: 2-30 символов (буквы, цифры, пробел, . _ -)'); return; }
+            if (password.length < 6) { showAuthError('Пароль должен быть минимум 6 символов'); return; }
+            
+            const btn = document.getElementById('authSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Загрузка...';
+            
+            const email = usernameToEmail(username);
+            const norm = username.toLowerCase().trim();
+            
+            try {
+                if (isAuthMode === 'login') {
+                    await auth.signInWithEmailAndPassword(email, password);
+                } else {
+                    const cred = await auth.createUserWithEmailAndPassword(email, password);
+                    await cred.user.updateProfile({ displayName: username });
+                    await database.ref('users/' + cred.user.uid).set({
+                        username: norm,
+                        displayName: username,
+                        name: username,
+                        createdAt: new Date().toISOString()
+                    });
+                    await database.ref('usernames/' + norm).set(cred.user.uid);
+                }
+            } catch (err) {
+                console.error(err);
+                const M = {
+                    'auth/user-not-found':'Пользователь не найден',
+                    'auth/wrong-password':'Неверный пароль',
+                    'auth/invalid-credential':'Неверный логин или пароль',
+                    'auth/invalid-email':'Некорректный логин',
+                    'auth/email-already-in-use':'Логин занят',
+                    'auth/weak-password':'Слабый пароль'
+                };
+                showAuthError(M[err.code] || err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = isAuthMode === 'login' ? 'Войти' : 'Зарегистрироваться';
+            }
+        });
+
+        document.getElementById('logoutBtn')?.addEventListener('click', () => {
+            if (confirm('Выйти?')) auth.signOut();
+        });
+
+        // --- СЛЕЖКА ЗА СОСТОЯНИЕМ ВХОДА И ПРОВЕРКА ОДОБРЕНИЯ ---
+        auth.onAuthStateChanged(async user => {
+            document.getElementById('authLoading').style.display = 'none';
+            
+            if (user) {
+                currentUser = user;
+                
+                let isApproved = false;
+                let isAdmin = false;
+                
+                try {
+                    const approvedSnap = await database.ref('approvedUsers/' + user.uid).once('value');
+                    isApproved = approvedSnap.exists();
+                    
+                    const adminSnap = await database.ref('admins/' + user.uid).once('value');
+                    isAdmin = adminSnap.val() === true;
+                } catch (err) {
+                    console.error('Ошибка проверки доступа:', err);
+                }
+
+                if (isApproved || isAdmin) {
+                    document.getElementById('authScreen').style.display = 'none';
+                    document.getElementById('main-content').style.display = 'block';
+                    document.getElementById('userNameDisplay').textContent = user.displayName || user.email.split('@')[0];
+                    
+                    // Запуск приложения инвентаризации
+                    initInventoryApp();
+                } else {
+                    document.getElementById('authScreen').style.display = 'block';
+                    document.getElementById('main-content').style.display = 'none';
+                    showAuthError('Ваша учётная запись ожидает одобрения администратором. Пожалуйста, свяжитесь с руководством.');
+                }
+            } else {
+                currentUser = null;
+                document.getElementById('authScreen').style.display = 'block';
+                document.getElementById('main-content').style.display = 'none';
+            }
+        });
+
+        // === ОСНОВНАЯ ЛОГИКА ИНВЕНТАРИЗАЦИИ ===
         let inventoryData = {
             main: [],
             lowvalue: []
         };
         
-        // Текущий тип для группового добавления
         let currentBulkType = '';
 
-        // Функции для работы с Firebase
         async function saveDataToFirebase() {
             try {
                 updateSyncStatus('Синхронизация...', 'syncing');
@@ -703,14 +922,12 @@
                     updateSyncStatus('Данные загружены', 'success');
                     console.log('Данные загружены из Firebase');
                 } else {
-                    // Если данных нет в Firebase, используем локальные
                     loadDataFromLocalStorage();
-                    await saveDataToFirebase(); // Сохраняем локальные данные в Firebase
+                    await saveDataToFirebase();
                     updateSyncStatus('Новые данные созданы', 'success');
                 }
             } catch (error) {
                 console.error('Ошибка загрузки из Firebase:', error);
-                // При ошибке загружаем из localStorage
                 loadDataFromLocalStorage();
                 updateSyncStatus('Оффлайн режим', 'error');
             }
@@ -722,7 +939,6 @@
                 inventoryRef.on('value', (snapshot) => {
                     if (snapshot.exists()) {
                         const newData = snapshot.val();
-                        // Проверяем, отличаются ли данные
                         if (JSON.stringify(inventoryData) !== JSON.stringify(newData)) {
                             inventoryData = newData;
                             renderTables();
@@ -745,13 +961,11 @@
             }
         }
         
-        // Локальное хранилище как fallback
         function loadDataFromLocalStorage() {
             const savedData = localStorage.getItem('inventoryData');
             if (savedData) {
                 inventoryData = JSON.parse(savedData);
             } else {
-                // Инициализация тестовыми данными
                 inventoryData = {
                     main: [
                         { id: 1, name: "Компьютер", inventoryNumber: "INV001", quantity: 5, cabinet: "902", location: "Стол 1", hasSticker: true, status: "active" },
@@ -771,14 +985,12 @@
             localStorage.setItem('inventoryData', JSON.stringify(inventoryData));
         }
         
-        // Объединенная функция сохранения
         async function saveData() {
-            saveDataToLocalStorage(); // Всегда сохраняем локально
-            await saveDataToFirebase(); // Сохраняем в Firebase
+            saveDataToLocalStorage();
+            await saveDataToFirebase();
         }
         
-        // Инициализация приложения
-        async function initializeApp() {
+        async function initInventoryApp() {
             await loadDataFromFirebase();
             setupFirebaseRealtimeUpdates();
             renderTables();
@@ -787,13 +999,11 @@
             updateSyncStatus('Готово', 'success');
         }
         
-        // Генерация нового ID
         function generateId(type) {
             const maxId = inventoryData[type].reduce((max, item) => Math.max(max, item.id), 0);
             return maxId + 1;
         }
         
-        // Отображение таблиц
         function renderTables() {
             renderMainTable();
             renderLowvalueTable();
@@ -801,7 +1011,6 @@
             renderCabinetView();
         }
         
-        // Отображение таблицы основных средств
         function renderMainTable() {
             const tableBody = document.getElementById('main-table-body');
             tableBody.innerHTML = '';
@@ -834,7 +1043,6 @@
             });
         }
         
-        // Отображение таблицы малоценки
         function renderLowvalueTable() {
             const tableBody = document.getElementById('lowvalue-table-body');
             tableBody.innerHTML = '';
@@ -867,7 +1075,6 @@
             });
         }
         
-        // Отображение таблиц списанного имущества
         function renderWrittenOffTables() {
             const mainBody = document.getElementById('written-off-main-body');
             const lowvalueBody = document.getElementById('written-off-lowvalue-body');
@@ -917,7 +1124,6 @@
             }
         }
         
-        // Отображение представления по кабинетам
         function renderCabinetView() {
             const container = document.getElementById('cabinet-view-container');
             container.innerHTML = '';
@@ -1038,7 +1244,6 @@
             });
         }
         
-        // Фильтрация данных
         function filterData(data, type) {
             const nameFilter = document.getElementById(`${type}-filter-name`).value.toLowerCase();
             const invnumFilter = document.getElementById(`${type}-filter-invnum`).value.toLowerCase();
@@ -1053,7 +1258,6 @@
             });
         }
         
-        // Получение текста статуса
         function getStatusText(status) {
             switch(status) {
                 case 'active': return 'Активен';
@@ -1063,7 +1267,6 @@
             }
         }
         
-        // Открытие модального окна для добавления
         function openAddModal(type) {
             document.getElementById('modal-title').textContent = type === 'main' 
                 ? 'Добавить основное средство' 
@@ -1082,7 +1285,6 @@
             document.getElementById('item-modal').style.display = 'flex';
         }
         
-        // Открытие модального окна для редактирования
         function editItem(type, id) {
             const item = inventoryData[type].find(item => item.id === id);
             if (!item) return;
@@ -1104,7 +1306,6 @@
             document.getElementById('item-modal').style.display = 'flex';
         }
         
-        // Сохранение элемента
         async function saveItem(event) {
             event.preventDefault();
             
@@ -1151,7 +1352,6 @@
             closeModal();
         }
         
-        // Удаление элемента
         async function deleteItem(type, id) {
             if (confirm('Вы уверены, что хотите удалить этот элемент?')) {
                 inventoryData[type] = inventoryData[type].filter(item => item.id !== id);
@@ -1160,7 +1360,6 @@
             }
         }
         
-        // Изменение статуса списания
         async function toggleWriteOff(type, id) {
             const item = inventoryData[type].find(item => item.id === id);
             if (!item) return;
@@ -1175,12 +1374,10 @@
             renderTables();
         }
         
-        // Закрытие модального окна
         function closeModal() {
             document.getElementById('item-modal').style.display = 'none';
         }
         
-        // Функции для группового добавления
         function openBulkAddModal(type) {
             currentBulkType = type;
             document.getElementById('bulk-modal-title').textContent = type === 'main' 
@@ -1288,7 +1485,6 @@
             document.getElementById('bulk-add-modal').style.display = 'none';
         }
         
-        // Сортировка таблиц
         function setupSorting() {
             document.querySelectorAll('th[data-sort]').forEach(th => {
                 th.addEventListener('click', () => {
@@ -1329,9 +1525,7 @@
             });
         }
         
-        // Настройка обработчиков событий
         function setupEventListeners() {
-            // Обработчики для вкладок
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => {
                     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1346,31 +1540,25 @@
                 });
             });
             
-            // Обработчики для кнопок добавления
             document.getElementById('add-main-btn').addEventListener('click', () => openAddModal('main'));
             document.getElementById('add-lowvalue-btn').addEventListener('click', () => openAddModal('lowvalue'));
             
-            // Обработчики для кнопок группового добавления
             document.getElementById('bulk-add-main-btn').addEventListener('click', () => openBulkAddModal('main'));
             document.getElementById('bulk-add-lowvalue-btn').addEventListener('click', () => openBulkAddModal('lowvalue'));
             
-            // Обработчики для модального окна
             document.getElementById('item-form').addEventListener('submit', saveItem);
             document.querySelector('.close').addEventListener('click', closeModal);
             document.getElementById('cancel-btn').addEventListener('click', closeModal);
             
-            // Обработчики для модального окна группового добавления
             document.getElementById('bulk-add-table').addEventListener('paste', handleBulkPaste);
             document.getElementById('bulk-save-btn').addEventListener('click', saveBulkItems);
             document.getElementById('bulk-cancel-btn').addEventListener('click', closeBulkModal);
             document.getElementById('bulk-close').addEventListener('click', closeBulkModal);
             
-            // Обработчики для фильтров
             document.querySelectorAll('.filter-input').forEach(input => {
                 input.addEventListener('input', renderTables);
             });
             
-            // Закрытие модальных окон при клике вне их
             window.addEventListener('click', (event) => {
                 if (event.target === document.getElementById('item-modal')) {
                     closeModal();
@@ -1380,11 +1568,6 @@
                 }
             });
         }
-        
-        // Инициализация приложения после загрузки DOM
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeApp();
-        });
     </script>
 </body>
 </html>
