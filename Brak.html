@@ -385,22 +385,115 @@
     @media (max-width: 400px) {
       .title { font-size: 1.2rem; }
     }
+
+    /* Стили для экрана авторизации */
+    .auth-container {
+      max-width: 400px;
+      margin: 2rem auto;
+      background: #fff;
+      padding: 2rem;
+      border-radius: 1.5rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    }
+    .auth-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .auth-btn {
+      width: 100%;
+      padding: 0.85rem;
+      border-radius: 0.8rem;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-top: 0.5rem;
+    }
+    .auth-btn:hover { background: #1d4ed8; }
+    .auth-switch {
+      display: block;
+      width: 100%;
+      text-align: center;
+      margin-top: 1rem;
+      background: none;
+      border: none;
+      color: #2563eb;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .auth-switch:hover { text-decoration: underline; }
+    .auth-error {
+      background: #f8d7da;
+      color: #842029;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+    .logout-btn {
+      background: transparent;
+      border: 1px solid #e2e8f0;
+      padding: 0.3rem 0.6rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      color: #dc2626;
+      font-size: 0.8rem;
+      transition: all 0.15s;
+    }
+    .logout-btn:hover { background: #fee2e2; border-color: #fca5a5; }
   </style>
 </head>
 <body>
-  <!-- Экран загрузки, пока Firebase восстанавливает сессию -->
+  <!-- Экран загрузки -->
   <div id="authLoading">
     <div class="spinner"></div>
     <div>Проверка входа...</div>
   </div>
 
+  <!-- Экран Логина/Регистрации -->
+  <div id="authScreen" class="auth-container" style="display:none;">
+    <div class="auth-title" id="authTitle">Вход</div>
+    <div id="authError" class="auth-error"></div>
+    
+    <div class="field">
+      <label>Логин</label>
+      <input type="text" id="authUsername" placeholder="Введите логин" maxlength="30">
+    </div>
+    <div class="field">
+      <label>Пароль</label>
+      <input type="password" id="authPassword" placeholder="Минимум 6 символов">
+    </div>
+    
+    <button class="auth-btn" id="authSubmitBtn" onclick="handleAuthSubmit()">Войти</button>
+    <button class="auth-switch" id="authSwitchBtn" onclick="switchAuthMode()">Нет аккаунта? Зарегистрироваться</button>
+  </div>
+
+  <!-- Основное приложение -->
   <div class="app" id="appContent" style="display:none;">
     <div class="topbar">
       <div class="title">Быстрые <span>тексты</span></div>
-      <div style="display:flex; gap:0.4rem; align-items:center;">
+      <div style="display:flex; gap:0.6rem; align-items:center;">
         <div class="status" id="status">
           <span class="status-dot"></span>
           <span id="statusText">...</span>
+        </div>
+        <div class="user-info">
+          <span id="userNameDisplay" style="font-weight:600;color:#334155;"></span>
+          <button class="logout-btn" onclick="logout()">Выйти</button>
         </div>
         <button class="icon-btn" id="editModeBtn" title="Режим редактирования">✏️</button>
       </div>
@@ -424,10 +517,10 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
-      getDatabase, ref, onValue, push, update, remove
+      getDatabase, ref, onValue, push, update, remove, get, set
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
     import {
-      getAuth, onAuthStateChanged
+      getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -444,24 +537,103 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    // Ждём, пока Firebase восстановит сессию.
-    // Пока идёт проверка — показываем спиннер, НЕ редиректим.
-    const unsubAuth = onAuthStateChanged(auth, (user) => {
-      // Отписываемся — нам нужен только первый «настоящий» ответ
-      unsubAuth();
+    const EMAIL_DOMAIN = "@invoice.local";
+    let isAuthMode = 'login';
+    let currentUser = null;
 
-      if (!user) {
-        // Сессии нет — на страницу логина
-        window.location.replace('login.html');
-        return;
+    // Транслитерация для логина
+    const TRANSLIT_MAP = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
+    function transliterate(s) { let r = ''; for (const c of s) { const l = c.toLowerCase(); r += (TRANSLIT_MAP[l] !== undefined) ? TRANSLIT_MAP[l] : c; } return r; }
+    function usernameToEmail(u) { const n = u.toLowerCase().trim(); return transliterate(n).replace(/[^a-z0-9._-]/g, '.') + EMAIL_DOMAIN; }
+    function validateUsername(u) { const t = u.trim(); if (t.length < 2 || t.length > 30) return false; return /^[а-яёa-z0-9\s._-]+$/i.test(t); }
+
+    // Переключение режимов
+    window.switchAuthMode = function() {
+      isAuthMode = isAuthMode === 'login' ? 'register' : 'login';
+      document.getElementById('authTitle').textContent = isAuthMode === 'login' ? 'Вход' : 'Регистрация';
+      document.getElementById('authSubmitBtn').textContent = isAuthMode === 'login' ? 'Войти' : 'Зарегистрироваться';
+      document.getElementById('authSwitchBtn').textContent = isAuthMode === 'login' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти';
+      document.getElementById('authError').style.display = 'none';
+    };
+
+    function showAuthError(m) { 
+      const e = document.getElementById('authError'); 
+      e.textContent = m; 
+      e.style.display = 'block'; 
+    }
+
+    // Авторизация
+    window.handleAuthSubmit = async function() {
+      const username = document.getElementById('authUsername').value.trim();
+      const password = document.getElementById('authPassword').value;
+      
+      if (!username || !password) { showAuthError('Заполните все поля'); return; }
+      if (!validateUsername(username)) { showAuthError('Логин: 2-30 символов (буквы, цифры, пробел, . _ -)'); return; }
+      if (password.length < 6) { showAuthError('Пароль должен быть минимум 6 символов'); return; }
+      
+      const btn = document.getElementById('authSubmitBtn'); 
+      btn.disabled = true; 
+      btn.textContent = 'Загрузка...';
+      
+      const email = usernameToEmail(username); 
+      const norm = username.toLowerCase().trim();
+      
+      try {
+        if (isAuthMode === 'login') { 
+          await signInWithEmailAndPassword(auth, email, password); 
+        } else {
+          const cred = await createUserWithEmailAndPassword(auth, email, password);
+          try { await updateProfile(cred.user, { displayName: username }); } catch(e) {}
+          
+          // Записываем юзера в базу
+          await set(ref(db, 'users/' + cred.user.uid), { 
+            username: norm, 
+            displayName: username, 
+            name: username, 
+            createdAt: new Date().toISOString() 
+          });
+          await set(ref(db, 'usernames/' + norm), cred.user.uid);
+        }
+      } catch (err) {
+        console.error(err);
+        const M = {
+          'auth/user-not-found':'Пользователь не найден',
+          'auth/wrong-password':'Неверный пароль',
+          'auth/invalid-credential':'Неверный логин или пароль',
+          'auth/invalid-email':'Некорректный логин',
+          'auth/email-already-in-use':'Логин занят',
+          'auth/weak-password':'Слабый пароль'
+        };
+        showAuthError(M[err.code] || err.message);
+      } finally { 
+        btn.disabled = false; 
+        btn.textContent = isAuthMode === 'login' ? 'Войти' : 'Зарегистрироваться'; 
       }
+    };
 
-      // Сессия есть — показываем приложение и запускаем код
+    window.logout = async function() {
+      if (!confirm('Выйти?')) return;
+      try { await signOut(auth); } catch(e) { console.error(e); }
+    };
+
+    // Следим за состоянием входа
+    onAuthStateChanged(auth, (user) => {
       document.getElementById('authLoading').style.display = 'none';
-      document.getElementById('appContent').style.display = 'block';
-      initApp();
+      
+      if (user) {
+        currentUser = user;
+        document.getElementById('authScreen').style.display = 'none';
+        document.getElementById('appContent').style.display = 'block';
+        document.getElementById('userNameDisplay').textContent = user.displayName || user.email.split('@')[0];
+        initApp();
+      } else {
+        currentUser = null;
+        document.getElementById('authScreen').style.display = 'block';
+        document.getElementById('appContent').style.display = 'none';
+      }
     });
 
+    // === ОСНОВНАЯ ЛОГИКА ПРИЛОЖЕНИЯ ===
     function initApp() {
       let sections = {};
       let items = {};
@@ -672,156 +844,4 @@
         if (copyBtn) {
           const id = copyBtn.dataset.copy;
           const it = items[id];
-          if (it) await copyText(it.text || '', copyBtn);
-          return;
-        }
-
-        const addItem = t.closest('[data-add-item]');
-        if (addItem) {
-          openItemModal(null, addItem.dataset.addItem);
-          return;
-        }
-
-        const editSec = t.closest('[data-edit-section]');
-        if (editSec) {
-          const s = sections[editSec.dataset.editSection];
-          if (s) openSectionModal(editSec.dataset.editSection, s.name);
-          return;
-        }
-
-        const delSec = t.closest('[data-delete-section]');
-        if (delSec) {
-          const id = delSec.dataset.deleteSection;
-          const s = sections[id];
-          const count = Object.values(items).filter(it => it.sectionId === id).length;
-          if (confirm(`Удалить раздел «${s?.name}»?` + (count ? `\nВсе тексты в нём (${count}) тоже удалятся.` : ''))) {
-            const updates = {};
-            updates[`sections/${id}`] = null;
-            Object.entries(items).forEach(([iid, it]) => {
-              if (it.sectionId === id) updates[`items/${iid}`] = null;
-            });
-            await update(ref(db), updates);
-            openSections.delete(id);
-            showToast('Раздел удалён');
-          }
-          return;
-        }
-
-        const editIt = t.closest('[data-edit-item]');
-        if (editIt) {
-          const it = items[editIt.dataset.editItem];
-          if (it) openItemModal(editIt.dataset.editItem, it.sectionId, it);
-          return;
-        }
-
-        const delIt = t.closest('[data-delete-item]');
-        if (delIt) {
-          const id = delIt.dataset.deleteItem;
-          const it = items[id];
-          if (confirm(`Удалить текст «${it?.label || 'без названия'}»?`)) {
-            await remove(ref(db, `items/${id}`));
-            showToast('Текст удалён');
-          }
-          return;
-        }
-      });
-
-      addBtn.addEventListener('click', () => openSectionModal(null));
-
-      function openSectionModal(id, currentName = '') {
-        const isEdit = !!id;
-        modal.innerHTML = `
-          <div class="modal-title">${isEdit ? 'Переименовать раздел' : 'Новый раздел'}</div>
-          <div class="field">
-            <label>Название раздела</label>
-            <input type="text" id="mSectionName" placeholder="Например: Ответы клиентам" value="${escapeHtml(currentName)}">
-          </div>
-          <div class="modal-actions">
-            <button class="btn btn-cancel" id="mCancel">Отмена</button>
-            <button class="btn btn-save" id="mSave">${isEdit ? 'Сохранить' : 'Создать'}</button>
-          </div>
-        `;
-        overlay.classList.add('open');
-        setTimeout(() => modal.querySelector('#mSectionName').focus(), 50);
-
-        const close = () => overlay.classList.remove('open');
-        modal.querySelector('#mCancel').onclick = close;
-        modal.querySelector('#mSave').onclick = async () => {
-          const name = modal.querySelector('#mSectionName').value.trim();
-          if (!name) { showToast('Введите название'); return; }
-          if (isEdit) {
-            await update(ref(db, `sections/${id}`), { name });
-          } else {
-            const order = Date.now();
-            await push(ref(db, 'sections'), { name, order });
-          }
-          close();
-          showToast(isEdit ? 'Переименовано' : 'Раздел создан');
-        };
-        modal.querySelector('#mSectionName').addEventListener('keydown', e => {
-          if (e.key === 'Enter') modal.querySelector('#mSave').click();
-        });
-      }
-
-      function openItemModal(id, sectionId, current = null) {
-        const isEdit = !!id;
-        const sectionOptions = Object.entries(sections)
-          .map(([sid, s]) => ({ id: sid, ...s }))
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
-
-        modal.innerHTML = `
-          <div class="modal-title">${isEdit ? 'Изменить текст' : 'Новый текст'}</div>
-          <div class="field">
-            <label>Раздел</label>
-            <select id="mSection">
-              ${sectionOptions.map(s => `
-                <option value="${s.id}" ${s.id === sectionId ? 'selected' : ''}>${escapeHtml(s.name)}</option>
-              `).join('')}
-            </select>
-          </div>
-          <div class="field">
-            <label>Название (чтобы было понятно, что копируешь)</label>
-            <input type="text" id="mLabel" placeholder="Например: Приветствие" value="${escapeHtml(current?.label || '')}">
-          </div>
-          <div class="field">
-            <label>Текст для копирования</label>
-            <textarea id="mText" placeholder="Вставь сюда текст...">${escapeHtml(current?.text || '')}</textarea>
-          </div>
-          <div class="modal-actions">
-            <button class="btn btn-cancel" id="mCancel">Отмена</button>
-            <button class="btn btn-save" id="mSave">${isEdit ? 'Сохранить' : 'Создать'}</button>
-          </div>
-        `;
-        overlay.classList.add('open');
-        setTimeout(() => modal.querySelector('#mLabel').focus(), 50);
-
-        const close = () => overlay.classList.remove('open');
-        modal.querySelector('#mCancel').onclick = close;
-        modal.querySelector('#mSave').onclick = async () => {
-          const label = modal.querySelector('#mLabel').value.trim();
-          const text = modal.querySelector('#mText').value;
-          const sid = modal.querySelector('#mSection').value;
-          if (!label) { showToast('Введите название'); return; }
-          if (!text.trim()) { showToast('Введите текст'); return; }
-          if (isEdit) {
-            await update(ref(db, `items/${id}`), { label, text, sectionId: sid });
-          } else {
-            const order = Date.now();
-            await push(ref(db, 'items'), { label, text, sectionId: sid, order });
-          }
-          close();
-          showToast(isEdit ? 'Текст обновлён' : 'Текст добавлен');
-        };
-      }
-
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) overlay.classList.remove('open');
-      });
-
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') overlay.classList.remove('open');
-      });
-    }
-  </script>
-</body>
-</html>
+          if (it) await copy
