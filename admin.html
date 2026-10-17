@@ -144,18 +144,35 @@
             }
         });
 
-        // Загрузка списков
+        // Загрузка списков (исправлено для гарантированной загрузки всех)
         function loadUsers() {
-            // Слушаем всех пользователей
+            let usersLoaded = false;
+            let approvedLoaded = false;
+
+            function tryRender() {
+                if (usersLoaded && approvedLoaded) {
+                    renderUserList();
+                }
+            }
+
             db.ref('users').on('value', snap => {
                 allUsers = snap.val() || {};
-                renderUserList();
+                usersLoaded = true;
+                tryRender();
+            }, err => {
+                console.error('Ошибка загрузки users:', err);
+                usersLoaded = true; // Чтобы не блокировать рендер
+                tryRender();
             });
 
-            // Слушаем одобренных
             db.ref('approvedUsers').on('value', snap => {
                 approvedUsers = snap.val() || {};
-                renderUserList();
+                approvedLoaded = true;
+                tryRender();
+            }, err => {
+                console.error('Ошибка загрузки approvedUsers:', err);
+                approvedLoaded = true;
+                tryRender();
             });
         }
 
@@ -164,11 +181,12 @@
             const container = document.getElementById('userList');
             if (!container) return;
             
+            // Формируем список из всех пользователей
             const arr = Object.entries(allUsers).map(([uid, u]) => ({
                 uid,
                 ...u,
                 isApproved: !!approvedUsers[uid],
-                isAdmin: u.isAdmin === true || false // Если в users есть флаг, или проверяем отдельно
+                isAdmin: u.isAdmin === true || false
             })).sort((a,b) => (a.name || '').localeCompare(b.name || '', 'ru'));
 
             if (!arr.length) {
