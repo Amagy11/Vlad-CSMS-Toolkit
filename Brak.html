@@ -616,16 +616,39 @@
       try { await signOut(auth); } catch(e) { console.error(e); }
     };
 
-    // Следим за состоянием входа
-    onAuthStateChanged(auth, (user) => {
+    // Следим за состоянием входа и проверяем одобрение
+    onAuthStateChanged(auth, async (user) => {
       document.getElementById('authLoading').style.display = 'none';
       
       if (user) {
         currentUser = user;
-        document.getElementById('authScreen').style.display = 'none';
-        document.getElementById('appContent').style.display = 'block';
-        document.getElementById('userNameDisplay').textContent = user.displayName || user.email.split('@')[0];
-        initApp();
+        
+        // Проверяем, одобрен ли пользователь или является ли он админом
+        let isApproved = false;
+        let isAdmin = false;
+        
+        try {
+          const approvedSnap = await get(ref(db, 'approvedUsers/' + user.uid));
+          isApproved = approvedSnap.exists();
+          
+          const adminSnap = await get(ref(db, 'admins/' + user.uid));
+          isAdmin = adminSnap.val() === true;
+        } catch (err) {
+          console.error('Ошибка проверки доступа:', err);
+        }
+
+        if (isApproved || isAdmin) {
+          // Доступ разрешен
+          document.getElementById('authScreen').style.display = 'none';
+          document.getElementById('appContent').style.display = 'block';
+          document.getElementById('userNameDisplay').textContent = user.displayName || user.email.split('@')[0];
+          initApp();
+        } else {
+          // Пользователь не одобрен
+          document.getElementById('authScreen').style.display = 'block';
+          document.getElementById('appContent').style.display = 'none';
+          showAuthError('Ваша учётная запись ожидает одобрения администратором. Пожалуйста, свяжитесь с руководством.');
+        }
       } else {
         currentUser = null;
         document.getElementById('authScreen').style.display = 'block';
