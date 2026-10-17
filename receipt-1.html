@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Сверка реестров СИ</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #1a1a2e; }
+  .container { max-width: 1400px; margin: 0 auto; }
+  h1 { text-align: center; color: #0f3460; margin-bottom: 30px; font-size: 28px; }
+  .upload-panel { display: flex; flex-wrap: wrap; gap: 30px; margin-bottom: 30px; justify-content: center; }
+  .upload-box { background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px; flex: 1; min-width: 320px; }
+  .upload-box h3 { margin-top: 0; color: #16213e; border-bottom: 2px solid #e94560; display: inline-block; padding-bottom: 5px; }
+  .upload-box label { display: block; margin: 15px 0 8px; font-weight: 600; color: #0f3460; }
+  .upload-box input[type="file"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+  .file-info { font-size: 13px; color: #555; margin-top: 8px; word-break: break-all; }
+  .file-list { margin-top: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; padding: 8px 12px; font-size: 13px; max-height: 140px; overflow: auto; }
+  .file-list ul { margin: 0; padding-left: 18px; }
+  .file-list li { margin: 2px 0; word-break: break-all; }
+  .preview { background: #f8f9fa; border-radius: 10px; padding: 12px; margin-top: 15px; font-size: 12px; max-height: 160px; overflow: auto; border: 1px solid #ddd; font-family: monospace; white-space: pre-wrap; }
+  .controls { text-align: center; margin: 20px 0; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  button { background: #e94560; color: white; border: none; padding: 12px 32px; font-size: 18px; border-radius: 40px; cursor: pointer; font-weight: bold; transition: 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+  button:hover:not(:disabled) { background: #c72a48; transform: scale(1.02); }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  button.secondary { background: #2c3e66; }
+  button.secondary:hover:not(:disabled) { background: #1f2c4d; }
+  button.clear { background: #6c757d; }
+  button.clear:hover:not(:disabled) { background: #565e64; }
+  .result-section { background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px; margin-top: 20px; }
+  .result-section h3 { margin-top: 0; color: #16213e; }
+  .stats { background: #e9ecef; padding: 12px; border-radius: 10px; margin-bottom: 20px; font-weight: 500; }
+  .stats .badge { background: #e94560; color: white; padding: 4px 12px; border-radius: 30px; font-size: 13px; font-weight: bold; display: inline-block; margin-right: 10px; }
+  .stats .ok { background: #2a7f6e; color: white; padding: 4px 12px; border-radius: 30px; font-size: 13px; font-weight: bold; display: inline-block; margin-right: 10px; }
+  .table-wrapper { overflow-x: auto; max-height: 500px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: monospace; }
+  th, td { border: 1px solid #dee2e6; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #16213e; color: white; position: sticky; top: 0; z-index: 10; font-family: 'Segoe UI', sans-serif; }
+  tr:nth-child(even) { background: #f8f9fa; }
+  .error { color: #e94560; background: #ffe6e9; padding: 12px; border-radius: 10px; margin-top: 15px; }
+  .footer { margin-top: 30px; text-align: center; font-size: 13px; color: #6c757d; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="container">
+  <h1>🔍 Сверка реестров СИ</h1>
+
+  <div class="upload-panel">
+    <div class="upload-box">
+      <h3>📁 Левый файл (свидетельства о поверке)</h3>
+      <label>CSV / TXT (колонки: Номер госреестра СИ, номер СУТ, Наименование СИ):</label>
+      <input type="file" id="fileLeft" accept=".csv,.txt">
+      <div class="file-info" id="leftInfo">Файл не выбран</div>
+      <div class="preview" id="leftPreview">— Предпросмотр —</div>
+    </div>
+
+    <div class="upload-box">
+      <h3>📁 Правые файлы (реестры СИ)</h3>
+      <label>XLSX (лист «данные»: A=тип СИ, D=номер ГРСИ, E=номер СУТ). Можно выбрать несколько:</label>
+      <input type="file" id="fileRight" accept=".xlsx,.xls" multiple>
+      <div class="file-info" id="rightInfo">Файлы не выбраны</div>
+      <div class="file-list" id="rightList"><ul><li>— список пуст —</li></ul></div>
+      <div class="preview" id="rightPreview">— Предпросмотр первого файла —</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="compareBtn">🚀 Сверить</button>
+    <button id="clearBtn" class="clear">🗑 Очистить</button>
+  </div>
+
+  <div id="resultContainer" class="result-section" style="display: none;">
+    <h3>📋 Результат: <span id="resultTitle"></span></h3>
+    <div class="stats" id="statsInfo"></div>
+    <div class="table-wrapper" id="resultTableWrapper">
+      <table id="resultTable">
+        <thead id="resultHeader"></thead>
+        <tbody id="resultBody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top: 20px;">
+      <button id="copyBtn" class="secondary" style="margin-right:10px;">📋 Копировать CSV</button>
+      <button id="downloadBtn" class="secondary">💾 Скачать CSV</button>
+    </div>
+  </div>
+
+  <div class="footer">
+    Правило: для каждой строки левого файла ищется строка в <b>объединённом</b> правом реестре (из всех выбранных файлов),
+    где одновременно совпадают <b>Номер госреестра СИ</b> = <b>номер ГРСИ</b> (кол. D),
+    <b>номер СУТ</b> = <b>номер СУТ</b> (кол. E),
+    <b>Наименование СИ</b> = <b>тип СИ</b> (кол. A).
+    Выводятся строки левого файла, для которых совпадений НЕТ.
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   НОРМАЛИЗАЦИЯ
+   ============================================================ */
+function norm(s) {
+  if (s === null || s === undefined) return '';
+  let t = String(s);
+  t = t.replace(/\u00A0/g, ' ');
+  t = t.replace(/[\t\r\n]+/g, ' ');
+  t = t.replace(/\s+/g, ' ').trim();
+  t = t.replace(/[«»“”„‟]/g, '"');
+  t = t.replace(/[‘’‚‛]/g, "'");
+  t = t.replace(/ё/g, 'е').replace(/Ё/g, 'Е');
+  t = t.toLowerCase();
+  return t;
+}
+
+/* ============================================================
+   ОПРЕДЕЛЕНИЕ КОДИРОВКИ
+   ------------------------------------------------------------
+   Идея: пробуем UTF-8. Затем проверяем, "похож ли" текст на
+   нормальный русский/латиница. Если доля странных символов
+   высокая — перечитываем как windows-1251 / koi8-r.
+   ============================================================ */
+function isLikelyReadable(text) {
+  // Берём первые 2000 символов
+  const sample = text.slice(0, 2000);
+  let good = 0, bad = 0;
+  for (const ch of sample) {
+    const code = ch.codePointAt(0);
+    // допустимые: ASCII печатные, \t\r\n, кириллица, типографские символы
+    if (
+      (code >= 0x20 && code <= 0x7E) ||            // ASCII printable
+      ch === '\t' || ch === '\r' || ch === '\n' ||
+      (code >= 0x0400 && code <= 0x04FF) ||        // кириллица
+      (code >= 0x2010 && code <= 0x203A) ||        // типографские
+      code === 0x2116 || code === 0x00AB || code === 0x00BB ||  // № « »
+      code === 0x2013 || code === 0x2014 ||        // – —
+      code === 0x2026                             // …
+    ) {
+      good++;
+    } else {
+      bad++;
+    }
+  }
+  const total = good + bad;
+  if (total === 0) return true;
+  return bad / total < 0.05;   // <5% странных → читаемо
+}
+
+function decodeText(buffer) {
+  const attempts = [
+    { enc: 'utf-8',        label: 'UTF-8' },
+    { enc: 'windows-1251', label: 'windows-1251' },
+    { enc: 'koi8-r',       label: 'KOI8-R' },
+  ];
+  for (const a of attempts) {
+    try {
+      const text = new TextDecoder(a.enc, { fatal: false }).decode(buffer);
+      if (isLikelyReadable(text)) return { text, encoding: a.label };
+    } catch (e) { /* браузер не знает кодировку — пропускаем */ }
+  }
+  // fallback — UTF-8 как есть
+  return {
+    text: new TextDecoder('utf-8', { fatal: false }).decode(buffer),
+    encoding: 'UTF-8 (fallback)'
+  };
+}
+
+/* ============================================================
+   ПАРСЕР CSV ("" и переносы внутри полей)
+   ============================================================ */
+function parseCSV(text, delim = ';') {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === delim) { row.push(field); field = ''; }
+      else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (ch === '\r') { /* ignore */ }
+      else field += ch;
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+function detectDelimiter(text) {
+  const first = text.split(/\r?\n/)[0] || '';
+  const counts = { ';': 0, ',': 0, '\t': 0 };
+  for (const c of first) if (c in counts) counts[c]++;
+  let best = ';', max = -1;
+  for (const [d, n] of Object.entries(counts)) if (n > max) { max = n; best = d; }
+  return best;
+}
+
+/* ============================================================
+   ЧТЕНИЕ ОДНОГО ФАЙЛА → { headers, rows, encoding }
+   ============================================================ */
+async function readFile(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const sheetName = wb.SheetNames.includes('данные') ? 'данные' : wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    const headers = (aoa[0] || []).map(x => String(x || '').trim());
+    const rows = aoa.slice(1).filter(r => r.some(c => String(c).trim() !== ''));
+    return { headers, rows, encoding: 'xlsx' };
+  } else {
+    const buf = await file.arrayBuffer();
+    let { text, encoding } = decodeText(buf);
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    const delim = detectDelimiter(text);
+    const aoa = parseCSV(text, delim);
+    const headers = (aoa[0] || []).map(x => String(x || '').trim());
+    const rows = aoa.slice(1).filter(r => r.some(c => String(c).trim() !== ''));
+    return { headers, rows, encoding };
+  }
+}
+
+/* ============================================================
+   ПОИСК КОЛОНКИ: сначала точные фразы, потом общие
+   ============================================================ */
+function findCol(headers, exactFirst, looseSecond) {
+  const lower = headers.map(h => h.toLowerCase().trim());
+  // 1) точное вхождение
+  for (const needle of exactFirst) {
+    const idx = lower.findIndex(h => h === needle);
+    if (idx >= 0) return idx;
+  }
+  // 2) частичное вхождение
+  for (const needle of exactFirst) {
+    const idx = lower.findIndex(h => h.includes(needle));
+    if (idx >= 0) return idx;
+  }
+  // 3) общие варианты
+  for (const needle of looseSecond) {
+    const idx = lower.findIndex(h => h.includes(needle));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+/* ============================================================
+   СВЕРКА
+   ============================================================ */
+let lastMissing = [];
+let leftHeaders = [];
+
+async function compare() {
+  const btn = document.getElementById('compareBtn');
+  btn.disabled = true;
+  btn.textContent = 'Обработка…';
+
+  try {
+    const fL = document.getElementById('fileLeft').files[0];
+    const fRs = Array.from(document.getElementById('fileRight').files);
+
+    if (!fL) { alert('Выберите левый CSV-файл!'); return; }
+    if (!fRs.length) { alert('Выберите хотя бы один правый XLSX-файл!'); return; }
+
+    /* --- левый --- */
+    const L = await readFile(fL);
+
+    let iL_GRSI = findCol(
+      L.headers,
+      ['номер госреестра си', 'номер госреестра', 'номер грси'],
+      ['госреестр', 'грси']
+    );
+    let iL_SUT = findCol(
+      L.headers,
+      ['идентификационный номер (номер сут)', 'идентификационный номер (номер сут)', '(номер сут)'],
+      ['сут']
+    );
+    let iL_NAME = findCol(
+      L.headers,
+      ['наименование си', 'наименование'],
+      ['тип си']
+    );
+
+    // fallback по позициям — только если по заголовкам не нашли
+    const posOk = L.headers.length > 8;
+    if (iL_GRSI < 0 && posOk) iL_GRSI = 5;
+    if (iL_SUT  < 0 && posOk) iL_SUT  = 6;
+    if (iL_NAME < 0 && posOk) iL_NAME = 8;
+
+    if (iL_GRSI < 0 || iL_SUT < 0 || iL_NAME < 0) {
+      const missing = [];
+      if (iL_GRSI < 0) missing.push('«Номер госреестра СИ»');
+      if (iL_SUT  < 0) missing.push('«Идентификационный номер (номер СУТ)»');
+      if (iL_NAME < 0) missing.push('«Наименование СИ»');
+      throw new Error(
+        'В левом CSV не найдены колонки: ' + missing.join(', ') +
+        '. Кодировка: ' + L.encoding +
+        '. Заголовки: ' + L.headers.join(' | ')
+      );
+    }
+
+    /* --- правые: объединяем в один Set --- */
+    const rightSet = new Set();
+    const skippedFiles = [];
+
+    for (const fR of fRs) {
+      let R;
+      try {
+        R = await readFile(fR);
+      } catch (e) {
+        console.warn('Не удалось прочитать', fR.name, e);
+        skippedFiles.push(fR.name + ' (ошибка чтения)');
+        continue;
+      }
+      // фактическое число колонок — по первой строке данных или по headers
+      const colCount = Math.max(
+        (R.headers || []).length,
+        R.rows.length ? (R.rows[0] || []).length : 0
+      );
+      if (colCount < 5) {
+        console.warn('Пропущен (мало колонок):', fR.name, 'colCount=', colCount);
+        skippedFiles.push(fR.name + ' (мало колонок: ' + colCount + ')');
+        continue;
+      }
+      const iR_NAME = 0, iR_GRSI = 3, iR_SUT = 4;
+      for (const r of R.rows) {
+        const key = norm(r[iR_GRSI]) + '|' + norm(r[iR_SUT]) + '|' + norm(r[iR_NAME]);
+        rightSet.add(key);
+      }
+    }
+
+    if (rightSet.size === 0) {
+      throw new Error(
+        'Не удалось прочитать ни одного правого файла (или все пустые). ' +
+        (skippedFiles.length ? 'Пропущены: ' + skippedFiles.join('; ') : '')
+      );
+    }
+
+    /* --- сравнение --- */
+    lastMissing = [];
+    for (const r of L.rows) {
+      const g = r[iL_GRSI], s = r[iL_SUT], n = r[iL_NAME];
+      if (!g && !s && !n) continue;
+      const key = norm(g) + '|' + norm(s) + '|' + norm(n);
+      if (!rightSet.has(key)) {
+        lastMissing.push({ row: r, grsi: g, sut: s, name: n });
+      }
+    }
+
+    leftHeaders = L.headers;
+    renderResult(L.rows.length, rightSet.size, fRs.length, L.encoding, skippedFiles);
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('resultContainer').style.display = 'block';
+    document.getElementById('resultTitle').textContent = 'Ошибка';
+    document.getElementById('statsInfo').innerHTML =
+      `<div class="error">${escapeHtml(err.message)}</div>`;
+    document.getElementById('resultTableWrapper').innerHTML = '';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Сверить';
+  }
+}
+
+/* ============================================================
+   РЕНДЕР (не уничтожает <table>)
+   ============================================================ */
+function renderResult(totalLeft, totalRightKeys, rightFilesCount, encoding, skippedFiles) {
+  const rc = document.getElementById('resultContainer');
+  rc.style.display = 'block';
+
+  const title = document.getElementById('resultTitle');
+  const stats = document.getElementById('statsInfo');
+  const tw = document.getElementById('resultTableWrapper');
+  const thead = document.getElementById('resultHeader');
+  const tbody = document.getElementById('resultBody');
+
+  const filesLabel = rightFilesCount === 1
+    ? '1 правый файл'
+    : `${rightFilesCount} правых файлов`;
+  const encLabel = encoding ? `, кодировка левого: ${encoding}` : '';
+  const skippedLabel = skippedFiles && skippedFiles.length
+    ? `<div style="margin-top:8px;color:#b45309;">⚠ Пропущены: ${skippedFiles.map(escapeHtml).join('; ')}</div>`
+    : '';
+
+  // Восстанавливаем таблицу, если её ранее заменили
+  if (!document.getElementById('resultTable')) {
+    tw.innerHTML =
+      '<table id="resultTable"><thead id="resultHeader"></thead><tbody id="resultBody"></tbody></table>';
+  }
+
+  const thead2 = document.getElementById('resultHeader');
+  const tbody2 = document.getElementById('resultBody');
+
+  if (lastMissing.length === 0) {
+    title.innerHTML = '✅ Все записи найдены';
+    stats.innerHTML =
+      `<span class="ok">Найдено: ${totalLeft}</span> из ${totalLeft} строк левого файла ` +
+      `(${filesLabel}, уникальных ключей: ${totalRightKeys}${encLabel})` + skippedLabel;
+    thead2.innerHTML = '';
+    tbody2.innerHTML = '';
+    return;
+  }
+
+  title.innerHTML = `❌ Не найдено ${lastMissing.length} записей`;
+  stats.innerHTML =
+    `<span class="badge">Не найдено: ${lastMissing.length}</span> из ${totalLeft} строк ` +
+    `(${filesLabel}, уникальных ключей: ${totalRightKeys}${encLabel})` + skippedLabel;
+
+  let h = '<tr>';
+  for (const c of leftHeaders) h += `<th>${escapeHtml(c)}</th>`;
+  h += '</tr>';
+  thead2.innerHTML = h;
+
+  let body = '';
+  for (const m of lastMissing) {
+    body += '<tr>';
+    for (const cell of m.row) body += `<td>${escapeHtml(cell)}</td>`;
+    body += '</tr>';
+  }
+  tbody2.innerHTML = body;
+}
+
+/* ============================================================
+   ЭКРАНИРОВАНИЕ
+   ============================================================ */
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ============================================================
+   ЭКСПОРТ CSV
+   ============================================================ */
+function buildCSV() {
+  const esc = v => {
+    const s = (v === null || v === undefined) ? '' : String(v);
+    return '"' + s.replace(/"/g, '""') + '"';
+  };
+  const lines = [];
+  lines.push(leftHeaders.map(esc).join(';'));
+  for (const m of lastMissing) lines.push(m.row.map(esc).join(';'));
+  return lines.join('\n');
+}
+
+/* ============================================================
+   ОБРАБОТЧИКИ
+   ============================================================ */
+document.getElementById('compareBtn').addEventListener('click', compare);
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  if (!lastMissing.length) { alert('Нет данных'); return; }
+  navigator.clipboard.writeText(buildCSV()).then(
+    () => alert('CSV скопирован в буфер обмена'),
+    () => alert('Не удалось скопировать')
+  );
+});
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  if (!lastMissing.length) { alert('Нет данных'); return; }
+  const blob = new Blob(['\uFEFF' + buildCSV()], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ne_naydennye.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('fileLeft').value = '';
+  document.getElementById('fileRight').value = '';
+  document.getElementById('leftInfo').textContent = 'Файл не выбран';
+  document.getElementById('leftPreview').textContent = '— Предпросмотр —';
+  document.getElementById('rightInfo').textContent = 'Файлы не выбраны';
+  document.getElementById('rightList').innerHTML = '<ul><li>— список пуст —</li></ul>';
+  document.getElementById('rightPreview').textContent = '— Предпросмотр первого файла —';
+  document.getElementById('resultContainer').style.display = 'none';
+  lastMissing = [];
+  leftHeaders = [];
+});
+
+/* ============================================================
+   ПРЕДПРОСМОТР
+   ============================================================ */
+function attachLeftPreview() {
+  const input = document.getElementById('fileLeft');
+  const info = document.getElementById('leftInfo');
+  const prev = document.getElementById('leftPreview');
+  input.addEventListener('change', async () => {
+    const f = input.files[0];
+    if (!f) {
+      info.textContent = 'Файл не выбран';
+      prev.textContent = '— Предпросмотр —';
+      return;
+    }
+    try {
+      const buf = await f.arrayBuffer();
+      const { text, encoding } = decodeText(buf);
+      info.textContent = `📄 ${f.name} (${(f.size / 1024).toFixed(1)} KB) — ${encoding}`;
+      const clean = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+      prev.textContent = clean.split(/\r?\n/).slice(0, 5).join('\n').slice(0, 800);
+    } catch (e) {
+      info.textContent = `📄 ${f.name} — ошибка чтения`;
+      prev.textContent = 'Ошибка предпросмотра: ' + e.message;
+    }
+  });
+}
+
+function attachRightPreview() {
+  const input = document.getElementById('fileRight');
+  const info = document.getElementById('rightInfo');
+  const list = document.getElementById('rightList');
+  const prev = document.getElementById('rightPreview');
+
+  input.addEventListener('change', async () => {
+    const files = Array.from(input.files);
+    if (!files.length) {
+      info.textContent = 'Файлы не выбраны';
+      list.innerHTML = '<ul><li>— список пуст —</li></ul>';
+      prev.textContent = '— Предпросмотр первого файла —';
+      return;
+    }
+    info.textContent = `Выбрано файлов: ${files.length}`;
+    list.innerHTML = '<ul>' + files.map(f =>
+      `<li>📄 ${escapeHtml(f.name)} <span style="color:#888">(${(f.size/1024).toFixed(1)} KB)</span></li>`
+    ).join('') + '</ul>';
+
+    const f = files[0];
+    try {
+      const buf = await f.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheetName = wb.SheetNames.includes('данные') ? 'данные' : wb.SheetNames[0];
+      const aoa = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
+      prev.textContent = aoa.slice(0, 5).map(r => r.join(' | ')).join('\n').slice(0, 800);
+    } catch (e) {
+      prev.textContent = 'Ошибка предпросмотра: ' + e.message;
+    }
+  });
+}
+
+attachLeftPreview();
+attachRightPreview();
+</script>
+</body>
+</html>
