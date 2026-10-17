@@ -245,7 +245,9 @@ const EMAIL_DOMAIN = "@invoice.local";
 function stripUndefined(obj) { const c = {}; Object.keys(obj).forEach(k => { const v = obj[k]; if (v === undefined) c[k] = ''; else if (v === null) c[k] = null; else c[k] = v; }); return c; }
 
 /* ===== РАСЧЁТ СРОКА (исправлено, соответствует эталону) ===== */
+// Праздники РБ — без года (MM-DD), работают для любого года
 const HOLIDAYS_RB = ['01-01','01-02','01-07','03-08','04-21','05-01','05-09','07-03','11-07','12-25'];
+// Рабочие субботы (переносы)
 const WORKING_SATURDAYS_RB = ['2026-04-25'];
 
 function toISO(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
@@ -260,6 +262,7 @@ function isWeekday(date) {
   return true;
 }
 
+// Обратная совместимость — используется в других местах
 function isNonWorkingDay(date) { return !isWeekday(date); }
 
 function rollBackToWorkday(d) {
@@ -269,6 +272,7 @@ function rollBackToWorkday(d) {
   return r;
 }
 
+// 30 календарных дней: день старта = день №1 → +29, затем откат на рабочий день
 function addCalendarDays(dateStr, n) {
   const d = parseDate(dateStr);
   if (!d) return null;
@@ -277,11 +281,13 @@ function addCalendarDays(dateStr, n) {
   return rollBackToWorkday(r);
 }
 
+// N рабочих дней: день старта = день №1
 function addWorkingDays(dateStr, n) {
   const d = parseDate(dateStr);
   if (!d) return null;
   const r = new Date(d);
   let g = 0;
+  // подтягиваем старт вперёд до рабочего дня
   while (!isWeekday(r) && g < 60) { r.setDate(r.getDate() + 1); g++; }
   let counted = 1;
   if (n <= 1) return new Date(r);
@@ -618,14 +624,6 @@ onAuthStateChanged(auth, async (user) => {
   document.getElementById('loadingScreen').style.display = 'none';
   if (user) {
     currentUser = user;
-    
-    // ПРОВЕРКА ОДОБРЕНИЯ
-    let isApproved = false;
-    try {
-      const approvedSnap = await get(ref(database, 'approvedUsers/' + user.uid));
-      isApproved = approvedSnap.exists();
-    } catch(e) { console.error('Ошибка проверки одобрения:', e); }
-    
     let name = user.displayName || user.email.split('@')[0];
     let isAdmin = false;
     try {
@@ -634,17 +632,6 @@ onAuthStateChanged(auth, async (user) => {
       const a = await get(ref(database, 'admins/' + user.uid));
       if (a.exists() && a.val() === true) isAdmin = true;
     } catch(e) {}
-    
-    // Админ всегда одобрен
-    if (isAdmin) isApproved = true;
-
-    if (!isApproved) {
-      document.getElementById('authScreen').style.display = 'block';
-      document.getElementById('appScreen').style.display = 'none';
-      showAuthError('Ваша учётная запись ожидает одобрения администратором. Пожалуйста, свяжитесь с руководством.');
-      return;
-    }
-
     currentUserName = name; currentIsAdmin = isAdmin;
     document.getElementById('authScreen').style.display = 'none';
     document.getElementById('appScreen').style.display = 'block';
@@ -899,411 +886,4 @@ function readTable1(file, callback) {
           if (!dev && lastDev) dev = lastDev;
           if (inv) lastInv = inv; if (invDate) lastDate = invDate; if (contr) lastContr = contr; if (dev) lastDev = dev;
           if (!inv && !dev && !amt && !tot && !qty) continue;
-          const cont = (code && nm) ? (code + ' ' + nm) : (code || nm || '');
-          all.push({'Номер счета': inv || '', 'Дата выписки': invDate || '', 'Контрагент (Наименование)': contr || '', 'Контингент': cont || '', 'Прибор': dev || '', 'Кол-во': qty || '', 'Сумма': amt || '', 'Всего по счету': tot || amt || '', 'Оплата': '', 'Дата оплаты': payDate || '', place: curPlace, type: curType, distributed: false, distributedTo: '', distributedToName: '', distributedAt: '', distributedBy: '', distributedByName: '', copied: false, status: 'new', statusDate: null, paymentStatus: '', urgency: ''});
-        }
-      });
-      console.log(`📄 Excel: загружено ${all.length}`);
-      all = resolvePriorities(all);
-      callback(all);
-    } catch (err) { console.error(err); alert('Ошибка чтения: ' + err.message); }
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function loadTable1() {
-  const fi = document.getElementById('table1File');
-  if (!fi.files[0]) { alert('Выберите файл'); return; }
-  const tUid = viewingUid, tName = viewingName;
-  readTable1(fi.files[0], function(newData) {
-    if (tUid !== viewingUid) { alert('Переключён — отмена'); return; }
-    if (!newData.length) { alert('Не найдено'); return; }
-    const ex = new Map();
-    table1Data.forEach((r, i) => ex.set(rowKey(r), i));
-    let a = 0, u = 0;
-    newData.forEach(nr => { const k = rowKey(nr); if (ex.has(k)) { table1Data[ex.get(k)] = mergeRow(table1Data[ex.get(k)], nr); u++; } else { table1Data.push(nr); ex.set(k, table1Data.length - 1); a++; } });
-    table1Data = resolvePriorities(table1Data);
-    console.log(`📄 Excel: +${a}, ~${u}, всего ${table1Data.length}`);
-    applySharedStatuses(); saveToStorage(); renderTable(); updateDistributedBanner();
-    if (!autoCleanChecked) { autoCleanChecked = true; checkAutoClean(); }
-    const d = document.getElementById('table1Info'); d.style.display = 'block';
-    d.innerHTML = `✅ +${a}, ~${u}, всего ${table1Data.length}`;
-    setTimeout(() => d.style.display = 'none', 7000);
-  });
-}
-
-function saveToStorage() {
-  if (!viewingUid) return;
-  localStorage.setItem('cache_' + viewingUid + '_table1', JSON.stringify(table1Data));
-  if (isRemoteUpdate) return;
-  if (!currentUser || !userInvoicesRef) return;
-  const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
-  setSyncStatus('syncing', 'Синхронизация...');
-  set(userInvoicesRef, { table1Data: c1, updatedAt: new Date().toISOString() })
-    .then(() => { setSyncStatus('online', 'ОК'); setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000); })
-    .catch(err => { console.error(err); setSyncStatus('offline', 'Ошибка'); });
-  updateDeviceTypes();
-}
-
-function loadFromStorage() {
-  if (!viewingUid) return;
-  const c = localStorage.getItem('cache_' + viewingUid + '_table1');
-  if (c) { try { table1Data = JSON.parse(c); } catch(e) { table1Data = []; } } else table1Data = [];
-  table1Data = table1Data.map(r => ({ ...r, place: r.place || 'csm', type: r.type || 'common' }));
-  updateDeviceTypes(); renderTable(); updateDistributedBanner();
-}
-
-function subscribeToUserData(uid) {
-  if (unsubInvoices) unsubInvoices();
-  userInvoicesRef = ref(database, 'invoices/' + uid);
-  unsubInvoices = onValue(userInvoicesRef, (snap) => {
-    const data = snap.val();
-    if (data) {
-      isRemoteUpdate = true;
-      table1Data = (data.table1Data || []).map(r => ({ ...r, place: r.place || 'csm', type: r.type || 'common' }));
-      applySharedStatuses(); updateDeviceTypes(); renderTable(); isRemoteUpdate = false;
-    } else { table1Data = []; updateDeviceTypes(); renderTable(); }
-    updateDistributedBanner();
-    if (!autoCleanChecked) { autoCleanChecked = true; checkAutoClean(); }
-    setSyncStatus('online', 'Онлайн');
-  }, (err) => { console.error(err); setSyncStatus('offline', 'Ошибка'); });
-}
-
-function subscribeToSharedStatuses() {
-  if (unsubShared) unsubShared();
-  sharedStatusesRef = ref(database, 'sharedStatuses');
-  unsubShared = onValue(sharedStatusesRef, (snap) => {
-    sharedStatuses = snap.val() || {};
-    applySharedStatuses(); renderTable(); updateDistributedBanner();
-  }, (err) => console.error(err));
-}
-
-function applySharedStatuses() {
-  table1Data = table1Data.map(row => {
-    const k = fbKey(rowKey(row));
-    const s = sharedStatuses[k];
-    let r = { ...row };
-    if (s && s.status) { r.status = s.status; r.statusDate = s.statusDate; r.statusChangedBy = s.changedByName || s.changedByEmail || ''; }
-    else if (row.status !== 'new') { r.status = 'new'; r.statusDate = null; r.statusChangedBy = ''; }
-    return r;
-  });
-}
-
-function updateDeviceTypes() {
-  deviceTypes.clear();
-  table1Data.forEach(row => { const d = row['Прибор'] || ''; if (d && d.trim()) deviceTypes.add(d.split(' ').slice(0, 3).join(' ')); });
-  renderDeviceTags();
-}
-function renderDeviceTags() {
-  const c = document.getElementById('deviceTags'); c.innerHTML = '';
-  Array.from(deviceTypes).sort().forEach(d => {
-    const t = document.createElement('span'); t.className = 'device-tag badge bg-light text-dark border';
-    if (selectedDevices.has(d)) t.classList.add('active');
-    t.textContent = d;
-    t.onclick = () => { if (selectedDevices.has(d)) selectedDevices.delete(d); else selectedDevices.add(d); renderDeviceTags(); renderTable(); };
-    c.appendChild(t);
-  });
-  if (selectedDevices.size > 0) { const r = document.createElement('button'); r.className = 'btn btn-sm btn-outline-secondary ms-2'; r.textContent = 'Сбросить'; r.onclick = () => { selectedDevices.clear(); renderDeviceTags(); renderTable(); }; c.appendChild(r); }
-}
-
-async function changeStatus(key, ns) {
-  if (!currentUser) return;
-  const now = new Date().toISOString();
-  table1Data = table1Data.map(r => rowKey(r) === key ? { ...r, status: ns, statusDate: now } : r);
-  if (userInvoicesRef) { const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''})); set(userInvoicesRef, { table1Data: c1, updatedAt: now }).catch(err => console.error(err)); }
-  const sk = fbKey(key);
-  if (ns === 'new') remove(ref(database, 'sharedStatuses/' + sk)).catch(err => console.error(err));
-  else set(ref(database, 'sharedStatuses/' + sk), { status: ns, statusDate: now, changedBy: currentUser.uid, changedByEmail: currentUser.email, changedByName: currentUserName }).catch(err => console.error(err));
-  renderTable();
-}
-
-function clearAllData() {
-  if (!currentUser || !viewingUid) return;
-  if (!confirm('Удалить ВСЕ счета?')) return;
-  table1Data = [];
-  selectedDevices.clear(); selectedPlaces.clear(); selectedTypes.clear(); selectedSections.clear(); selectedStatuses.clear(); selectedDistributedUsers.clear();
-  document.querySelectorAll('.device-tag, .section-btn, .status-btn, .place-btn, .type-btn').forEach(b => b.classList.remove('active'));
-  renderDeviceTags(); renderUserFilters(); hideCleanBanner();
-  remove(ref(database, 'invoices/' + viewingUid)).catch(err => console.error(err));
-  localStorage.removeItem('cache_' + viewingUid + '_table1');
-  updateDeviceTypes(); renderTable(); updateDistributedBanner();
-}
-
-function calculateTerm(row) {
-  const ds = row.paymentDate || row['Дата оплаты'];
-  if (!ds) return { date: null, label: '' };
-  const fast = row.type === 'budget' || row.type === 'urgent';
-  if (fast) return { date: addWorkingDays(ds, 5), label: '5 раб.' };
-  return { date: addCalendarDays(ds, 30), label: '30 кал.' };
-}
-
-function getCleanCandidates() {
-  const th = new Date(); th.setMonth(th.getMonth() - 2); th.setHours(0,0,0,0);
-  const c = [];
-  table1Data.forEach(row => {
-    if (row.status !== 'completed') return;
-    let rd = row.statusDate ? new Date(row.statusDate) : (row['Дата выписки'] ? parseDate(row['Дата выписки']) : null);
-    if (!rd || isNaN(rd.getTime())) return;
-    if (rd < th) c.push(row);
-  });
-  return c;
-}
-function checkAutoClean() {
-  if (cleanDismissedThisSession) return;
-  if (!table1Data.length) { hideCleanBanner(); return; }
-  pendingCleanRows = getCleanCandidates();
-  if (!pendingCleanRows.length) { hideCleanBanner(); return; }
-  document.getElementById('cleanCount').textContent = pendingCleanRows.length;
-  const n = pendingCleanRows.length, m10 = n % 10, m100 = n % 100;
-  let w = 'счетов';
-  if (m10 === 1 && m100 !== 11) w = 'счет'; else if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) w = 'счета';
-  document.getElementById('cleanWord').textContent = w;
-  let e = null, l = null;
-  pendingCleanRows.forEach(r => { const d = r.statusDate ? new Date(r.statusDate) : parseDate(r['Дата выписки']); if (!d || isNaN(d.getTime())) return; if (!e || d < e) e = d; if (!l || d > l) l = d; });
-  if (e && l) { const mm = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; const f = (d) => `${mm[d.getMonth()]} ${d.getFullYear()}`; document.getElementById('cleanPeriod').textContent = (f(e) === f(l)) ? f(e) : `${f(e)} — ${f(l)}`; }
-  else document.getElementById('cleanPeriod').textContent = 'старше 2 мес.';
-  document.getElementById('cleanBanner').classList.add('open');
-}
-function hideCleanBanner() { const b = document.getElementById('cleanBanner'); if (b) b.classList.remove('open'); }
-function dismissAutoClean() { cleanDismissedThisSession = true; hideCleanBanner(); }
-async function performAutoClean() {
-  if (!pendingCleanRows.length) { hideCleanBanner(); return; }
-  const c = pendingCleanRows.length;
-  if (!confirm(`Удалить ${c}?`)) return;
-  const ktr = new Set(); pendingCleanRows.forEach(r => ktr.add(rowKey(r)));
-  table1Data = table1Data.filter(r => !pendingCleanRows.some(p => rowKey(p) === rowKey(r)));
-  const fkr = Array.from(ktr).map(fbKey);
-  saveToStorage();
-  for (const fk of fkr) { try { await remove(ref(database, 'sharedStatuses/' + fk)); } catch(e) {} }
-  pendingCleanRows = []; hideCleanBanner(); renderTable();
-  alert(`Удалено ${c}`);
-}
-
-function openDistModal(key) {
-  if (!currentIsAdmin) { alert('Только админ'); return; }
-  if (viewingUid !== currentUser.uid) { alert('Только со своих данных'); return; }
-  const row = table1Data.find(r => rowKey(r) === key);
-  if (!row) return;
-  distributingRowKey = key;
-  document.getElementById('distInvoiceInfo').textContent = `${row['Номер счета']} | ${row['Прибор'] || '—'} | ${row['Контингент'] || ''}`;
-  const list = document.getElementById('distUserList'); list.innerHTML = '';
-  const arr = Object.entries(allUsersCache).map(([uid, u]) => ({uid, ...u})).sort((a,b) => (a.name || '').localeCompare(b.name || '', 'ru'));
-  const curTo = row.distributedTo || '';
-  if (curTo) { const cb = document.createElement('button'); cb.className = 'btn btn-warning w-100 mb-3'; cb.textContent = '❌ Отменить'; cb.onclick = () => cancelDistribution(); list.appendChild(cb); }
-  if (!arr.length) { const d = document.createElement('div'); d.className = 'text-muted text-center py-3'; d.textContent = 'Нет пользователей'; list.appendChild(d); }
-  else arr.forEach(u => { if (u.uid === currentUser.uid) return; const it = document.createElement('div'); it.className = 'dist-user-item' + (u.uid === curTo ? ' dist-current' : ''); it.textContent = `👤 ${u.name || u.username || u.uid}` + (u.uid === curTo ? ' ✓' : ''); it.onclick = () => assignToUser(u.uid, u.name || u.username || u.uid); list.appendChild(it); });
-  document.getElementById('distModal').classList.add('open'); document.body.style.overflow = 'hidden';
-}
-
-async function assignToUser(userUid, userName) {
-  if (!currentIsAdmin || !distributingRowKey) return;
-  if (userUid === currentUser.uid) { alert('Нельзя себе'); return; }
-  const key = distributingRowKey; const now = new Date().toISOString();
-  const idx = table1Data.findIndex(r => rowKey(r) === key);
-  if (idx === -1) { closeDistModal(); return; }
-  const adminRow = table1Data[idx];
-  table1Data[idx] = { ...adminRow, distributedTo: userUid, distributedToName: userName, distributedAt: now };
-  let ut = [];
-  try { const s = await get(ref(database, 'invoices/' + userUid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) {}
-  const ei = ut.findIndex(r => rowKey(r) === key);
-  if (ei >= 0) ut[ei] = { ...ut[ei], distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now };
-  else ut.push(stripUndefined({ ...adminRow, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now, copied: true, distributedTo: '', distributedToName: '' }));
-  setSyncStatus('syncing', 'Распределение...');
-  try {
-    await set(ref(database, 'invoices/' + userUid + '/table1Data'), ut);
-    const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
-    await set(userInvoicesRef, { table1Data: c1, updatedAt: now });
-    try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key))); } catch(e) {}
-    setSyncStatus('online', 'ОК');
-  } catch(e) { console.error(e); alert('Ошибка: ' + e.message); return; }
-  closeDistModal(); renderUserFilters(); renderTable();
-  alert(`📦 Распределено «${userName}»`);
-}
-
-async function cancelDistribution() {
-  if (!currentIsAdmin || !distributingRowKey) return;
-  const key = distributingRowKey; const row = table1Data.find(r => rowKey(r) === key);
-  if (!row || !row.distributedTo) { closeDistModal(); return; }
-  const userUid = row.distributedTo; const userName = row.distributedToName || userUid;
-  if (!confirm(`Отменить распределение для «${userName}»?`)) return;
-  const now = new Date().toISOString();
-  const idx = table1Data.findIndex(r => rowKey(r) === key);
-  if (idx >= 0) table1Data[idx] = { ...table1Data[idx], distributedTo: '', distributedToName: '', distributedAt: '' };
-  let ut = [];
-  try { const s = await get(ref(database, 'invoices/' + userUid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) {}
-  const ui = ut.findIndex(r => rowKey(r) === key);
-  if (ui >= 0) { const uRow = ut[ui]; if (uRow.copied) ut.splice(ui, 1); else ut[ui] = { ...uRow, distributed: false, distributedBy: '', distributedByName: '', distributedAt: '' }; }
-  try {
-    await set(ref(database, 'invoices/' + userUid + '/table1Data'), ut);
-    const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
-    await set(userInvoicesRef, { table1Data: c1, updatedAt: now });
-    try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key))); } catch(e) {}
-  } catch(e) { console.error(e); alert('Ошибка: ' + e.message); return; }
-  closeDistModal(); renderUserFilters(); renderTable();
-  alert(`📦 Отменено для «${userName}»`);
-}
-
-function setupScrollSync() {
-  const ts = document.getElementById('topScroll'), tsi = document.getElementById('topScrollInner');
-  const bs = document.getElementById('bottomScroll'), t = document.getElementById('invoicesTable');
-  if (!ts || !bs || !t) return;
-  function upd() { if (tsi && t) tsi.style.width = t.scrollWidth + 'px'; }
-  upd();
-  ts.addEventListener('scroll', () => { bs.scrollLeft = ts.scrollLeft; });
-  bs.addEventListener('scroll', () => { ts.scrollLeft = bs.scrollLeft; });
-  window.addEventListener('resize', upd);
-  window.__updateTopScrollWidth = upd;
-}
-window.addEventListener('load', setupScrollSync);
-
-function renderTable() {
-  const tbody = document.getElementById('tableBody');
-  const sq = document.getElementById('search').value.trim().toLowerCase();
-  const showOwner = currentIsAdmin, showDistCol = currentIsAdmin && viewingUid === currentUser.uid;
-  document.getElementById('ownerColHeader').style.display = showOwner ? 'table-cell' : 'none';
-  document.getElementById('distributedColHeader').style.display = showDistCol ? 'table-cell' : 'none';
-
-  let fd = [...table1Data];
-  if (selectedStatuses.size > 0) {
-    fd = fd.filter(row => {
-      for (const s of selectedStatuses) {
-        if (s === 'new' && row.status === 'new') return true;
-        if (s === 'inwork' && row.status === 'inwork') return true;
-        if (s === 'completed' && row.status === 'completed') return true;
-        if (s === 'highlighted' && (row.place === 'etalon' || row.place === 'onsite' || row.type === 'budget' || row.type === 'urgent')) return true;
-      }
-      return false;
-    });
-  }
-  if (selectedPlaces.size > 0) fd = fd.filter(row => selectedPlaces.has(row.place || 'csm'));
-  if (selectedTypes.size > 0) fd = fd.filter(row => selectedTypes.has(row.type || 'common'));
-  if (selectedSections.size > 0) fd = fd.filter(row => selectedSections.has('distributed') && row.distributed);
-  if (currentIsAdmin && viewingUid === currentUser.uid && selectedDistributedUsers.size > 0) fd = fd.filter(row => selectedDistributedUsers.has(row.distributedTo));
-  if (selectedDevices.size > 0) fd = fd.filter(row => { const d = (row['Прибор'] || '').split(' ').slice(0, 3).join(' '); return selectedDevices.has(d); });
-  if (sq) fd = fd.filter(row => {
-    const inv = safeString(row['Номер счета']), cont = safeString(row['Контингент']), dev = safeString(row['Прибор']);
-    const pd = safeString(row.paymentDate || row['Дата оплаты']), ur = safeString(row.urgency);
-    const pl = safeString(placeLabel(row.place)), ty = safeString(typeLabel(row.type));
-    return inv.includes(sq) || cont.includes(sq) || dev.includes(sq) || pd.includes(sq) || ur.includes(sq) || pl.includes(sq) || ty.includes(sq);
-  });
-  if (sortByDate === 'earliest') fd.sort((a, b) => { const da = parseDate(a.paymentDate || a['Дата оплаты']), db = parseDate(b.paymentDate || b['Дата оплаты']); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return da - db; });
-  else if (sortByDate === 'latest') fd.sort((a, b) => { const da = parseDate(a.paymentDate || a['Дата оплаты']), db = parseDate(b.paymentDate || b['Дата оплаты']); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db - da; });
-  else if (sortByDate === 'noDate') fd = fd.filter(row => !row.paymentDate && !row['Дата оплаты']);
-  document.getElementById('dateSortIndicator').textContent = sortByDate === 'earliest' ? '↑' : sortByDate === 'latest' ? '↓' : sortByDate === 'noDate' ? '∅' : '';
-
-  document.getElementById('totalCount').textContent = table1Data.length;
-  document.getElementById('newCount').textContent = table1Data.filter(r => r.status === 'new').length;
-  document.getElementById('inworkCount').textContent = table1Data.filter(r => r.status === 'inwork').length;
-  document.getElementById('completedCount').textContent = table1Data.filter(r => r.status === 'completed').length;
-  document.getElementById('highlightedCount').textContent = table1Data.filter(r => r.place === 'etalon' || r.place === 'onsite' || r.type === 'budget' || r.type === 'urgent').length;
-  document.getElementById('urgentCount').textContent = table1Data.filter(r => r.type === 'urgent').length;
-
-  const sl = { 'new':'Новые','inwork':'В работе','completed':'Выполненные','highlighted':'С пометками' };
-  let title = 'Все счета';
-  if (currentIsAdmin && viewingUid !== currentUser.uid) title = `[${viewingName}] Все счета`;
-  if (selectedStatuses.size > 0) title = Array.from(selectedStatuses).map(s => sl[s]).join(' + ');
-  if (selectedPlaces.size > 0) title += ` / место: ${Array.from(selectedPlaces).map(placeLabel).join(' + ')}`;
-  if (selectedTypes.size > 0) title += ` / тип: ${Array.from(selectedTypes).map(typeLabel).join(' + ')}`;
-  if (selectedSections.size > 0) title += ` / Распределённые`;
-  if (selectedDistributedUsers.size > 0) {
-    const names = Array.from(selectedDistributedUsers).map(uid => { const u = allUsersCache[uid]; return u ? (u.name || u.username) : uid; });
-    title += ` / распределено: ${names.join(', ')}`;
-  }
-  if (selectedDevices.size > 0) title += ` / приборы: ${Array.from(selectedDevices).join(', ')}`;
-  if (sortByDate === 'earliest') title += ' (сначала ранние)';
-  if (sortByDate === 'latest') title += ' (сначала поздние)';
-  if (sortByDate === 'noDate') title += ' (без даты)';
-  if (sq) title += ` (поиск: "${sq}")`;
-  document.getElementById('tableTitle').textContent = `📋 ${title} (${fd.length})`;
-
-  tbody.innerHTML = '';
-  const colsCount = 13 + (showOwner ? 1 : 0) + (showDistCol ? 1 : 0);
-
-  if (!fd.length) { tbody.innerHTML = `<tr><td colspan="${colsCount}" class="text-center text-muted">Нет данных.</td></tr>`; }
-  else {
-    const ownerLabel = currentIsAdmin ? (viewingUid === currentUser.uid ? currentUserName + ' (вы)' : viewingName) : '';
-    const today = new Date(); today.setHours(0,0,0,0);
-    const isAdminSelf = currentIsAdmin && viewingUid === currentUser.uid;
-
-    fd.forEach(row => {
-      const tr = document.createElement('tr');
-      if (row.status === 'inwork') tr.classList.add('status-inwork');
-      if (row.status === 'completed') tr.classList.add('status-completed');
-      const place = row.place || 'csm'; const type = row.type || 'common';
-      if (type === 'budget') tr.classList.add('budget'); else if (type === 'urgent') tr.classList.add('urgent');
-      if (place === 'etalon') tr.classList.add('etalon'); else if (place === 'onsite') tr.classList.add('onsite');
-      if (place === 'etalon' || place === 'onsite' || type === 'budget' || type === 'urgent') tr.classList.add('highlighted');
-
-      const pd = row.paymentDate || row['Дата оплаты'] || '';
-      const key = rowKey(row).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-      const changedBy = row.statusChangedBy ? `<br><small class="text-muted">${row.statusChangedBy}</small>` : '';
-      const term = calculateTerm(row);
-      let termHtml = '—';
-      if (term.date) {
-        const dd = Math.ceil((term.date.getTime() - today.getTime()) / 86400000);
-        let cls = 'term-ok';
-        if (dd < 0) cls = 'term-expired'; else if (dd <= 3) cls = 'term-soon';
-        termHtml = `<span class="${cls}" title="${term.label}">${formatDate(term.date)}</span>`;
-      }
-      const distributedBadge = row.distributed ? `<span class="badge badge-distributed ms-1">📦 Распределённый</span>` : '';
-      const distCell = showDistCol ? `<td class="col-distributed">${row.distributedToName ? '👤 ' + escapeHtml(row.distributedToName) : '<span class="text-muted">—</span>'}</td>` : '';
-
-      if (isAdminSelf) {
-        tr.classList.add('admin-clickable');
-        tr.title = 'Нажмите для распределения';
-        tr.onclick = (e) => { if (e.target.closest('button')) return; openDistModal(key); };
-      }
-
-      tr.innerHTML = `
-        <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong>${distributedBadge}</td>
-        ${showOwner ? `<td><small>${escapeHtml(ownerLabel)}</small></td>` : ''}
-        <td><span class="badge ${placeBadgeClass(place)} me-1">${placeLabel(place)}</span><span class="badge ${typeBadgeClass(type)}">${typeLabel(type)}</span></td>
-        <td class="col-date">${row['Дата выписки'] || ''}</td>
-        <td class="col-contractor">${row['Контингент'] || ''}</td>
-        <td>${row['Прибор'] || ''}</td>
-        <td class="col-qty">${formatQty(row['Кол-во'])}</td>
-        <td class="col-sum">${row['Всего по счету'] || row['Сумма'] || ''}</td>
-        <td class="col-date">${pd ? `<strong>${pd}</strong>` : '—'}</td>
-        <td class="col-date">${termHtml}</td>
-        <td>${row.urgency ? `<span class="badge badge-urgent">${row.urgency} дн.</span>` : '—'}</td>
-        <td>${row.status === 'new' ? '<span class="badge badge-new">Новый</span>' : ''}${row.status === 'inwork' ? `<span class="badge badge-inwork">В работе</span>${changedBy}` : ''}${row.status === 'completed' ? `<span class="badge badge-completed">✓ Выполнен</span>${changedBy}` : ''}</td>
-        <td>${type === 'budget' ? '<span class="badge badge-budget me-1">Бюджет</span>' : ''}${type === 'urgent' ? '<span class="badge badge-urgent me-1">Срочно</span>' : ''}${place === 'etalon' ? '<span class="badge badge-etalon me-1">Эталон</span>' : ''}${place === 'onsite' ? '<span class="badge badge-onsite me-1">Выездной</span>' : ''}${type === 'common' && place === 'csm' ? '<span class="text-muted">—</span>' : ''}</td>
-        ${distCell}
-        <td>
-          ${row.status === 'new' ? `<button class="btn btn-sm btn-info me-1" onclick="event.stopPropagation();changeStatus('${key}', 'inwork')">▶</button><button class="btn btn-sm btn-success" onclick="event.stopPropagation();changeStatus('${key}', 'completed')">✓</button>` : ''}
-          ${row.status === 'inwork' ? `<button class="btn btn-sm btn-success me-1" onclick="event.stopPropagation();changeStatus('${key}', 'completed')">✓</button><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();changeStatus('${key}', 'new')">↩</button>` : ''}
-          ${row.status === 'completed' ? `<button class="btn btn-sm btn-warning me-1" onclick="event.stopPropagation();changeStatus('${key}', 'inwork')">↩</button><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();changeStatus('${key}', 'new')">↩</button>` : ''}
-        </td>`;
-      tbody.appendChild(tr);
-    });
-  }
-  renderUserFilters();
-  if (typeof window.__updateTopScrollWidth === 'function') setTimeout(window.__updateTopScrollWidth, 0);
-}
-
-function exportToExcel() {
-  if (!table1Data.length) { alert('Нет данных'); return; }
-  let dte = [...table1Data];
-  if (selectedStatuses.size > 0) dte = dte.filter(row => { for (const s of selectedStatuses) { if (s === 'new' && row.status === 'new') return true; if (s === 'inwork' && row.status === 'inwork') return true; if (s === 'completed' && row.status === 'completed') return true; if (s === 'highlighted' && (row.place === 'etalon' || row.place === 'onsite' || row.type === 'budget' || row.type === 'urgent')) return true; } return false; });
-  if (selectedPlaces.size > 0) dte = dte.filter(r => selectedPlaces.has(r.place || 'csm'));
-  if (selectedTypes.size > 0) dte = dte.filter(r => selectedTypes.has(r.type || 'common'));
-  if (selectedSections.size > 0) dte = dte.filter(r => selectedSections.has('distributed') && r.distributed);
-  if (selectedDistributedUsers.size > 0) dte = dte.filter(r => selectedDistributedUsers.has(r.distributedTo));
-  if (selectedDevices.size > 0) dte = dte.filter(r => { const d = (r['Прибор'] || '').split(' ').slice(0, 3).join(' '); return selectedDevices.has(d); });
-  const ed = dte.map(row => { const term = calculateTerm(row); return { 'Квитанция/Счет': row['Номер счета'], 'Владелец': (currentIsAdmin && viewingUid !== currentUser.uid) ? viewingName : '', 'Место': placeLabel(row.place), 'Тип': typeLabel(row.type), 'Дата выписки': row['Дата выписки'], 'Контрагент': row['Контингент'] || '', 'Прибор': row['Прибор'], 'Кол-во': row['Кол-во'], 'Сумма': row['Всего по счету'], 'Дата оплаты': row.paymentDate || row['Дата оплаты'], 'Срок': term.date ? formatDate(term.date) : '', 'Срочность': row.urgency, 'Статус': row.status, 'Изменил': row.statusChangedBy || '', 'Распределён': row.distributedToName || '' }; });
-  const ws = XLSX.utils.json_to_sheet(ed); const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Счета');
-  const parts = ['счета'];
-  if (currentIsAdmin && viewingUid !== currentUser.uid) parts.push(viewingName);
-  if (selectedPlaces.size > 0) parts.push(Array.from(selectedPlaces).join('-'));
-  if (selectedTypes.size > 0) parts.push(Array.from(selectedTypes).join('-'));
-  if (selectedDevices.size > 0) parts.push('приборы');
-  if (selectedStatuses.size > 0) parts.push(Array.from(selectedStatuses).join('-'));
-  parts.push(new Date().toISOString().slice(0, 10));
-  XLSX.writeFile(wb, parts.join('_') + '.xlsx');
-}
-
-setTimeout(checkIfFirstUser, 1000);
-</script>
-</body>
-</html>
+          const cont = (code && nm) ? (code + ' ' + nm) :
