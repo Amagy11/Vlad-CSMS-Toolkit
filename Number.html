@@ -245,9 +245,7 @@ const EMAIL_DOMAIN = "@invoice.local";
 function stripUndefined(obj) { const c = {}; Object.keys(obj).forEach(k => { const v = obj[k]; if (v === undefined) c[k] = ''; else if (v === null) c[k] = null; else c[k] = v; }); return c; }
 
 /* ===== РАСЧЁТ СРОКА (исправлено, соответствует эталону) ===== */
-// Праздники РБ — без года (MM-DD), работают для любого года
 const HOLIDAYS_RB = ['01-01','01-02','01-07','03-08','04-21','05-01','05-09','07-03','11-07','12-25'];
-// Рабочие субботы (переносы)
 const WORKING_SATURDAYS_RB = ['2026-04-25'];
 
 function toISO(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
@@ -262,7 +260,6 @@ function isWeekday(date) {
   return true;
 }
 
-// Обратная совместимость — используется в других местах
 function isNonWorkingDay(date) { return !isWeekday(date); }
 
 function rollBackToWorkday(d) {
@@ -272,7 +269,6 @@ function rollBackToWorkday(d) {
   return r;
 }
 
-// 30 календарных дней: день старта = день №1 → +29, затем откат на рабочий день
 function addCalendarDays(dateStr, n) {
   const d = parseDate(dateStr);
   if (!d) return null;
@@ -281,13 +277,11 @@ function addCalendarDays(dateStr, n) {
   return rollBackToWorkday(r);
 }
 
-// N рабочих дней: день старта = день №1
 function addWorkingDays(dateStr, n) {
   const d = parseDate(dateStr);
   if (!d) return null;
   const r = new Date(d);
   let g = 0;
-  // подтягиваем старт вперёд до рабочего дня
   while (!isWeekday(r) && g < 60) { r.setDate(r.getDate() + 1); g++; }
   let counted = 1;
   if (n <= 1) return new Date(r);
@@ -624,6 +618,14 @@ onAuthStateChanged(auth, async (user) => {
   document.getElementById('loadingScreen').style.display = 'none';
   if (user) {
     currentUser = user;
+    
+    // ПРОВЕРКА ОДОБРЕНИЯ
+    let isApproved = false;
+    try {
+      const approvedSnap = await get(ref(database, 'approvedUsers/' + user.uid));
+      isApproved = approvedSnap.exists();
+    } catch(e) { console.error('Ошибка проверки одобрения:', e); }
+    
     let name = user.displayName || user.email.split('@')[0];
     let isAdmin = false;
     try {
@@ -632,6 +634,17 @@ onAuthStateChanged(auth, async (user) => {
       const a = await get(ref(database, 'admins/' + user.uid));
       if (a.exists() && a.val() === true) isAdmin = true;
     } catch(e) {}
+    
+    // Админ всегда одобрен
+    if (isAdmin) isApproved = true;
+
+    if (!isApproved) {
+      document.getElementById('authScreen').style.display = 'block';
+      document.getElementById('appScreen').style.display = 'none';
+      showAuthError('Ваша учётная запись ожидает одобрения администратором. Пожалуйста, свяжитесь с руководством.');
+      return;
+    }
+
     currentUserName = name; currentIsAdmin = isAdmin;
     document.getElementById('authScreen').style.display = 'none';
     document.getElementById('appScreen').style.display = 'block';
