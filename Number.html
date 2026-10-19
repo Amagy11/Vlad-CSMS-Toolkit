@@ -217,7 +217,7 @@
 <p>Кнопка <b>«📋 Вставить из 1С»</b> → выбери место и тип → Ctrl+V. Можно с шапкой.</p>
 <hr>
 <h5>📦 Распределение</h5>
-<p>Админ кликает по счёту → выбирает пользователя.</p>
+<p>Админ кликает по счёту → выбирает пользователя. При переназначении у старого получателя счёт снимается автоматически.</p>
 <hr>
 <h5>🧹 Автоочистка</h5>
 <p>Выполненные старше 2 месяцев удаляются по баннеру.</p>
@@ -276,7 +276,6 @@ function rollBackToWorkday(d) {
   return r;
 }
 
-// 30 календарных: день оплаты = день 1 → +29, затем откат назад на рабочий
 function addCalendarDays(dateStr, n) {
   const d = parseDate(dateStr);
   if (!d) return null;
@@ -286,7 +285,6 @@ function addCalendarDays(dateStr, n) {
   return rollBackToWorkday(r);
 }
 
-// N рабочих: день оплаты = день 1 → counted начинается с 1
 function addWorkingDays(dateStr, n) {
   const d = parseDate(dateStr);
   if (!d) return null;
@@ -1089,19 +1087,61 @@ function openDistModal(key) {
   document.getElementById('distModal').classList.add('open'); document.body.style.overflow = 'hidden';
 }
 
+/* ============================================================
+   РАСПРЕДЕЛЕНИЕ
+   При переназначении снимаем у предыдущего получателя.
+   ============================================================ */
+async function removeFromUserInvoices(userUid, key) {
+  if (!userUid || !key) return;
+  let ut = [];
+  try {
+    const s = await get(ref(database, 'invoices/' + userUid + '/table1Data'));
+    if (s.exists()) ut = s.val() || [];
+  } catch(e) { console.error(e); return; }
+  const ui = ut.findIndex(r => rowKey(r) === key);
+  if (ui === -1) return;
+  const uRow = ut[ui];
+  if (uRow.copied) {
+    ut.splice(ui, 1);
+  } else {
+    ut[ui] = { ...uRow, distributed: false, distributedBy: '', distributedByName: '', distributedAt: '' };
+  }
+  try { await set(ref(database, 'invoices/' + userUid + '/table1Data'), ut); }
+  catch(e) { console.error('Не удалось снять запись у пользователя', userUid, e); }
+  try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key))); } catch(e) {}
+}
+
 async function assignToUser(userUid, userName) {
   if (!currentIsAdmin || !distributingRowKey) return;
   if (userUid === currentUser.uid) { alert('Нельзя себе'); return; }
-  const key = distributingRowKey; const now = new Date().toISOString();
+
+  const key = distributingRowKey;
+  const now = new Date().toISOString();
   const idx = table1Data.findIndex(r => rowKey(r) === key);
   if (idx === -1) { closeDistModal(); return; }
+
   const adminRow = table1Data[idx];
+  const prevUid = adminRow.distributedTo || '';
+  const prevName = adminRow.distributedToName || '';
+
+  // 1) Снимаем у предыдущего получателя, если он есть и это не тот же пользователь
+  if (prevUid && prevUid !== userUid) {
+    await removeFromUserInvoices(prevUid, key);
+  }
+
+  // 2) Обновляем админскую запись
   table1Data[idx] = { ...adminRow, distributedTo: userUid, distributedToName: userName, distributedAt: now };
+
+  // 3) Кладём/обновляем запись у нового получателя
   let ut = [];
   try { const s = await get(ref(database, 'invoices/' + userUid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) {}
   const ei = ut.findIndex(r => rowKey(r) === key);
-  if (ei >= 0) ut[ei] = { ...ut[ei], distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now };
-  else ut.push(stripUndefined({ ...adminRow, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now, copied: true, distributedTo: '', distributedToName: '' }));
+  if (ei >= 0) {
+    ut[ei] = { ...ut[ei], distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now };
+  } else {
+    ut.push(stripUndefined({ ...adminRow, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now, copied: true, distributedTo: '', distributedToName: '' }));
+  }
+
   setSyncStatus('syncing', 'Распределение...');
   try {
     await set(ref(database, 'invoices/' + userUid + '/table1Data'), ut);
@@ -1110,29 +1150,32 @@ async function assignToUser(userUid, userName) {
     try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key))); } catch(e) {}
     setSyncStatus('online', 'ОК');
   } catch(e) { console.error(e); alert('Ошибка: ' + e.message); return; }
+
   closeDistModal(); renderUserFilters(); renderTable();
-  alert(`📦 Распределено «${userName}»`);
+  const extra = (prevUid && prevUid !== userUid) ? ` (снято у «${prevName || prevUid}»)` : '';
+  alert(`📦 Распределено «${userName}»${extra}`);
 }
 
 async function cancelDistribution() {
   if (!currentIsAdmin || !distributingRowKey) return;
-  const key = distributingRowKey; const row = table1Data.find(r => rowKey(r) === key);
+  const key = distributingRowKey;
+  const row = table1Data.find(r => rowKey(r) === key);
   if (!row || !row.distributedTo) { closeDistModal(); return; }
-  const userUid = row.distributedTo; const userName = row.distributedToName || userUid;
+  const userUid = row.distributedTo;
+  const userName = row.distributedToName || userUid;
   if (!confirm(`Отменить распределение для «${userName}»?`)) return;
+
   const now = new Date().toISOString();
   const idx = table1Data.findIndex(r => rowKey(r) === key);
   if (idx >= 0) table1Data[idx] = { ...table1Data[idx], distributedTo: '', distributedToName: '', distributedAt: '' };
-  let ut = [];
-  try { const s = await get(ref(database, 'invoices/' + userUid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) {}
-  const ui = ut.findIndex(r => rowKey(r) === key);
-  if (ui >= 0) { const uRow = ut[ui]; if (uRow.copied) ut.splice(ui, 1); else ut[ui] = { ...uRow, distributed: false, distributedBy: '', distributedByName: '', distributedAt: '' }; }
+
+  await removeFromUserInvoices(userUid, key);
+
   try {
-    await set(ref(database, 'invoices/' + userUid + '/table1Data'), ut);
     const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
     await set(userInvoicesRef, { table1Data: c1, updatedAt: now });
-    try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key))); } catch(e) {}
   } catch(e) { console.error(e); alert('Ошибка: ' + e.message); return; }
+
   closeDistModal(); renderUserFilters(); renderTable();
   alert(`📦 Отменено для «${userName}»`);
 }
