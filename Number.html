@@ -243,6 +243,9 @@
 <h5>📦 Распределение</h5>
 <p>Админ кликает по счёту → выбирает пользователя. При переназначении у старого получателя счёт снимается автоматически.</p>
 <hr>
+<h5>🔄 Синхронизация</h5>
+<p>Кнопка «Обновить данные у всех» в админ-панели проталкивает свежие данные (даты, суммы) всем пользователям. Статусы и комментарии не сбрасываются.</p>
+<hr>
 <h5>💬 Комментарии</h5>
 <p>В колонке «Пометки» клик по <b>—</b> добавляет комментарий, по <b>⚠️</b> — открывает его. Виден всем, у кого есть этот счёт.</p>
 <hr>
@@ -257,9 +260,12 @@
 
 <div id="adminModal" class="help-modal" onclick="if(event.target===this)closeAdminPanel()"><div class="help-modal-content">
 <div class="help-modal-header" style="background:#dc3545"><h4>🛡 Управление пользователями</h4><button class="help-close" onclick="closeAdminPanel()">×</button></div>
-<div class="help-modal-body"><p class="text-muted">Удаление пользователей вместе с данными. Кнопка «Починить распределение» снимает зависшие записи у пользователей (баг, возникший до обновления кода).</p><div id="adminUserList" style="border:1px solid #dee2e6;border-radius:6px"><div class="text-muted text-center py-3">Загрузка...</div></div></div>
-<div class="help-modal-footer d-flex justify-content-between">
-  <button class="btn btn-warning" onclick="repairDistribution()">🛠 Починить распределение</button>
+<div class="help-modal-body"><p class="text-muted">Удаление пользователей вместе с данными. Кнопка «Починить распределение» снимает зависшие записи у пользователей. Кнопка «Обновить данные у всех» проталкивает свежие данные.</p><div id="adminUserList" style="border:1px solid #dee2e6;border-radius:6px"><div class="text-muted text-center py-3">Загрузка...</div></div></div>
+<div class="help-modal-footer d-flex justify-content-between flex-wrap gap-2">
+  <div class="d-flex gap-2 flex-wrap">
+    <button class="btn btn-warning" onclick="repairDistribution()">🛠 Починить распределение</button>
+    <button class="btn btn-info text-white" onclick="syncAllToUsers()">🔄 Обновить данные у всех</button>
+  </div>
   <button class="btn btn-secondary" onclick="closeAdminPanel()">Закрыть</button>
 </div>
 </div></div>
@@ -280,9 +286,6 @@ function stripUndefined(obj) { const c = {}; Object.keys(obj).forEach(k => { con
 
 /* ============================================================
    РАСЧЁТ СРОКА
-   ДЕНЬ ОПЛАТЫ = ДЕНЬ №1.
-   - Срочные/Бюджет → 5 рабочих дней
-   - Остальные      → 30 календарных дней (с откатом назад на рабочий)
    ============================================================ */
 const HOLIDAYS_RB = ['01-01','01-02','01-07','03-08','04-21','05-01','05-09','07-03','11-07','12-25'];
 const WORKING_SATURDAYS_RB = ['2026-04-25'];
@@ -362,6 +365,7 @@ window.renderTable = renderTable; window.changeStatus = changeStatus; window.exp
 window.openHelp = openHelp; window.closeHelp = closeHelp;
 window.openAdminPanel = openAdminPanel; window.closeAdminPanel = closeAdminPanel; window.deleteUserAdmin = deleteUserAdmin;
 window.repairDistribution = repairDistribution;
+window.syncAllToUsers = syncAllToUsers;
 window.onAdminUserChange = onAdminUserChange; window.performAutoClean = performAutoClean; window.dismissAutoClean = dismissAutoClean;
 window.openDistModal = openDistModal; window.closeDistModal = closeDistModal; window.assignToUser = assignToUser; window.cancelDistribution = cancelDistribution;
 window.openCommentModal = openCommentModal; window.closeCommentModal = closeCommentModal; window.saveComment = saveComment; window.deleteComment = deleteComment;
@@ -610,14 +614,16 @@ async function savePasteTable() {
   const existing = new Map();
   table1Data.forEach((r, i) => existing.set(rowKey(r), i));
   let added = 0, updated = 0;
+  const updatedKeys = [];
   newData.forEach(nr => {
     const k = rowKey(nr);
-    if (existing.has(k)) { table1Data[existing.get(k)] = mergeRow(table1Data[existing.get(k)], nr); updated++; }
-    else { table1Data.push(nr); existing.set(k, table1Data.length - 1); added++; }
+    if (existing.has(k)) { table1Data[existing.get(k)] = mergeRow(table1Data[existing.get(k)], nr); updatedKeys.push(k); updated++; }
+    else { table1Data.push(nr); existing.set(k, table1Data.length - 1); updatedKeys.push(k); added++; }
   });
   table1Data = resolvePriorities(table1Data);
   applySharedStatuses(); saveToStorage(); renderTable(); updateDistributedBanner();
   if (!autoCleanChecked) { autoCleanChecked = true; checkAutoClean(); }
+  if (updatedKeys.length) syncRowUpdatesToUsers(updatedKeys);
   pasteRows = []; renderPasteTable(); closePasteModal();
   alert(`✅ Добавлено ${added}, обновлено ${updated}`);
 }
@@ -953,10 +959,24 @@ function loadTable1() {
     const ex = new Map();
     table1Data.forEach((r, i) => ex.set(rowKey(r), i));
     let a = 0, u = 0;
-    newData.forEach(nr => { const k = rowKey(nr); if (ex.has(k)) { table1Data[ex.get(k)] = mergeRow(table1Data[ex.get(k)], nr); u++; } else { table1Data.push(nr); ex.set(k, table1Data.length - 1); a++; } });
+    const updatedKeys = [];
+    newData.forEach(nr => {
+      const k = rowKey(nr);
+      if (ex.has(k)) {
+        table1Data[ex.get(k)] = mergeRow(table1Data[ex.get(k)], nr);
+        updatedKeys.push(k);
+        u++;
+      } else {
+        table1Data.push(nr);
+        ex.set(k, table1Data.length - 1);
+        updatedKeys.push(k);
+        a++;
+      }
+    });
     table1Data = resolvePriorities(table1Data);
     applySharedStatuses(); saveToStorage(); renderTable(); updateDistributedBanner();
     if (!autoCleanChecked) { autoCleanChecked = true; checkAutoClean(); }
+    if (updatedKeys.length) syncRowUpdatesToUsers(updatedKeys);
     const d = document.getElementById('table1Info'); d.style.display = 'block';
     d.innerHTML = `✅ +${a}, ~${u}, всего ${table1Data.length}`;
     setTimeout(() => d.style.display = 'none', 7000);
@@ -1139,6 +1159,125 @@ async function removeFromUserInvoices(userUid, key) {
   try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key))); } catch(e) {}
 }
 
+async function syncRowUpdatesToUsers(updatedKeys) {
+  if (!currentIsAdmin || !updatedKeys || !updatedKeys.length) return;
+  if (viewingUid !== currentUser.uid) return;
+  const adminUid = currentUser.uid;
+  const adminMap = new Map();
+  table1Data.forEach(r => {
+    const k = rowKey(r);
+    if (updatedKeys.includes(k)) adminMap.set(k, r);
+  });
+  if (!adminMap.size) return;
+  const uids = Object.keys(allUsersCache).filter(u => u !== adminUid);
+  for (const uid of uids) {
+    let ut = [];
+    try { const s = await get(ref(database, 'invoices/' + uid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) { continue; }
+    let changed = false;
+    for (let i = 0; i < ut.length; i++) {
+      const k = rowKey(ut[i]);
+      const fresh = adminMap.get(k);
+      if (!fresh) continue;
+      if (ut[i].distributed !== true) continue;
+      ut[i] = {
+        ...ut[i],
+        'Номер счета': fresh['Номер счета'] || ut[i]['Номер счета'],
+        'Дата выписки': fresh['Дата выписки'] || ut[i]['Дата выписки'],
+        'Контрагент (Наименование)': fresh['Контрагент (Наименование)'] || ut[i]['Контрагент (Наименование)'],
+        'Контингент': fresh['Контингент'] || ut[i]['Контингент'],
+        'Прибор': fresh['Прибор'] || ut[i]['Прибор'],
+        'Кол-во': fresh['Кол-во'] || ut[i]['Кол-во'],
+        'Сумма': fresh['Сумма'] || ut[i]['Сумма'],
+        'Всего по счету': fresh['Всего по счету'] || ut[i]['Всего по счету'],
+        'Дата оплаты': fresh['Дата оплаты'] || ut[i]['Дата оплаты'],
+        place: fresh.place || ut[i].place,
+        type: fresh.type || ut[i].type,
+        paymentStatus: fresh.paymentStatus || ut[i].paymentStatus,
+        urgency: fresh.urgency || ut[i].urgency
+      };
+      changed = true;
+    }
+    if (changed) {
+      try { await set(ref(database, 'invoices/' + uid + '/table1Data'), ut); } catch(e) { console.error('Не записать', uid, e); }
+    }
+  }
+}
+
+async function syncAllToUsers() {
+  if (!currentIsAdmin) { alert('Только админ'); return; }
+  if (viewingUid !== currentUser.uid) { alert('Переключитесь на «— Свои данные —»'); return; }
+
+  if (!confirm('Обновить данные (даты, суммы, прибор, место, тип) у ВСЕХ пользователей?\n\nСтатусы («В работе», «Выполнен») и комментарии НЕ будут затронуты.')) return;
+
+  const adminUid = currentUser.uid;
+
+  let adminRows = [];
+  try {
+    const s = await get(ref(database, 'invoices/' + adminUid + '/table1Data'));
+    if (s.exists()) adminRows = s.val() || [];
+  } catch(e) { console.error(e); alert('Не удалось прочитать админскую таблицу: ' + e.message); return; }
+  if (!adminRows.length) { alert('У вас нет счетов для синхронизации.'); return; }
+
+  const adminMap = new Map();
+  adminRows.forEach(r => adminMap.set(rowKey(r), r));
+
+  const uids = Object.keys(allUsersCache).filter(u => u !== adminUid);
+  let usersTouched = 0, rowsUpdated = 0;
+
+  setSyncStatus('syncing', 'Обновление у всех...');
+
+  for (const uid of uids) {
+    let ut = [];
+    try {
+      const s = await get(ref(database, 'invoices/' + uid + '/table1Data'));
+      if (s.exists()) ut = s.val() || [];
+    } catch(e) { console.error('Не прочитать', uid, e); continue; }
+
+    let changed = false;
+    for (let i = 0; i < ut.length; i++) {
+      const k = rowKey(ut[i]);
+      const fresh = adminMap.get(k);
+      if (!fresh) continue;
+      if (ut[i].copied !== true) continue;
+
+      const bodyKeys = ['Номер счета','Дата выписки','Контрагент (Наименование)','Контингент','Прибор','Кол-во','Сумма','Всего по счету','Дата оплаты','urgency','paymentStatus'];
+      let needUpdate = false;
+      for (const fk of bodyKeys) {
+        if ((ut[i][fk] || '') !== (fresh[fk] || '')) { needUpdate = true; break; }
+      }
+      if (!needUpdate && (ut[i].place || 'csm') === (fresh.place || 'csm') && (ut[i].type || 'common') === (fresh.type || 'common')) continue;
+
+      ut[i] = {
+        ...ut[i],
+        'Номер счета': fresh['Номер счета'] || ut[i]['Номер счета'],
+        'Дата выписки': fresh['Дата выписки'] || ut[i]['Дата выписки'],
+        'Контрагент (Наименование)': fresh['Контрагент (Наименование)'] || ut[i]['Контрагент (Наименование)'],
+        'Контингент': fresh['Контингент'] || ut[i]['Контингент'],
+        'Прибор': fresh['Прибор'] || ut[i]['Прибор'],
+        'Кол-во': fresh['Кол-во'] || ut[i]['Кол-во'],
+        'Сумма': fresh['Сумма'] || ut[i]['Сумма'],
+        'Всего по счету': fresh['Всего по счету'] || ut[i]['Всего по счету'],
+        'Дата оплаты': fresh['Дата оплаты'] || ut[i]['Дата оплаты'],
+        place: fresh.place || ut[i].place,
+        type: fresh.type || ut[i].type,
+        paymentStatus: fresh.paymentStatus || ut[i].paymentStatus,
+        urgency: fresh.urgency || ut[i].urgency
+      };
+      changed = true;
+      rowsUpdated++;
+    }
+
+    if (changed) {
+      try { await set(ref(database, 'invoices/' + uid + '/table1Data'), ut); usersTouched++; }
+      catch(e) { console.error('Не записать', uid, e); }
+    }
+  }
+
+  setSyncStatus('online', 'Онлайн');
+  alert(`🔄 Готово.\n\nПользователей обновлено: ${usersTouched}\nЗаписей обновлено: ${rowsUpdated}`);
+  renderTable();
+}
+
 async function assignToUser(userUid, userName) {
   if (!currentIsAdmin || !distributingRowKey) return;
   if (userUid === currentUser.uid) { alert('Нельзя себе'); return; }
@@ -1202,7 +1341,7 @@ async function repairDistribution() {
   let totalRemoved = 0, totalCleared = 0, usersTouched = 0;
   for (const uid of uids) {
     let ut = [];
-    try { const s = await get(ref(database, 'invoices/' + uid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) { console.error('Не прочитать', uid, e); continue; }
+    try { const s = await get(ref(database, 'invoices/' + uid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) { continue; }
     let changed = false;
     const newUt = [];
     for (const r of ut) {
