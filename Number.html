@@ -79,7 +79,7 @@
 </style>
 </head>
 <body>
-<div id="loadingScreen" class="container mt-5" style="max-width:500px"><div class="text-center"><div class="spinner-border text-primary" style="width:3rem;height:3rem"></div><p class="mt-3 text-muted">Подключение...</p></div></div>
+<div id="loadingScreen" class="container mt-5" style="max-width:500px"><div class="text-center"><div class="spinner-border text-primary" style="width:3rem;height:3rem"></div><p class="mt-3 text-muted">Подключение...</p><p id="loadingError" class="text-danger mt-2" style="display:none"></p></div></div>
 
 <div id="authScreen" class="container mt-5" style="max-width:500px;display:none">
 <div class="card"><div class="card-header bg-primary text-white"><h4 id="authTitle">Вход</h4></div>
@@ -92,7 +92,7 @@
 </div></div></div>
 
 <div id="appScreen" style="display:none">
-<div class="user-status"><span class="badge bg-light text-dark border">👤 <span id="currentUserName">—</span><span id="adminBadge" class="badge badge-admin ms-1" style="display:none">АДМИН</span><button class="btn btn-sm btn-outline-secondary ms-2" onclick="openAdminPanel()" id="adminPanelBtn" style="display:none">Управление</button><button class="btn btn-sm btn-outline-warning ms-2" onclick="openChangePassword()">🔑 Сменить пароль</button><button class="btn btn-sm btn-outline-danger ms-2" onclick="logout()">Выйти</button></span></div>
+<div class="user-status"><span class="badge bg-light text-dark border">👤 <span id="currentUserName">—</span><span id="adminBadge" class="badge badge-admin ms-1" style="display:none">АДМИН</span><button class="btn btn-sm btn-outline-secondary ms-2" onclick="openAdminPanel()" id="adminPanelBtn" style="display:none">Управление</button><button class="btn btn-sm btn-outline-primary ms-2" onclick="openBulkAssignModal()" id="bulkAssignBtn" style="display:none">📦 Массовое распределение</button><button class="btn btn-sm btn-outline-warning ms-2" onclick="openChangePassword()">🔑 Сменить пароль</button><button class="btn btn-sm btn-outline-danger ms-2" onclick="logout()">Выйти</button></span></div>
 <div class="sync-status"><span class="badge bg-light text-dark border"><span class="sync-indicator sync-offline" id="syncIndicator"></span><span id="syncText">Не подключено</span></span></div>
 
 <div class="container-fluid mt-4">
@@ -171,6 +171,37 @@
 <div class="dist-modal-body"><p class="text-muted small mb-2">Счёт: <b id="distInvoiceInfo">—</b></p><div id="distUserList"></div></div>
 <div class="dist-modal-footer"><button class="btn btn-secondary" onclick="closeDistModal()">Отмена</button></div>
 </div></div>
+
+<div id="bulkAssignModal" class="help-modal" onclick="if(event.target===this)closeBulkAssignModal()">
+  <div class="help-modal-content" style="max-width:700px">
+    <div class="help-modal-header" style="background:#0d6efd">
+      <h4>📦 Массовое распределение</h4>
+      <button class="help-close" onclick="closeBulkAssignModal()">×</button>
+    </div>
+    <div class="help-modal-body">
+      <div class="alert alert-info py-2 small mb-3">
+        Выберите <b>типы приборов</b> (можно несколько), затем <b>пользователя</b>. Все <b>свободные</b> счета (не распределённые) с этими приборами уйдут выбранному пользователю.
+      </div>
+      <label class="form-label fw-bold">🏷 Типы приборов</label>
+      <div class="mb-2 d-flex flex-wrap gap-1" id="bulkDeviceTags"></div>
+      <div class="small text-muted mb-3">
+        Выбрано: <span id="bulkDeviceCount">0</span> · Найдено счетов: <span id="bulkRowCount" class="fw-bold">0</span>
+      </div>
+      <label class="form-label fw-bold">👤 Кому распределить</label>
+      <select id="bulkUserSelect" class="form-select mb-3">
+        <option value="">— Выберите пользователя —</option>
+      </select>
+      <div id="bulkError" class="alert alert-danger" style="display:none"></div>
+    </div>
+    <div class="help-modal-footer d-flex justify-content-between">
+      <button class="btn btn-outline-secondary" onclick="bulkClearSelection()">Сбросить выбор</button>
+      <div>
+        <button class="btn btn-secondary" onclick="closeBulkAssignModal()">Отмена</button>
+        <button class="btn btn-success ms-2" onclick="bulkAssignExecute()">📦 Распределить</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="commentModal" class="help-modal" onclick="if(event.target===this)closeCommentModal()">
   <div class="help-modal-content" style="max-width:500px">
@@ -295,7 +326,7 @@
 <p>Кнопка <b>«📋 Вставить из 1С»</b> → выбери место и тип → Ctrl+V. Можно с шапкой.</p>
 <hr>
 <h5>📦 Распределение</h5>
-<p>Админ кликает по счёту → выбирает пользователя. При переназначении у старого получателя счёт снимается автоматически.</p>
+<p>Админ кликает по счёту → выбирает пользователя. При переназначении у старого получателя счёт снимается автоматически. Массовое распределение — кнопка в шапке.</p>
 <hr>
 <h5>🔄 Синхронизация</h5>
 <p>Кнопка «Обновить данные у всех» в админ-панели проталкивает свежие данные (даты, суммы) всем пользователям. Статусы и комментарии не сбрасываются.</p>
@@ -355,7 +386,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, si
 const firebaseConfig = { apiKey:"AIzaSyAlMduGeljWyCDj9mje3-ynHiNavAlPC8I", authDomain:"vlad-csms-af6df.firebaseapp.com", databaseURL:"https://vlad-csms-af6df-default-rtdb.firebaseio.com", projectId:"vlad-csms-af6df", storageBucket:"vlad-csms-af6df.firebasestorage.app", messagingSenderId:"417297799117", appId:"1:417297799117:web:0a93dce429cd37db499684" };
 
 let app, database, auth;
-try { app = initializeApp(firebaseConfig); database = getDatabase(app); auth = getAuth(app); console.log('✅ Firebase'); } catch (err) { console.error(err); document.getElementById('loadingScreen').innerHTML = '<div class="alert alert-danger">Ошибка: ' + err.message + '</div>'; }
+try { app = initializeApp(firebaseConfig); database = getDatabase(app); auth = getAuth(app); console.log('✅ Firebase'); } catch (err) { console.error(err); document.getElementById('loadingError').textContent = err.message; document.getElementById('loadingError').style.display = 'block'; }
 
 const EMAIL_DOMAIN = "@invoice.local";
 
@@ -436,6 +467,7 @@ let sharedLabels = {};
 let unsubLabels = null;
 let closedDateRowKey = null;
 let labelRowKey = null;
+let bulkSelectedDevices = new Set();
 
 window.handleAuthSubmit = handleAuthSubmit; window.switchAuthMode = switchAuthMode; window.logout = logout;
 window.loadTable1 = loadTable1; window.clearAllData = clearAllData;
@@ -460,6 +492,8 @@ window.openCommentModal = openCommentModal; window.closeCommentModal = closeComm
 window.openClosedDateModal = openClosedDateModal; window.closeClosedDateModal = closeClosedDateModal; window.saveClosedDate = saveClosedDate; window.deleteClosedDate = deleteClosedDate;
 window.openLabelModal = openLabelModal; window.closeLabelModal = closeLabelModal; window.saveLabel = saveLabel; window.deleteLabel = deleteLabel; window.setLabelPreset = setLabelPreset;
 window.deleteInvoice = deleteInvoice; window.deleteInvoiceConfirm = deleteInvoiceConfirm;
+window.openBulkAssignModal = openBulkAssignModal; window.closeBulkAssignModal = closeBulkAssignModal;
+window.bulkToggleDevice = bulkToggleDevice; window.bulkClearSelection = bulkClearSelection; window.bulkAssignExecute = bulkAssignExecute;
 window.openChangePassword = openChangePassword; window.closeChangePassword = closeChangePassword; window.submitChangePassword = submitChangePassword;
 window.openPasteModal = openPasteModal; window.closePasteModal = closePasteModal;
 window.setPastePlace = setPastePlace; window.setPasteType = setPasteType; window.clearPasteTable = clearPasteTable; window.savePasteTable = savePasteTable;
@@ -668,6 +702,153 @@ function subscribeToSharedLabels() {
 }
 /* ========= КОНЕЦ ДАТА ЗАКРЫТИЯ И МЕТКИ ========= */
 
+/* ========= МАССОВОЕ РАСПРЕДЕЛЕНИЕ ========= */
+function openBulkAssignModal() {
+  if (!currentIsAdmin) { alert('Только админ'); return; }
+  if (viewingUid !== currentUser.uid) { alert('Переключитесь на «— Свои данные —»'); return; }
+  bulkSelectedDevices.clear();
+  renderBulkDeviceTags();
+  renderBulkUserSelect();
+  document.getElementById('bulkError').style.display = 'none';
+  document.getElementById('bulkAssignModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  updateBulkCounts();
+}
+
+function closeBulkAssignModal() {
+  document.getElementById('bulkAssignModal').classList.remove('open');
+  document.body.style.overflow = '';
+  bulkSelectedDevices.clear();
+}
+
+function renderBulkUserSelect() {
+  const sel = document.getElementById('bulkUserSelect');
+  sel.innerHTML = '<option value="">— Выберите пользователя —</option>';
+  const arr = Object.entries(allUsersCache)
+    .map(([uid, u]) => ({uid, ...u}))
+    .filter(u => u.uid !== currentUser.uid)
+    .sort((a,b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+  arr.forEach(u => {
+    const o = document.createElement('option');
+    o.value = u.uid;
+    o.textContent = `👤 ${u.name || u.username || u.uid}`;
+    sel.appendChild(o);
+  });
+}
+
+function renderBulkDeviceTags() {
+  const c = document.getElementById('bulkDeviceTags');
+  c.innerHTML = '';
+  const types = Array.from(deviceTypes).sort();
+  if (!types.length) { c.innerHTML = '<span class="text-muted small">Нет приборов</span>'; return; }
+  types.forEach(d => {
+    const t = document.createElement('span');
+    t.className = 'device-tag badge bg-light text-dark border';
+    if (bulkSelectedDevices.has(d)) t.classList.add('active');
+    t.textContent = d;
+    t.style.cursor = 'pointer';
+    t.onclick = () => bulkToggleDevice(d);
+    c.appendChild(t);
+  });
+}
+
+function bulkToggleDevice(d) {
+  if (bulkSelectedDevices.has(d)) bulkSelectedDevices.delete(d);
+  else bulkSelectedDevices.add(d);
+  renderBulkDeviceTags();
+  updateBulkCounts();
+}
+
+function bulkClearSelection() {
+  bulkSelectedDevices.clear();
+  renderBulkDeviceTags();
+  updateBulkCounts();
+}
+
+function getBulkCandidates() {
+  if (!bulkSelectedDevices.size) return [];
+  return table1Data.filter(r => {
+    if (r.distributedTo) return false;
+    const d = (r['Прибор'] || '').split(' ').slice(0, 3).join(' ');
+    return bulkSelectedDevices.has(d);
+  });
+}
+
+function updateBulkCounts() {
+  document.getElementById('bulkDeviceCount').textContent = bulkSelectedDevices.size;
+  document.getElementById('bulkRowCount').textContent = getBulkCandidates().length;
+}
+
+async function bulkAssignExecute() {
+  const errEl = document.getElementById('bulkError'); errEl.style.display = 'none';
+  const userUid = document.getElementById('bulkUserSelect').value;
+  const userName = userUid ? (allUsersCache[userUid] && (allUsersCache[userUid].name || allUsersCache[userUid].username)) || userUid : '';
+
+  if (!bulkSelectedDevices.size) { errEl.textContent = 'Выберите хотя бы один тип прибора'; errEl.style.display = 'block'; return; }
+  if (!userUid) { errEl.textContent = 'Выберите пользователя'; errEl.style.display = 'block'; return; }
+  if (userUid === currentUser.uid) { errEl.textContent = 'Нельзя распределить себе'; errEl.style.display = 'block'; return; }
+
+  const candidates = getBulkCandidates();
+  if (!candidates.length) { errEl.textContent = 'Нет свободных счетов с выбранными приборами'; errEl.style.display = 'block'; return; }
+
+  if (!confirm(`Распределить ${candidates.length} счёт(ов) пользователю «${userName}»?\n\nТипы приборов: ${Array.from(bulkSelectedDevices).join(', ')}`)) return;
+
+  const now = new Date().toISOString();
+  const btn = document.querySelector('#bulkAssignModal .btn-success');
+  if (btn) { btn.disabled = true; btn.textContent = 'Распределяем...'; }
+
+  try {
+    for (const row of candidates) {
+      const key = rowKey(row);
+      const idx = table1Data.findIndex(r => rowKey(r) === key);
+      if (idx < 0) continue;
+      const prevUid = table1Data[idx].distributedTo || '';
+      if (prevUid && prevUid !== userUid) { await removeFromUserInvoices(prevUid, key); }
+      table1Data[idx] = { ...table1Data[idx], distributedTo: userUid, distributedToName: userName, distributedAt: now };
+    }
+
+    const adminC1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
+    await set(userInvoicesRef, { table1Data: adminC1, updatedAt: now });
+
+    let ut = [];
+    try {
+      const s = await get(ref(database, 'invoices/' + userUid + '/table1Data'));
+      if (s.exists()) ut = s.val() || [];
+    } catch(e) {}
+
+    const userMap = new Map(ut.map(r => [rowKey(r), r]));
+    for (const row of candidates) {
+      const key = rowKey(row);
+      const fresh = table1Data.find(r => rowKey(r) === key);
+      if (!fresh) continue;
+      if (userMap.has(key)) {
+        const existed = userMap.get(key);
+        userMap.set(key, { ...existed, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now });
+      } else {
+        userMap.set(key, stripUndefined({ ...fresh, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now, copied: true, distributedTo: '', distributedToName: '' }));
+      }
+    }
+    await set(ref(database, 'invoices/' + userUid + '/table1Data'), Array.from(userMap.values()));
+
+    for (const row of candidates) {
+      try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(rowKey(row)))); } catch(e) {}
+    }
+  } catch(e) {
+    console.error(e);
+    errEl.textContent = 'Ошибка: ' + e.message;
+    errEl.style.display = 'block';
+    if (btn) { btn.disabled = false; btn.textContent = '📦 Распределить'; }
+    return;
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '📦 Распределить'; }
+  closeBulkAssignModal();
+  renderUserFilters();
+  renderTable();
+  alert(`✅ Распределено ${candidates.length} счёт(ов) пользователю «${userName}»`);
+}
+/* ========= КОНЕЦ МАССОВОЕ РАСПРЕДЕЛЕНИЕ ========= */
+
 /* ========= ОКНО ВСТАВКИ ========= */
 function openPasteModal() { document.getElementById('pasteModal').classList.add('open'); document.body.style.overflow = 'hidden'; setTimeout(() => { document.getElementById('pasteTableWrapper').focus(); }, 100); }
 function closePasteModal() { document.getElementById('pasteModal').classList.remove('open'); document.body.style.overflow = ''; }
@@ -841,7 +1022,7 @@ async function savePasteTable() {
 document.addEventListener('DOMContentLoaded', () => { const w = document.getElementById('pasteTableWrapper'); if (w) w.addEventListener('paste', handlePaste); });
 setTimeout(() => { const w = document.getElementById('pasteTableWrapper'); if (w && !w.dataset.listener) { w.addEventListener('paste', handlePaste); w.dataset.listener = '1'; } }, 500);
 
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); closeChangePassword(); closePasteModal(); closeCommentModal(); closeClosedDateModal(); closeLabelModal(); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); closeChangePassword(); closePasteModal(); closeCommentModal(); closeClosedDateModal(); closeLabelModal(); closeBulkAssignModal(); } });
 
 const TRANSLIT_MAP = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
 function transliterate(s) { let r = ''; for (const c of s) { const l = c.toLowerCase(); r += (TRANSLIT_MAP[l] !== undefined) ? TRANSLIT_MAP[l] : c; } return r; }
@@ -908,6 +1089,7 @@ onAuthStateChanged(auth, async (user) => {
     if (currentIsAdmin) {
       document.getElementById('adminBadge').style.display = 'inline-block';
       document.getElementById('adminPanelBtn').style.display = 'inline-block';
+      document.getElementById('bulkAssignBtn').style.display = 'inline-block';
       document.getElementById('adminViewBlock').style.display = 'block';
       document.getElementById('ownerColHeader').style.display = 'table-cell';
       subscribeToAllUsersForAdmin(); updateAdminUserSelect();
