@@ -92,13 +92,13 @@
 </div></div></div>
 
 <div id="appScreen" style="display:none">
-<div class="user-status"><span class="badge bg-light text-dark border">👤 <span id="currentUserName">—</span><span id="adminBadge" class="badge badge-admin ms-1" style="display:none">АДМИН</span><button class="btn btn-sm btn-outline-secondary ms-2" onclick="openAdminPanel()" id="adminPanelBtn" style="display:none">Управление</button><button class="btn btn-sm btn-outline-warning ms-2" onclick="openChangePassword()">🔑 Сменить пароль</button><button class="btn btn-sm btn-outline-danger ms-2" onclick="logout()">Выйти</button></span></div>
+<div class="user-status"><span class="badge bg-light text-dark border">👤 <span id="currentUserName">—</span><span id="adminBadge" class="badge badge-admin ms-1" style="display:none">АДМИН</span><button class="btn btn-sm btn-outline-secondary ms-2" onclick="openAdminPanel()" id="adminPanelBtn" style="display:none">Управление</button><button class="btn btn-sm btn-outline-primary ms-2" onclick="openBulkAssignModal()" id="bulkAssignBtn" style="display:none">📦 Массовое распределение</button><button class="btn btn-sm btn-outline-warning ms-2" onclick="openChangePassword()">🔑 Сменить пароль</button><button class="btn btn-sm btn-outline-danger ms-2" onclick="logout()">Выйти</button></span></div>
 <div class="sync-status"><span class="badge bg-light text-dark border"><span class="sync-indicator sync-offline" id="syncIndicator"></span><span id="syncText">Не подключено</span></span></div>
 
 <div class="container-fluid mt-4">
 <h1 class="mb-4">📊 Учет счетов</h1>
 <div id="distributedBanner"><div>📦 У вас <b id="distributedCount">0</b> новых распределённых счетов. Откройте фильтр <b>«📦 Распределённые»</b>.</div></div>
-<div id="cleanBanner"><div>🧹 Найдено <b id="cleanCount">0</b> <span id="cleanWord">счетов</span> старше 2 месяцев (<span id="cleanPeriod"></span>).</div><div class="d-flex gap-2"><button class="btn btn-sm btn-warning" onclick="performAutoClean()">Удалить</button><button class="btn btn-sm btn-outline-secondary" onclick="dismissAutoClean()">Отложить</button></div></div>
+<div id="cleanBanner"><div>🧹 Найдено <b id="cleanCount">0</b> <span id="cleanWord">счетов</span> старше <span id="cleanPeriod"></span> (<span id="cleanDates"></span>).</div><div class="d-flex gap-2"><button class="btn btn-sm btn-warning" onclick="performAutoClean()">Удалить</button><button class="btn btn-sm btn-outline-secondary" onclick="dismissAutoClean()">Отложить</button></div></div>
 
 <div class="row mb-3" id="adminViewBlock" style="display:none"><div class="col-12"><div class="admin-mode-banner"><div>🛡 <b>Режим администратора.</b> <span id="adminViewInfo">Вы работаете со своими данными.</span></div><div class="d-flex gap-2 align-items-center"><label class="mb-0 small">Работать как:</label><select id="adminUserSelect" class="form-select form-select-sm" style="min-width:220px" onchange="onAdminUserChange()"><option value="">— Свои данные —</option></select></div></div></div></div>
 
@@ -172,6 +172,40 @@
 <div class="dist-modal-footer"><button class="btn btn-secondary" onclick="closeDistModal()">Отмена</button></div>
 </div></div>
 
+<div id="bulkAssignModal" class="help-modal" onclick="if(event.target===this)closeBulkAssignModal()">
+  <div class="help-modal-content" style="max-width:700px">
+    <div class="help-modal-header" style="background:#0d6efd">
+      <h4>📦 Массовое распределение</h4>
+      <button class="help-close" onclick="closeBulkAssignModal()">×</button>
+    </div>
+    <div class="help-modal-body">
+      <div class="alert alert-info py-2 small mb-3">
+        Выберите <b>типы приборов</b> (можно несколько), затем <b>пользователя</b>. Все <b>свободные</b> счета (не распределённые) с этими приборами уйдут выбранному пользователю.
+      </div>
+
+      <label class="form-label fw-bold">🏷 Типы приборов</label>
+      <div class="mb-2 d-flex flex-wrap gap-1" id="bulkDeviceTags"></div>
+      <div class="small text-muted mb-3">
+        Выбрано: <span id="bulkDeviceCount">0</span> · Найдено счетов: <span id="bulkRowCount" class="fw-bold">0</span>
+      </div>
+
+      <label class="form-label fw-bold">👤 Кому распределить</label>
+      <select id="bulkUserSelect" class="form-select mb-3">
+        <option value="">— Выберите пользователя —</option>
+      </select>
+
+      <div id="bulkError" class="alert alert-danger" style="display:none"></div>
+    </div>
+    <div class="help-modal-footer d-flex justify-content-between">
+      <button class="btn btn-outline-secondary" onclick="bulkClearSelection()">Сбросить выбор</button>
+      <div>
+        <button class="btn btn-secondary" onclick="closeBulkAssignModal()">Отмена</button>
+        <button class="btn btn-success ms-2" onclick="bulkAssignExecute()">📦 Распределить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="commentModal" class="help-modal" onclick="if(event.target===this)closeCommentModal()">
   <div class="help-modal-content" style="max-width:500px">
     <div class="help-modal-header" style="background:#6f42c1">
@@ -189,6 +223,60 @@
       <div>
         <button class="btn btn-secondary" onclick="closeCommentModal()">Отмена</button>
         <button class="btn btn-success ms-2" id="commentSaveBtn" onclick="saveComment()">💾 Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="closedDateModal" class="help-modal" onclick="if(event.target===this)closeClosedDateModal()">
+  <div class="help-modal-content" style="max-width:450px">
+    <div class="help-modal-header" style="background:#198754">
+      <h4>🔐 Счёт закрыт</h4>
+      <button class="help-close" onclick="closeClosedDateModal()">×</button>
+    </div>
+    <div class="help-modal-body">
+      <p class="text-muted small mb-2">Счёт: <b id="closedInvoiceInfo">—</b></p>
+      <label class="form-label fw-bold">Дата закрытия</label>
+      <input type="date" id="closedDateInput" class="form-control">
+      <div class="form-text mt-1">Оставьте пустым, чтобы снять дату.</div>
+      <div id="closedDateError" class="alert alert-danger mt-2" style="display:none"></div>
+    </div>
+    <div class="help-modal-footer d-flex justify-content-between">
+      <button class="btn btn-danger" id="closedDateDeleteBtn" onclick="deleteClosedDate()" style="display:none">🗑 Снять</button>
+      <div>
+        <button class="btn btn-secondary" onclick="closeClosedDateModal()">Отмена</button>
+        <button class="btn btn-success ms-2" onclick="saveClosedDate()">💾 Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="labelModal" class="help-modal" onclick="if(event.target===this)closeLabelModal()">
+  <div class="help-modal-content" style="max-width:500px">
+    <div class="help-modal-header" style="background:#fd7e14">
+      <h4>🏷 Метка счёта</h4>
+      <button class="help-close" onclick="closeLabelModal()">×</button>
+    </div>
+    <div class="help-modal-body">
+      <p class="text-muted small mb-2">Счёт: <b id="labelInvoiceInfo">—</b></p>
+      <label class="form-label fw-bold">Метка</label>
+      <input type="text" id="labelInput" class="form-control" maxlength="100" placeholder="Например: По факту">
+      <div class="d-flex flex-wrap gap-1 mt-2">
+        <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="setLabelPreset('35%')">35%</button>
+        <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="setLabelPreset('30%')">30%</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setLabelPreset('По факту')">По факту</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setLabelPreset('Спорный')">Спорный</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setLabelPreset('Дубль')">Дубль</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setLabelPreset('На уточнении')">На уточнении</button>
+      </div>
+      <div class="form-text mt-1"><span id="labelCounter">0</span>/100</div>
+      <div id="labelError" class="alert alert-danger mt-2" style="display:none"></div>
+    </div>
+    <div class="help-modal-footer d-flex justify-content-between">
+      <button class="btn btn-danger" id="labelDeleteBtn" onclick="deleteLabel()" style="display:none">🗑 Снять</button>
+      <div>
+        <button class="btn btn-secondary" onclick="closeLabelModal()">Отмена</button>
+        <button class="btn btn-success ms-2" onclick="saveLabel()">💾 Сохранить</button>
       </div>
     </div>
   </div>
@@ -241,16 +329,16 @@
 <p>Кнопка <b>«📋 Вставить из 1С»</b> → выбери место и тип → Ctrl+V. Можно с шапкой.</p>
 <hr>
 <h5>📦 Распределение</h5>
-<p>Админ кликает по счёту → выбирает пользователя. При переназначении у старого получателя счёт снимается автоматически.</p>
+<p>Админ кликает по счёту → выбирает пользователя. При переназначении у старого получателя счёт снимается автоматически. Массовое распределение — кнопка в шапке.</p>
 <hr>
 <h5>🔄 Синхронизация</h5>
 <p>Кнопка «Обновить данные у всех» в админ-панели проталкивает свежие данные (даты, суммы) всем пользователям. Статусы и комментарии не сбрасываются.</p>
 <hr>
-<h5>💬 Комментарии</h5>
-<p>В колонке «Пометки» клик по <b>—</b> добавляет комментарий, по <b>⚠️</b> — открывает его. Виден всем, у кого есть этот счёт.</p>
+<h5>💬 Комментарии и метки</h5>
+<p>В колонке «Пометки» клик по <b>—</b> добавляет комментарий, по <b>⚠️</b> — открывает его. В «Дата оплаты» можно поставить метку 🏷 (35%, 30%, По факту) и дату закрытия 🔐.</p>
 <hr>
 <h5>🧹 Автоочистка</h5>
-<p>Выполненные старше 2 месяцев удаляются по баннеру.</p>
+<p>Выполненные счета удаляются по баннеру. Минимальный срок — <b>30 дней</b>. В админ-панели можно отключить автоочистку (0) или почистить вручную.</p>
 <hr>
 <h5>📅 Расчёт срока</h5>
 <p>День оплаты = <b>день 1</b>. Срочные/бюджет — 5 рабочих дней, остальные — 30 календарных (с откатом назад на рабочий день).</p>
@@ -260,7 +348,30 @@
 
 <div id="adminModal" class="help-modal" onclick="if(event.target===this)closeAdminPanel()"><div class="help-modal-content">
 <div class="help-modal-header" style="background:#dc3545"><h4>🛡 Управление пользователями</h4><button class="help-close" onclick="closeAdminPanel()">×</button></div>
-<div class="help-modal-body"><p class="text-muted">Удаление пользователей вместе с данными. Кнопка «Починить распределение» снимает зависшие записи у пользователей. Кнопка «Обновить данные у всех» проталкивает свежие данные.</p><div id="adminUserList" style="border:1px solid #dee2e6;border-radius:6px"><div class="text-muted text-center py-3">Загрузка...</div></div></div>
+<div class="help-modal-body">
+  <p class="text-muted">Удаление пользователей вместе с данными. Кнопки ниже управляют распределением и очисткой.</p>
+  
+  <div class="alert alert-info py-2 mb-3">
+    <label class="form-label fw-bold mb-1">🧹 Автоочистка выполненных счетов</label>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span>Удалять через</span>
+      <input type="number" id="autoCleanDays" class="form-control form-control-sm" style="width:90px" min="30" max="365" value="60" onchange="saveAutoCleanDays()">
+      <span>дней после «Выполнен» (мин. 30)</span>
+    </div>
+    <small class="text-muted d-block mt-1">Поставьте 0, чтобы отключить автоочистку. Минимум для включённой — <b>30 дней</b>.</small>
+  </div>
+
+  <div class="alert alert-warning py-2 mb-3">
+    <label class="form-label fw-bold mb-1">🧹 Ручная очистка</label>
+    <div class="d-flex gap-2 flex-wrap">
+      <button class="btn btn-sm btn-danger" onclick="manualCleanCompleted()">Очистить все выполненные</button>
+      <button class="btn btn-sm btn-warning" onclick="manualCleanOld()">Очистить по сроку (<span id="manualCleanDaysLabel">60</span> дн.)</button>
+    </div>
+    <small class="text-muted d-block mt-1">Удаляет счета со статусом «Выполнен» (у всех пользователей, у кого они распределены).</small>
+  </div>
+
+  <div id="adminUserList" style="border:1px solid #dee2e6;border-radius:6px"><div class="text-muted text-center py-3">Загрузка...</div></div>
+</div>
 <div class="help-modal-footer d-flex justify-content-between flex-wrap gap-2">
   <div class="d-flex gap-2 flex-wrap">
     <button class="btn btn-warning" onclick="repairDistribution()">🛠 Починить распределение</button>
@@ -352,6 +463,14 @@ let sharedComments = {};
 let sharedCommentsRef = null;
 let unsubComments = null;
 let commentingRowKey = null;
+let autoCleanDays = 60;
+let sharedClosedDates = {};
+let unsubClosedDates = null;
+let sharedLabels = {};
+let unsubLabels = null;
+let closedDateRowKey = null;
+let labelRowKey = null;
+let bulkSelectedDevices = new Set();
 
 window.handleAuthSubmit = handleAuthSubmit; window.switchAuthMode = switchAuthMode; window.logout = logout;
 window.loadTable1 = loadTable1; window.clearAllData = clearAllData;
@@ -366,9 +485,18 @@ window.openHelp = openHelp; window.closeHelp = closeHelp;
 window.openAdminPanel = openAdminPanel; window.closeAdminPanel = closeAdminPanel; window.deleteUserAdmin = deleteUserAdmin;
 window.repairDistribution = repairDistribution;
 window.syncAllToUsers = syncAllToUsers;
+window.saveAutoCleanDays = saveAutoCleanDays;
+window.loadAutoCleanDays = loadAutoCleanDays;
+window.manualCleanCompleted = manualCleanCompleted;
+window.manualCleanOld = manualCleanOld;
 window.onAdminUserChange = onAdminUserChange; window.performAutoClean = performAutoClean; window.dismissAutoClean = dismissAutoClean;
 window.openDistModal = openDistModal; window.closeDistModal = closeDistModal; window.assignToUser = assignToUser; window.cancelDistribution = cancelDistribution;
 window.openCommentModal = openCommentModal; window.closeCommentModal = closeCommentModal; window.saveComment = saveComment; window.deleteComment = deleteComment;
+window.openClosedDateModal = openClosedDateModal; window.closeClosedDateModal = closeClosedDateModal; window.saveClosedDate = saveClosedDate; window.deleteClosedDate = deleteClosedDate;
+window.openLabelModal = openLabelModal; window.closeLabelModal = closeLabelModal; window.saveLabel = saveLabel; window.deleteLabel = deleteLabel; window.setLabelPreset = setLabelPreset;
+window.deleteInvoice = deleteInvoice; window.deleteInvoiceConfirm = deleteInvoiceConfirm;
+window.openBulkAssignModal = openBulkAssignModal; window.closeBulkAssignModal = closeBulkAssignModal;
+window.bulkToggleDevice = bulkToggleDevice; window.bulkClearSelection = bulkClearSelection; window.bulkAssignExecute = bulkAssignExecute;
 window.openChangePassword = openChangePassword; window.closeChangePassword = closeChangePassword; window.submitChangePassword = submitChangePassword;
 window.openPasteModal = openPasteModal; window.closePasteModal = closePasteModal;
 window.setPastePlace = setPastePlace; window.setPasteType = setPasteType; window.clearPasteTable = clearPasteTable; window.savePasteTable = savePasteTable;
@@ -377,7 +505,7 @@ function setSyncStatus(s, t) { const i = document.getElementById('syncIndicator'
 
 function openHelp() { document.getElementById('helpModal').classList.add('open'); document.body.style.overflow = 'hidden'; }
 function closeHelp() { document.getElementById('helpModal').classList.remove('open'); document.body.style.overflow = ''; }
-function openAdminPanel() { document.getElementById('adminModal').classList.add('open'); document.body.style.overflow = 'hidden'; renderAdminUserList(); }
+function openAdminPanel() { document.getElementById('adminModal').classList.add('open'); document.body.style.overflow = 'hidden'; renderAdminUserList(); loadAutoCleanDays(); }
 function closeAdminPanel() { document.getElementById('adminModal').classList.remove('open'); document.body.style.overflow = ''; }
 function closeDistModal() { document.getElementById('distModal').classList.remove('open'); document.body.style.overflow = ''; distributingRowKey = null; }
 
@@ -395,6 +523,43 @@ async function submitChangePassword() {
   catch (err) { console.error(err); let m = err.message; if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') m = 'Неверный текущий пароль'; else if (err.code === 'auth/weak-password') m = 'Слишком простой'; else if (err.code === 'auth/requires-recent-login') m = 'Войдите заново'; errEl.textContent = m; errEl.style.display = 'block'; }
   finally { btn.disabled = false; btn.textContent = 'Сменить'; }
 }
+
+/* ========= НАСТРОЙКИ ОЧИСТКИ ========= */
+async function loadAutoCleanDays() {
+  try {
+    const s = await get(ref(database, 'settings/autoCleanDays'));
+    if (s.exists()) {
+      const v = parseInt(s.val(), 10);
+      if (!isNaN(v) && v >= 0) autoCleanDays = v;
+    } else {
+      const ls = localStorage.getItem('autoCleanDays');
+      if (ls !== null) autoCleanDays = parseInt(ls, 10) || 60;
+    }
+  } catch(e) {
+    const ls = localStorage.getItem('autoCleanDays');
+    if (ls !== null) autoCleanDays = parseInt(ls, 10) || 60;
+  }
+  const inp = document.getElementById('autoCleanDays');
+  if (inp) inp.value = autoCleanDays;
+  const lbl = document.getElementById('manualCleanDaysLabel');
+  if (lbl) lbl.textContent = autoCleanDays;
+}
+
+async function saveAutoCleanDays() {
+  if (!currentIsAdmin) return;
+  const inp = document.getElementById('autoCleanDays');
+  const v = parseInt(inp.value, 10);
+  if (isNaN(v) || v < 0 || v > 365) { alert('Введите число от 0 до 365'); inp.value = autoCleanDays; return; }
+  if (v > 0 && v < 30) { alert('Минимальный срок автоочистки — 30 дней. Если хотите отключить, поставьте 0.'); inp.value = autoCleanDays; return; }
+  autoCleanDays = v;
+  localStorage.setItem('autoCleanDays', String(v));
+  try { await set(ref(database, 'settings/autoCleanDays'), v); }
+  catch(e) { console.error(e); alert('Не удалось сохранить настройку: ' + e.message); }
+  const lbl = document.getElementById('manualCleanDaysLabel');
+  if (lbl) lbl.textContent = v;
+  checkAutoClean();
+}
+/* ========= КОНЕЦ НАСТРОЕК ОЧИСТКИ ========= */
 
 /* ========= КОММЕНТАРИИ ========= */
 function getComment(key) { return sharedComments[fbKey(key)] || ''; }
@@ -457,6 +622,235 @@ function subscribeToSharedComments() {
   unsubComments = onValue(sharedCommentsRef, (snap) => { sharedComments = snap.val() || {}; renderTable(); }, (err) => console.error(err));
 }
 /* ========= КОНЕЦ КОММЕНТАРИЕВ ========= */
+
+/* ========= ДАТА ЗАКРЫТИЯ И МЕТКИ ========= */
+function getClosedDate(key) { const v = sharedClosedDates[fbKey(key)]; return v && v.date ? v.date : ''; }
+function getLabel(key) { const v = sharedLabels[fbKey(key)]; return v && v.text ? v.text : ''; }
+function formatDateISOtoRU(iso) { if (!iso) return ''; const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return iso; return `${m[3]}.${m[2]}.${m[1]}`; }
+function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+function openClosedDateModal(key) {
+  if (!currentUser) { alert('Не залогинены'); return; }
+  const row = table1Data.find(r => rowKey(r) === key);
+  if (!row) return;
+  closedDateRowKey = key;
+  const cur = getClosedDate(key);
+  document.getElementById('closedInvoiceInfo').textContent = `${row['Номер счета'] || '—'} | ${row['Прибор'] || '—'} | ${row['Контингент'] || ''}`;
+  const inp = document.getElementById('closedDateInput');
+  inp.value = cur ? cur.slice(0,10) : todayISO();
+  document.getElementById('closedDateDeleteBtn').style.display = cur ? 'inline-block' : 'none';
+  document.getElementById('closedDateError').style.display = 'none';
+  document.getElementById('closedDateModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeClosedDateModal() { document.getElementById('closedDateModal').classList.remove('open'); document.body.style.overflow = ''; closedDateRowKey = null; }
+async function saveClosedDate() {
+  if (!closedDateRowKey || !currentUser) return;
+  const v = document.getElementById('closedDateInput').value;
+  const errEl = document.getElementById('closedDateError'); errEl.style.display = 'none';
+  if (!v) { errEl.textContent = 'Укажите дату'; errEl.style.display = 'block'; return; }
+  try { await set(ref(database, 'sharedClosedDates/' + fbKey(closedDateRowKey)), { date: v, updatedAt: new Date().toISOString(), updatedBy: currentUser.uid, updatedByName: currentUserName }); closeClosedDateModal(); }
+  catch(e) { errEl.textContent = 'Ошибка: ' + e.message; errEl.style.display = 'block'; }
+}
+async function deleteClosedDate() {
+  if (!closedDateRowKey || !currentUser) return;
+  if (!confirm('Снять дату закрытия?')) return;
+  try { await remove(ref(database, 'sharedClosedDates/' + fbKey(closedDateRowKey))); closeClosedDateModal(); }
+  catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+function openLabelModal(key) {
+  if (!currentUser) { alert('Не залогинены'); return; }
+  const row = table1Data.find(r => rowKey(r) === key);
+  if (!row) return;
+  labelRowKey = key;
+  const cur = getLabel(key);
+  document.getElementById('labelInvoiceInfo').textContent = `${row['Номер счета'] || '—'} | ${row['Прибор'] || '—'} | ${row['Контингент'] || ''}`;
+  const inp = document.getElementById('labelInput');
+  inp.value = cur;
+  document.getElementById('labelCounter').textContent = cur.length;
+  inp.oninput = () => { document.getElementById('labelCounter').textContent = inp.value.length; };
+  document.getElementById('labelDeleteBtn').style.display = cur ? 'inline-block' : 'none';
+  document.getElementById('labelError').style.display = 'none';
+  document.getElementById('labelModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => inp.focus(), 100);
+}
+function closeLabelModal() { document.getElementById('labelModal').classList.remove('open'); document.body.style.overflow = ''; labelRowKey = null; }
+function setLabelPreset(text) { const inp = document.getElementById('labelInput'); inp.value = text; document.getElementById('labelCounter').textContent = text.length; }
+async function saveLabel() {
+  if (!labelRowKey || !currentUser) return;
+  const v = document.getElementById('labelInput').value.trim();
+  const errEl = document.getElementById('labelError'); errEl.style.display = 'none';
+  if (v.length > 100) { errEl.textContent = 'Максимум 100 символов'; errEl.style.display = 'block'; return; }
+  try {
+    if (!v) { await remove(ref(database, 'sharedLabels/' + fbKey(labelRowKey))); }
+    else { await set(ref(database, 'sharedLabels/' + fbKey(labelRowKey)), { text: v, updatedAt: new Date().toISOString(), updatedBy: currentUser.uid, updatedByName: currentUserName }); }
+    closeLabelModal();
+  } catch(e) { errEl.textContent = 'Ошибка: ' + e.message; errEl.style.display = 'block'; }
+}
+async function deleteLabel() {
+  if (!labelRowKey || !currentUser) return;
+  if (!confirm('Снять метку?')) return;
+  try { await remove(ref(database, 'sharedLabels/' + fbKey(labelRowKey))); closeLabelModal(); }
+  catch(e) { alert('Ошибка: ' + e.message); }
+}
+function subscribeToSharedClosedDates() {
+  if (unsubClosedDates) unsubClosedDates();
+  unsubClosedDates = onValue(ref(database, 'sharedClosedDates'), (snap) => { sharedClosedDates = snap.val() || {}; renderTable(); }, (err) => console.error(err));
+}
+function subscribeToSharedLabels() {
+  if (unsubLabels) unsubLabels();
+  unsubLabels = onValue(ref(database, 'sharedLabels'), (snap) => { sharedLabels = snap.val() || {}; renderTable(); }, (err) => console.error(err));
+}
+/* ========= КОНЕЦ ДАТА ЗАКРЫТИЯ И МЕТКИ ========= */
+
+/* ========= МАССОВОЕ РАСПРЕДЕЛЕНИЕ ========= */
+function openBulkAssignModal() {
+  if (!currentIsAdmin) { alert('Только админ'); return; }
+  if (viewingUid !== currentUser.uid) { alert('Переключитесь на «— Свои данные —»'); return; }
+  bulkSelectedDevices.clear();
+  renderBulkDeviceTags();
+  renderBulkUserSelect();
+  document.getElementById('bulkError').style.display = 'none';
+  document.getElementById('bulkAssignModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  updateBulkCounts();
+}
+
+function closeBulkAssignModal() {
+  document.getElementById('bulkAssignModal').classList.remove('open');
+  document.body.style.overflow = '';
+  bulkSelectedDevices.clear();
+}
+
+function renderBulkUserSelect() {
+  const sel = document.getElementById('bulkUserSelect');
+  sel.innerHTML = '<option value="">— Выберите пользователя —</option>';
+  const arr = Object.entries(allUsersCache)
+    .map(([uid, u]) => ({uid, ...u}))
+    .filter(u => u.uid !== currentUser.uid)
+    .sort((a,b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+  arr.forEach(u => {
+    const o = document.createElement('option');
+    o.value = u.uid;
+    o.textContent = `👤 ${u.name || u.username || u.uid}`;
+    sel.appendChild(o);
+  });
+}
+
+function renderBulkDeviceTags() {
+  const c = document.getElementById('bulkDeviceTags');
+  c.innerHTML = '';
+  const types = Array.from(deviceTypes).sort();
+  if (!types.length) { c.innerHTML = '<span class="text-muted small">Нет приборов</span>'; return; }
+  types.forEach(d => {
+    const t = document.createElement('span');
+    t.className = 'device-tag badge bg-light text-dark border';
+    if (bulkSelectedDevices.has(d)) t.classList.add('active');
+    t.textContent = d;
+    t.style.cursor = 'pointer';
+    t.onclick = () => bulkToggleDevice(d);
+    c.appendChild(t);
+  });
+}
+
+function bulkToggleDevice(d) {
+  if (bulkSelectedDevices.has(d)) bulkSelectedDevices.delete(d);
+  else bulkSelectedDevices.add(d);
+  renderBulkDeviceTags();
+  updateBulkCounts();
+}
+
+function bulkClearSelection() {
+  bulkSelectedDevices.clear();
+  renderBulkDeviceTags();
+  updateBulkCounts();
+}
+
+function getBulkCandidates() {
+  if (!bulkSelectedDevices.size) return [];
+  return table1Data.filter(r => {
+    if (r.distributedTo) return false;
+    const d = (r['Прибор'] || '').split(' ').slice(0, 3).join(' ');
+    return bulkSelectedDevices.has(d);
+  });
+}
+
+function updateBulkCounts() {
+  document.getElementById('bulkDeviceCount').textContent = bulkSelectedDevices.size;
+  document.getElementById('bulkRowCount').textContent = getBulkCandidates().length;
+}
+
+async function bulkAssignExecute() {
+  const errEl = document.getElementById('bulkError'); errEl.style.display = 'none';
+  const userUid = document.getElementById('bulkUserSelect').value;
+  const userName = userUid ? (allUsersCache[userUid] && (allUsersCache[userUid].name || allUsersCache[userUid].username)) || userUid : '';
+
+  if (!bulkSelectedDevices.size) { errEl.textContent = 'Выберите хотя бы один тип прибора'; errEl.style.display = 'block'; return; }
+  if (!userUid) { errEl.textContent = 'Выберите пользователя'; errEl.style.display = 'block'; return; }
+  if (userUid === currentUser.uid) { errEl.textContent = 'Нельзя распределить себе'; errEl.style.display = 'block'; return; }
+
+  const candidates = getBulkCandidates();
+  if (!candidates.length) { errEl.textContent = 'Нет свободных счетов с выбранными приборами'; errEl.style.display = 'block'; return; }
+
+  if (!confirm(`Распределить ${candidates.length} счёт(ов) пользователю «${userName}»?\n\nТипы приборов: ${Array.from(bulkSelectedDevices).join(', ')}`)) return;
+
+  const now = new Date().toISOString();
+  const btn = document.querySelector('#bulkAssignModal .btn-success');
+  if (btn) { btn.disabled = true; btn.textContent = 'Распределяем...'; }
+
+  try {
+    for (const row of candidates) {
+      const key = rowKey(row);
+      const idx = table1Data.findIndex(r => rowKey(r) === key);
+      if (idx < 0) continue;
+      const prevUid = table1Data[idx].distributedTo || '';
+      if (prevUid && prevUid !== userUid) { await removeFromUserInvoices(prevUid, key); }
+      table1Data[idx] = { ...table1Data[idx], distributedTo: userUid, distributedToName: userName, distributedAt: now };
+    }
+
+    const adminC1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
+    await set(userInvoicesRef, { table1Data: adminC1, updatedAt: now });
+
+    let ut = [];
+    try {
+      const s = await get(ref(database, 'invoices/' + userUid + '/table1Data'));
+      if (s.exists()) ut = s.val() || [];
+    } catch(e) {}
+
+    const userMap = new Map(ut.map(r => [rowKey(r), r]));
+    for (const row of candidates) {
+      const key = rowKey(row);
+      const fresh = table1Data.find(r => rowKey(r) === key);
+      if (!fresh) continue;
+      if (userMap.has(key)) {
+        const existed = userMap.get(key);
+        userMap.set(key, { ...existed, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now });
+      } else {
+        userMap.set(key, stripUndefined({ ...fresh, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now, copied: true, distributedTo: '', distributedToName: '' }));
+      }
+    }
+    await set(ref(database, 'invoices/' + userUid + '/table1Data'), Array.from(userMap.values()));
+
+    for (const row of candidates) {
+      try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(rowKey(row)))); } catch(e) {}
+    }
+  } catch(e) {
+    console.error(e);
+    errEl.textContent = 'Ошибка: ' + e.message;
+    errEl.style.display = 'block';
+    if (btn) { btn.disabled = false; btn.textContent = '📦 Распределить'; }
+    return;
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '📦 Распределить'; }
+  closeBulkAssignModal();
+  renderUserFilters();
+  renderTable();
+  alert(`✅ Распределено ${candidates.length} счёт(ов) пользователю «${userName}»`);
+}
+/* ========= КОНЕЦ МАССОВОЕ РАСПРЕДЕЛЕНИЕ ========= */
 
 /* ========= ОКНО ВСТАВКИ ========= */
 function openPasteModal() { document.getElementById('pasteModal').classList.add('open'); document.body.style.overflow = 'hidden'; setTimeout(() => { document.getElementById('pasteTableWrapper').focus(); }, 100); }
@@ -631,7 +1025,7 @@ async function savePasteTable() {
 document.addEventListener('DOMContentLoaded', () => { const w = document.getElementById('pasteTableWrapper'); if (w) w.addEventListener('paste', handlePaste); });
 setTimeout(() => { const w = document.getElementById('pasteTableWrapper'); if (w && !w.dataset.listener) { w.addEventListener('paste', handlePaste); w.dataset.listener = '1'; } }, 500);
 
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); closeChangePassword(); closePasteModal(); closeCommentModal(); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); closeChangePassword(); closePasteModal(); closeCommentModal(); closeClosedDateModal(); closeLabelModal(); closeBulkAssignModal(); } });
 
 const TRANSLIT_MAP = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
 function transliterate(s) { let r = ''; for (const c of s) { const l = c.toLowerCase(); r += (TRANSLIT_MAP[l] !== undefined) ? TRANSLIT_MAP[l] : c; } return r; }
@@ -674,6 +1068,8 @@ async function logout() {
   if (unsubShared) unsubShared();
   if (unsubViewed) unsubViewed();
   if (unsubComments) unsubComments();
+  if (unsubClosedDates) unsubClosedDates();
+  if (unsubLabels) unsubLabels();
   try { await signOut(auth); } catch(e) { console.error(e); }
 }
 
@@ -696,17 +1092,19 @@ onAuthStateChanged(auth, async (user) => {
     if (currentIsAdmin) {
       document.getElementById('adminBadge').style.display = 'inline-block';
       document.getElementById('adminPanelBtn').style.display = 'inline-block';
+      document.getElementById('bulkAssignBtn').style.display = 'inline-block';
       document.getElementById('adminViewBlock').style.display = 'block';
       document.getElementById('ownerColHeader').style.display = 'table-cell';
       subscribeToAllUsersForAdmin(); updateAdminUserSelect();
     }
     viewingUid = user.uid; viewingName = currentUserName; updateAdminModeInfo();
     cleanDismissedThisSession = false; autoCleanChecked = false; hideCleanBanner();
-    subscribeToViewedDistributed(user.uid); loadFromStorage(); subscribeToUserData(viewingUid); subscribeToSharedStatuses(); subscribeToSharedComments();
+    await loadAutoCleanDays();
+    subscribeToViewedDistributed(user.uid); loadFromStorage(); subscribeToUserData(viewingUid); subscribeToSharedStatuses(); subscribeToSharedComments(); subscribeToSharedClosedDates(); subscribeToSharedLabels();
     setSyncStatus('syncing', 'Подключение...');
   } else {
     currentUser = null; currentUserName = ''; currentIsAdmin = false; viewingUid = null; table1Data = [];
-    sharedStatuses = {}; sharedComments = {}; userInvoicesRef = null; sharedStatusesRef = null; sharedCommentsRef = null; viewedDistributed = {};
+    sharedStatuses = {}; sharedComments = {}; sharedClosedDates = {}; sharedLabels = {}; userInvoicesRef = null; sharedStatusesRef = null; sharedCommentsRef = null; viewedDistributed = {};
     document.getElementById('authScreen').style.display = 'block';
     document.getElementById('appScreen').style.display = 'none';
     setSyncStatus('offline', 'Не подключено');
@@ -1086,7 +1484,10 @@ function calculateTerm(row) {
 }
 
 function getCleanCandidates() {
-  const th = new Date(); th.setMonth(th.getMonth() - 2); th.setHours(0,0,0,0);
+  if (autoCleanDays <= 0) return [];
+  const th = new Date();
+  th.setDate(th.getDate() - autoCleanDays);
+  th.setHours(0,0,0,0);
   const c = [];
   table1Data.forEach(row => {
     if (row.status !== 'completed') return;
@@ -1098,6 +1499,7 @@ function getCleanCandidates() {
 }
 function checkAutoClean() {
   if (cleanDismissedThisSession) return;
+  if (autoCleanDays <= 0) { hideCleanBanner(); return; }
   if (!table1Data.length) { hideCleanBanner(); return; }
   pendingCleanRows = getCleanCandidates();
   if (!pendingCleanRows.length) { hideCleanBanner(); return; }
@@ -1108,8 +1510,9 @@ function checkAutoClean() {
   document.getElementById('cleanWord').textContent = w;
   let e = null, l = null;
   pendingCleanRows.forEach(r => { const d = r.statusDate ? new Date(r.statusDate) : parseDate(r['Дата выписки']); if (!d || isNaN(d.getTime())) return; if (!e || d < e) e = d; if (!l || d > l) l = d; });
-  if (e && l) { const mm = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; const f = (d) => `${mm[d.getMonth()]} ${d.getFullYear()}`; document.getElementById('cleanPeriod').textContent = (f(e) === f(l)) ? f(e) : `${f(e)} — ${f(l)}`; }
-  else document.getElementById('cleanPeriod').textContent = 'старше 2 мес.';
+  document.getElementById('cleanPeriod').textContent = `${autoCleanDays} дн.`;
+  if (e && l) { const mm = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; const f = (d) => `${mm[d.getMonth()]} ${d.getFullYear()}`; document.getElementById('cleanDates').textContent = (f(e) === f(l)) ? f(e) : `${f(e)} — ${f(l)}`; }
+  else document.getElementById('cleanDates').textContent = '';
   document.getElementById('cleanBanner').classList.add('open');
 }
 function hideCleanBanner() { const b = document.getElementById('cleanBanner'); if (b) b.classList.remove('open'); }
@@ -1125,9 +1528,93 @@ async function performAutoClean() {
   for (const fk of fkr) {
     try { await remove(ref(database, 'sharedStatuses/' + fk)); } catch(e) {}
     try { await remove(ref(database, 'sharedComments/' + fk)); } catch(e) {}
+    try { await remove(ref(database, 'sharedClosedDates/' + fk)); } catch(e) {}
+    try { await remove(ref(database, 'sharedLabels/' + fk)); } catch(e) {}
   }
   pendingCleanRows = []; hideCleanBanner(); renderTable();
   alert(`Удалено ${c}`);
+}
+
+async function manualCleanCompleted() {
+  if (!currentIsAdmin) { alert('Только админ'); return; }
+  if (viewingUid !== currentUser.uid) { alert('Переключитесь на «— Свои данные —»'); return; }
+  const targets = table1Data.filter(r => r.status === 'completed');
+  if (!targets.length) { alert('Нет выполненных счетов.'); return; }
+  if (!confirm(`Удалить ВСЕ выполненные счета (${targets.length} шт.)?\n\nДействие необратимо.`)) return;
+
+  const fkr = [];
+  const keysSet = new Set();
+  targets.forEach(r => {
+    const k = rowKey(r);
+    if (!keysSet.has(k)) { keysSet.add(k); fkr.push(fbKey(k)); }
+  });
+
+  const adminUid = currentUser.uid;
+  const uids = Object.keys(allUsersCache).filter(u => u !== adminUid);
+  const allUids = [adminUid, ...uids];
+  const targetKeys = new Set(targets.map(t => rowKey(t)));
+
+  for (const uid of allUids) {
+    let ut = [];
+    try { const s = await get(ref(database, 'invoices/' + uid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) { continue; }
+    const filtered = ut.filter(r => !targetKeys.has(rowKey(r)));
+    if (filtered.length !== ut.length) {
+      try { await set(ref(database, 'invoices/' + uid + '/table1Data'), filtered); } catch(e) { console.error('Не записать', uid, e); }
+    }
+  }
+
+  for (const fk of fkr) {
+    try { await remove(ref(database, 'sharedStatuses/' + fk)); } catch(e) {}
+    try { await remove(ref(database, 'sharedComments/' + fk)); } catch(e) {}
+    try { await remove(ref(database, 'sharedClosedDates/' + fk)); } catch(e) {}
+    try { await remove(ref(database, 'sharedLabels/' + fk)); } catch(e) {}
+    try { await remove(ref(database, 'viewedDistributed/' + adminUid + '/' + fk)); } catch(e) {}
+  }
+
+  table1Data = table1Data.filter(r => !targetKeys.has(rowKey(r)));
+  hideCleanBanner(); renderTable();
+  alert(`🧹 Удалено выполненных: ${targets.length}`);
+}
+
+async function manualCleanOld() {
+  if (!currentIsAdmin) { alert('Только админ'); return; }
+  if (viewingUid !== currentUser.uid) { alert('Переключитесь на «— Свои данные —»'); return; }
+  if (autoCleanDays <= 0) { alert('Укажите срок > 0 в настройке автоочистки'); return; }
+  const targets = getCleanCandidates();
+  if (!targets.length) { alert(`Нет выполненных старше ${autoCleanDays} дн.`); return; }
+  if (!confirm(`Удалить ${targets.length} счёт(ов) со статусом «Выполнен» старше ${autoCleanDays} дн.?`)) return;
+
+  const fkr = [];
+  const keysSet = new Set();
+  targets.forEach(r => {
+    const k = rowKey(r);
+    if (!keysSet.has(k)) { keysSet.add(k); fkr.push(fbKey(k)); }
+  });
+
+  const adminUid = currentUser.uid;
+  const uids = Object.keys(allUsersCache).filter(u => u !== adminUid);
+  const allUids = [adminUid, ...uids];
+  const targetKeys = new Set(targets.map(t => rowKey(t)));
+
+  for (const uid of allUids) {
+    let ut = [];
+    try { const s = await get(ref(database, 'invoices/' + uid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) { continue; }
+    const filtered = ut.filter(r => !targetKeys.has(rowKey(r)));
+    if (filtered.length !== ut.length) {
+      try { await set(ref(database, 'invoices/' + uid + '/table1Data'), filtered); } catch(e) { console.error('Не записать', uid, e); }
+    }
+  }
+
+  for (const fk of fkr) {
+    try { await remove(ref(database, 'sharedStatuses/' + fk)); } catch(e) {}
+    try { await remove(ref(database, 'sharedComments/' + fk)); } catch(e) {}
+    try { await remove(ref(database, 'sharedClosedDates/' + fk)); } catch(e) {}
+    try { await remove(ref(database, 'sharedLabels/' + fk)); } catch(e) {}
+  }
+
+  table1Data = table1Data.filter(r => !targetKeys.has(rowKey(r)));
+  hideCleanBanner(); renderTable();
+  alert(`🧹 Удалено: ${targets.length}`);
 }
 
 function openDistModal(key) {
@@ -1206,16 +1693,12 @@ async function syncRowUpdatesToUsers(updatedKeys) {
 async function syncAllToUsers() {
   if (!currentIsAdmin) { alert('Только админ'); return; }
   if (viewingUid !== currentUser.uid) { alert('Переключитесь на «— Свои данные —»'); return; }
-
   if (!confirm('Обновить данные (даты, суммы, прибор, место, тип) у ВСЕХ пользователей?\n\nСтатусы («В работе», «Выполнен») и комментарии НЕ будут затронуты.')) return;
 
   const adminUid = currentUser.uid;
-
   let adminRows = [];
-  try {
-    const s = await get(ref(database, 'invoices/' + adminUid + '/table1Data'));
-    if (s.exists()) adminRows = s.val() || [];
-  } catch(e) { console.error(e); alert('Не удалось прочитать админскую таблицу: ' + e.message); return; }
+  try { const s = await get(ref(database, 'invoices/' + adminUid + '/table1Data')); if (s.exists()) adminRows = s.val() || []; }
+  catch(e) { console.error(e); alert('Не удалось прочитать админскую таблицу: ' + e.message); return; }
   if (!adminRows.length) { alert('У вас нет счетов для синхронизации.'); return; }
 
   const adminMap = new Map();
@@ -1228,11 +1711,7 @@ async function syncAllToUsers() {
 
   for (const uid of uids) {
     let ut = [];
-    try {
-      const s = await get(ref(database, 'invoices/' + uid + '/table1Data'));
-      if (s.exists()) ut = s.val() || [];
-    } catch(e) { console.error('Не прочитать', uid, e); continue; }
-
+    try { const s = await get(ref(database, 'invoices/' + uid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) { continue; }
     let changed = false;
     for (let i = 0; i < ut.length; i++) {
       const k = rowKey(ut[i]);
@@ -1266,7 +1745,6 @@ async function syncAllToUsers() {
       changed = true;
       rowsUpdated++;
     }
-
     if (changed) {
       try { await set(ref(database, 'invoices/' + uid + '/table1Data'), ut); usersTouched++; }
       catch(e) { console.error('Не записать', uid, e); }
@@ -1358,6 +1836,48 @@ async function repairDistribution() {
   renderTable();
 }
 
+function deleteInvoice(key) {
+  if (!currentUser) { alert('Не залогинены'); return; }
+  const row = table1Data.find(r => rowKey(r) === key);
+  if (!row) return;
+  const info = `${row['Номер счета'] || '—'} | ${row['Прибор'] || '—'} | ${row['Контингент'] || ''}`;
+  const isAdminSelf = currentIsAdmin && viewingUid === currentUser.uid;
+  const who = row.distributedToName ? `\n\nРаспределён: ${row.distributedToName}` : '';
+  const extra = isAdminSelf && row.distributedToName ? '\n\nСчёт будет удалён у вас И у этого пользователя.' : '';
+  if (!confirm(`🗑 Точно удалить счёт?\n\n${info}${who}${extra}\n\nДействие необратимо.`)) return;
+  deleteInvoiceConfirm(key);
+}
+
+async function deleteInvoiceConfirm(key) {
+  if (!currentUser) return;
+  const adminUid = currentUser.uid;
+  const isAdminSelf = currentIsAdmin && viewingUid === currentUser.uid;
+  const fk = fbKey(key);
+  table1Data = table1Data.filter(r => rowKey(r) !== key);
+  renderTable();
+  try {
+    if (isAdminSelf) {
+      const uids = Object.keys(allUsersCache).filter(u => u !== adminUid);
+      const allUids = [adminUid, ...uids];
+      for (const uid of allUids) {
+        let ut = [];
+        try { const s = await get(ref(database, 'invoices/' + uid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) { continue; }
+        const filtered = ut.filter(r => rowKey(r) !== key);
+        if (filtered.length !== ut.length) { try { await set(ref(database, 'invoices/' + uid + '/table1Data'), filtered); } catch(e) { console.error('Не записать', uid, e); } }
+      }
+    } else if (userInvoicesRef) {
+      const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
+      await set(userInvoicesRef, { table1Data: c1, updatedAt: new Date().toISOString() });
+    }
+  } catch(e) { console.error(e); alert('Ошибка записи: ' + e.message); return; }
+  try { await remove(ref(database, 'sharedStatuses/' + fk)); } catch(e) {}
+  try { await remove(ref(database, 'sharedComments/' + fk)); } catch(e) {}
+  try { await remove(ref(database, 'sharedClosedDates/' + fk)); } catch(e) {}
+  try { await remove(ref(database, 'sharedLabels/' + fk)); } catch(e) {}
+  try { const uids = isAdminSelf ? Object.keys(allUsersCache) : [currentUser.uid]; for (const uid of uids) { try { await remove(ref(database, 'viewedDistributed/' + uid + '/' + fk)); } catch(e) {} } } catch(e) {}
+  alert('✅ Счёт удалён');
+}
+
 function setupScrollSync() {
   const ts = document.getElementById('topScroll'), tsi = document.getElementById('topScrollInner');
   const bs = document.getElementById('bottomScroll'), t = document.getElementById('invoicesTable');
@@ -1393,8 +1913,8 @@ function renderTable() {
   if (selectedPlaces.size > 0) fd = fd.filter(row => selectedPlaces.has(row.place || 'csm'));
   if (selectedTypes.size > 0) fd = fd.filter(row => selectedTypes.has(row.type || 'common'));
   if (selectedSections.size > 0) fd = fd.filter(row => selectedSections.has('distributed') && row.distributed);
-  if (currentIsAdmin && viewingUid === currentUser.uid && selectedDistributedUsers.size > 0) fd = fd.filter(row => selectedDistributedUsers.has(row.distributedTo));
-  if (selectedDevices.size > 0) fd = fd.filter(row => { const d = (row['Прибор'] || '').split(' ').slice(0, 3).join(' '); return selectedDevices.has(d); });
+  if (currentIsAdmin && viewingUid === currentUser .uid && selectedDistributedUsers.size > 0) fd = fd.filter(row => selectedDistributedUsers.has(row.distributedTo));
+ if (selectedDevices.size > 0) fd = fd.filter(row => { const d = (row['Прибор'] || '').split(' ').slice(0, 3).join(' '); return selectedDevices.has(d); });
   if (sq) fd = fd.filter(row => {
     const inv = safeString(row['Номер счета']), cont = safeString(row['Контингент']), dev = safeString(row['Прибор']);
     const pd = safeString(row['Дата оплаты'] || row.paymentDate), ur = safeString(row.urgency);
@@ -1467,7 +1987,7 @@ function renderTable() {
 
       if (isAdminSelf) {
         tr.classList.add('admin-clickable');
-        tr.title = 'Нажмите для распределения';
+        tr.title = > 'Нажмите для распределения';
         tr.onclick = (e) => { if (e.target.closest('button')) return; openDistModal(key); };
       }
 
@@ -1475,6 +1995,23 @@ function renderTable() {
       const commentBtn = hasComment
         ? `<button type="button" class="comment-icon-btn" title="Есть комментарий. Нажмите, чтобы посмотреть/изменить" onclick="event.stopPropagation();openCommentModal('${key}')">⚠️</button>`
         : `<button type="button" class="comment-icon-btn text-muted" title="Добавить комментарий" onclick="event.stopPropagation();openCommentModal('${key}')">—</button>`;
+
+      const closedVal = getClosedDate(rk);
+      const labelVal = getLabel(rk);
+
+      const closedBtnHtml = closedVal
+        ? `<button type="button" class="btn btn-sm btn-link p-0 ms-1 text-decoration-none" title="Закрыт ${formatDateISOtoRU(closedVal)}" onclick="event.stopPropagation();openClosedDateModal('${key}')" style="font-size:1em;color:#198754">🔐</button>`
+        : `<button type="button" class="btn btn-sm btn-link p-0 ms-1 text-decoration-none text-muted" title="Указать дату закрытия" onclick="event.stopPropagation();openClosedDateModal('${key}')" style="font-size:1em">—</button>`;
+
+      let labelBg = '#fd7e14';
+      if (labelVal === '35%' || labelVal === '30%') labelBg = '#6f42c1';
+      else if (labelVal === 'По факту') labelBg = '#198754';
+      else if (labelVal === 'Спорный') labelBg = '#dc3545';
+      else if (labelVal === 'Дубль') labelBg = '#6c757d';
+
+      const labelBtnHtml = labelVal
+        ? `<div class="mt-1"><button type="button" class ="btn btn-sm p-0 border-00" title="Метка: ${escapeHtml(label)Val)}" onclick="event.stopPropagation();openLabel dModal('${key}')"><span class="tebadge" style="background:${labelBg};color:#fff;font-size:.7em">🏷 ${escapeHtml(labelVal)}</span></button></div>`
+        : `<div class="mt-1"><button type="button" class="btn btn-sm p-0 border-0 text-muted" title="Добавить метку" onclick="event.stopPropagation();openLabelModal('${key}')" style="font-size:.7em">🏷</button></div>`;
 
       tr.innerHTML = `
         <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong>${distributedBadge}</td>
@@ -1485,7 +2022,10 @@ function renderTable() {
         <td>${row['Прибор'] || ''}</td>
         <td class="col-qty">${formatQty(row['Кол-во'])}</td>
         <td class="col-sum">${row['Всего по счету'] || row['Сумма'] || ''}</td>
-        <td class="col-date">${pd ? `<strong>${pd}</strong>` : '—'}</td>
+        <td class="col-date">
+          <div>${pd ? `<strong>${pd}</strong>` : '—'}${closedBtnHtml}</div>
+          ${labelBtnHtml}
+        </td>
         <td class="col-date">${termHtml}</td>
         <td>${row.urgency ? `<span class="badge badge-urgent">${row.urgency} дн.</span>` : '—'}</td>
         <td>${row.status === 'new' ? '<span class="badge badge-new">Новый</span>' : ''}${row.status === 'inwork' ? `<span class="badge badge-inwork">В работе</span>${changedBy}` : ''}${row.status === 'completed' ? `<span class="badge badge-completed">✓ Выполнен</span>${changedBy}` : ''}</td>
@@ -1495,6 +2035,7 @@ function renderTable() {
           ${row.status === 'new' ? `<button class="btn btn-sm btn-info me-1" onclick="event.stopPropagation();changeStatus('${key}', 'inwork')">▶</button><button class="btn btn-sm btn-success" onclick="event.stopPropagation();changeStatus('${key}', 'completed')">✓</button>` : ''}
           ${row.status === 'inwork' ? `<button class="btn btn-sm btn-success me-1" onclick="event.stopPropagation();changeStatus('${key}', 'completed')">✓</button><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();changeStatus('${key}', 'new')">↩</button>` : ''}
           ${row.status === 'completed' ? `<button class="btn btn-sm btn-warning me-1" onclick="event.stopPropagation();changeStatus('${key}', 'inwork')">↩</button><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();changeStatus('${key}', 'new')">↩</button>` : ''}
+          <button class="btn btn-sm btn-outline-danger ms-1" title="Удалить счёт" onclick="event.stopPropagation();deleteInvoice('${key}')">🗑</button>
         </td>`;
       tbody.appendChild(tr);
     });
@@ -1506,13 +2047,13 @@ function renderTable() {
 function exportToExcel() {
   if (!table1Data.length) { alert('Нет данных'); return; }
   let dte = [...table1Data];
-  if (selectedStatuses.size > 0) dte = dte.filter(row => { for (const s of selectedStatuses) { if (s === 'new' && row.status === 'new') return true; if (s === 'inwork' && row.status === 'inwork') return true; if (s === 'completed' && row.status === 'completed') return true; if (s === 'highlighted' && (row.place === 'etalon' || row.place === 'onsite' || row.type === 'budget' || row.type === 'urgent')) return true; } return false; });
+  if (selectedStatuses.size = dte.filter(row => { for (const s of selectedStatuses) { if (s === 'new' && row.status === 'new') return true; if (s === 'inwork' && row.status === 'inwork') return true; if (s === 'completed' && row.status === 'completed') return true; if (s === 'highlighted' && (row.place === 'etalon' || row.place === 'onsite' || row.type === 'budget' || row.type === 'urgent')) return true; } return false; });
   if (selectedPlaces.size > 0) dte = dte.filter(r => selectedPlaces.has(r.place || 'csm'));
   if (selectedTypes.size > 0) dte = dte.filter(r => selectedTypes.has(r.type || 'common'));
   if (selectedSections.size > 0) dte = dte.filter(r => selectedSections.has('distributed') && r.distributed);
   if (selectedDistributedUsers.size > 0) dte = dte.filter(r => selectedDistributedUsers.has(r.distributedTo));
   if (selectedDevices.size > 0) dte = dte.filter(r => { const d = (r['Прибор'] || '').split(' ').slice(0, 3).join(' '); return selectedDevices.has(d); });
-  const ed = dte.map(row => { const term = calculateTerm(row); const c = getComment(rowKey(row)); return { 'Квитанция/Счет': row['Номер счета'], 'Владелец': (currentIsAdmin && viewingUid !== currentUser.uid) ? viewingName : '', 'Место': placeLabel(row.place), 'Тип': typeLabel(row.type), 'Дата выписки': row['Дата выписки'], 'Контрагент': row['Контингент'] || '', 'Прибор': row['Прибор'], 'Кол-во': row['Кол-во'], 'Сумма': row['Всего по счету'], 'Дата оплаты': row['Дата оплаты'] || row.paymentDate, 'Срок': term.date ? formatDate(term.date) : '', 'Срочность': row.urgency, 'Статус': row.status, 'Изменил': row.statusChangedBy || '', 'Распределён': row.distributedToName || '', 'Комментарий': c }; });
+  const ed = dte.map(row => { const term = calculateTerm(row); const c = getComment(rowKey(row)); const cd = getClosedDate(rowKey(row)); return { 'Квитанция/Счет': row['Номер счета'], 'Владелец': (currentIsAdmin && viewingUid !== currentUser.uid) ? viewingName : '', 'Место': placeLabel(row.place), 'Тип': typeLabel(row.type), 'Дата выписки': row['Дата выписки'], 'Контрагент': row['Контингент'] || '', 'Прибор': row['Прибор'], 'Кол-во': row['Кол-во'], 'Сумма': row['Всего по счету'], 'Дата оплаты': row['Дата оплаты'] || row.paymentDate, 'Срок': term.date ? formatDate(term.date) : '', 'Срочность': row.urgency, 'Статус': row.status, 'Изменил': row.statusChangedBy || '', 'Распределён': row.distributedToName || '', 'Комментарий': c, 'Закрыт': cd ? formatDateISOtoRU(cd) : '', 'Метка': getLabel(rowKey(row)) }; });
   const ws = XLSX.utils.json_to_sheet(ed); const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Счета');
   const parts = ['счета'];
