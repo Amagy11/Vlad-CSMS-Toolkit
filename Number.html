@@ -257,14 +257,12 @@
     <div class="help-modal-body">
       <p class="text-muted small mb-2">Счёт: <b id="labelInvoiceInfo">—</b></p>
       <label class="form-label fw-bold">Метка</label>
-      <input type="text" id="labelInput" class="form-control" maxlength="100" placeholder="Например: По факту">
+      <input type="text" id="labelInput" class="form-control" maxlength="100" placeholder="Введите метку вручную или выберите ниже">
       <div class="d-flex flex-wrap gap-1 mt-2">
-        <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="setLabelPreset('35%')">35%</button>
-        <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="setLabelPreset('30%')">30%</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setLabelPreset('По факту')">По факту</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setLabelPreset('Спорный')">Спорный</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setLabelPreset('Дубль')">Дубль</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setLabelPreset('На уточнении')">На уточнении</button>
+        <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="setLabelPreset('По факту 30 д.')">По факту 30 д.</button>
+        <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="setLabelPreset('По факту 25 д.')">По факту 25 д.</button>
+        <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="setLabelPreset('35%')">35%</button>
+        <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="setLabelPreset('30%')">30%</button>
       </div>
       <div class="form-text mt-1"><span id="labelCounter">0</span>/100</div>
       <div id="labelError" class="alert alert-danger mt-2" style="display:none"></div>
@@ -332,13 +330,13 @@
 <p>Кнопка «Обновить данные у всех» в админ-панели проталкивает свежие данные (даты, суммы) всем пользователям. Статусы и комментарии не сбрасываются.</p>
 <hr>
 <h5>💬 Комментарии и метки</h5>
-<p>В колонке «Пометки» клик по <b>—</b> добавляет комментарий, по <b>⚠️</b> — открывает его. В «Дата оплаты» можно поставить метку 🏷 (35%, 30%, По факту) и дату закрытия 🔐.</p>
+<p>В колонке «Пометки» клик по <b>—</b> добавляет комментарий, по <b>⚠️</b> — открывает его. В «Дата оплаты» можно поставить метку 🏷 (По факту 30/25 д., 35%, 30%) и дату закрытия 🔐.</p>
 <hr>
 <h5>🧹 Автоочистка</h5>
 <p>Выполненные счета удаляются по баннеру. Минимальный срок — <b>30 дней</b>. В админ-панели можно отключить автоочистку (0) или почистить вручную.</p>
 <hr>
 <h5>📅 Расчёт срока</h5>
-<p>День оплаты = <b>день 1</b>. Срочные/бюджет — 5 рабочих дней, остальные — 30 календарных (с откатом назад на рабочий день).</p>
+<p>День оплаты = <b>день 1</b>. Срочные/бюджет — 5 рабочих дней, остальные — 30 календарных (с откатом назад на рабочий день). Метки меняют расчёт.</p>
 </div>
 <div class="help-modal-footer"><button class="btn btn-secondary" onclick="closeHelp()">Закрыть</button></div>
 </div></div>
@@ -1473,6 +1471,27 @@ function clearAllData() {
 }
 
 function calculateTerm(row) {
+  const rk = rowKey(row);
+  const label = getLabel(rk);
+
+  // Если метка "По факту N д." — считаем от ДАТЫ ВЫПИСКИ, календарные дни
+  if (label === 'По факту 30 д.' || label === 'По факту 25 д.') {
+    const issueDate = row['Дата выписки'];
+    if (!issueDate) return { date: null, label: label };
+    const n = label === 'По факту 25 д.' ? 25 : 30;
+    return { date: addCalendarDays(issueDate, n), label: `По факту: ${n} кал. дн. от выписки` };
+  }
+
+  // "35%" — 5 рабочих дней от ДАТЫ ОПЛАТЫ
+  // "30%" — 10 рабочих дней от ДАТЫ ОПЛАТЫ
+  if (label === '35%' || label === '30%') {
+    const payDate = row['Дата оплаты'] || row.paymentDate;
+    if (!payDate) return { date: null, label: label };
+    const n = label === '35%' ? 5 : 10;
+    return { date: addWorkingDays(payDate, n), label: `${label} → ${n} раб.` };
+  }
+
+  // Обычная логика (без метки)
   const ds = row['Дата оплаты'] || row.paymentDate;
   if (!ds) return { date: null, label: '' };
   const fast = row.type === 'budget' || row.type === 'urgent';
@@ -2006,10 +2025,8 @@ function renderTable() {
         : `<button type="button" class="btn btn-sm btn-link p-0 ms-1 text-decoration-none text-muted" title="Указать дату закрытия" onclick="event.stopPropagation();openClosedDateModal('${key}')" style="font-size:1em">—</button>`;
 
       let labelBg = '#fd7e14';
-      if (labelVal === '35%' || labelVal === '30%') labelBg = '#6f42c1';
-      else if (labelVal === 'По факту') labelBg = '#198754';
-      else if (labelVal === 'Спорный') labelBg = '#dc3545';
-      else if (labelVal === 'Дубль') labelBg = '#6c757d';
+      if (labelVal === 'По факту 30 д.' || labelVal === 'По факту 25 д.') labelBg = '#198754';
+      else if (labelVal === '35%' || labelVal === '30%') labelBg = '#0d6efd';
 
       const labelBtnHtml = labelVal
         ? `<div class="mt-1"><button type="button" class="btn btn-sm p-0 border-0" title="Метка: ${escapeHtml(labelVal)}" onclick="event.stopPropagation();openLabelModal('${key}')"><span class="badge" style="background:${labelBg};color:#fff;font-size:.7em">🏷 ${escapeHtml(labelVal)}</span></button></div>`
