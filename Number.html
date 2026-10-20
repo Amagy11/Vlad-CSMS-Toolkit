@@ -1835,6 +1835,10 @@ async function repairDistribution() {
 
 function deleteInvoice(key) {
   if (!currentUser) { alert('Не залогинены'); return; }
+  if (!currentIsAdmin || viewingUid !== currentUser.uid) {
+    alert('Удалять счета может только администратор.');
+    return;
+  }
   const row = table1Data.find(r => rowKey(r) === key);
   if (!row) return;
   const info = `${row['Номер счета'] || '—'} | ${row['Прибор'] || '—'} | ${row['Контингент'] || ''}`;
@@ -1847,6 +1851,7 @@ function deleteInvoice(key) {
 
 async function deleteInvoiceConfirm(key) {
   if (!currentUser) return;
+  if (!currentIsAdmin || viewingUid !== currentUser.uid) { alert('Удалять счета может только администратор.'); return; }
   const adminUid = currentUser.uid;
   const isAdminSelf = currentIsAdmin && viewingUid === currentUser.uid;
   const fk = fbKey(key);
@@ -2032,7 +2037,7 @@ function renderTable() {
           ${row.status === 'new' ? `<button class="btn btn-sm btn-info me-1" onclick="event.stopPropagation();changeStatus('${key}', 'inwork')">▶</button><button class="btn btn-sm btn-success" onclick="event.stopPropagation();changeStatus('${key}', 'completed')">✓</button>` : ''}
           ${row.status === 'inwork' ? `<button class="btn btn-sm btn-success me-1" onclick="event.stopPropagation();changeStatus('${key}', 'completed')">✓</button><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();changeStatus('${key}', 'new')">↩</button>` : ''}
           ${row.status === 'completed' ? `<button class="btn btn-sm btn-warning me-1" onclick="event.stopPropagation();changeStatus('${key}', 'inwork')">↩</button><button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();changeStatus('${key}', 'new')">↩</button>` : ''}
-          <button class="btn btn-sm btn-outline-danger ms-1" title="Удалить счёт" onclick="event.stopPropagation();deleteInvoice('${key}')">🗑</button>
+          ${(isAdminSelf) ? `<button class="btn btn-sm btn-outline-danger ms-1" title="Удалить счёт" onclick="event.stopPropagation();deleteInvoice('${key}')">🗑</button>` : ''}
         </td>`;
       tbody.appendChild(tr);
     });
