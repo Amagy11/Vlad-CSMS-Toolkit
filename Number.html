@@ -126,7 +126,13 @@
 <button class="btn btn-outline-danger type-btn" data-type="urgent" onclick="toggleType('urgent')">Срочные</button>
 <button class="btn btn-outline-warning type-btn" data-type="budget" onclick="toggleType('budget')">Бюджет</button>
 <button class="btn btn-outline-secondary" onclick="clearTypes()">Сбросить</button></div></div>
-<div class="mb-3"><label class="form-label fw-bold">📦 Распределённые:</label><button class="btn btn-outline-secondary section-btn" data-section="distributed" onclick="toggleSection('distributed')">📦 Распределённые</button></div>
+<div class="mb-3">
+  <label class="form-label fw-bold">📦 Распределённые:</label>
+  <div class="btn-group flex-wrap" role="group" id="distributedFilters">
+    <button class="btn btn-outline-primary section-btn" data-section="distributed" onclick="toggleSection('distributed')">📦 Распределённые</button>
+    <button class="btn btn-outline-warning section-btn" data-section="unassigned" onclick="toggleSection('unassigned')">📭 Не распределённые</button>
+  </div>
+</div>
 <div class="mb-3" id="userFilterBlock" style="display:none"><label class="form-label fw-bold">👤 Кому распределено:</label><div class="btn-group flex-wrap" role="group" id="userFilters"></div></div>
 <input type="text" id="search" class="form-control mb-3" placeholder="🔎 Поиск..." oninput="renderTable()">
 <div class="mb-3"><label class="form-label fw-bold">📅 Сортировка по сроку:</label><div class="btn-group flex-wrap" role="group">
@@ -324,7 +330,7 @@
 <p>Кнопка <b>«📋 Вставить из 1С»</b> → выбери место и тип → Ctrl+V. Можно с шапкой.</p>
 <hr>
 <h5>📦 Распределение</h5>
-<p>Админ кликает по счёту → выбирает пользователя. При переназначении у старого получателя счёт снимается автоматически. Массовое распределение — кнопка в шапке.</p>
+<p>Админ кликает по счёту → выбирает пользователя. При переназначении у старого получателя счёт снимается автоматически. Массовое распределение — кнопка в шапке. Фильтры «Распределённые» и «Не распределённые» показывают только соответствующие счета.</p>
 <hr>
 <h5>🔄 Синхронизация</h5>
 <p>Кнопка «Обновить данные у всех» в админ-панели проталкивает свежие данные (даты, суммы) всем пользователям. Статусы и комментарии не сбрасываются.</p>
@@ -1187,7 +1193,17 @@ function togglePlace(p) { if (selectedPlaces.has(p)) selectedPlaces.delete(p); e
 function clearPlaces() { selectedPlaces.clear(); document.querySelectorAll('.place-btn').forEach(b => b.classList.remove('active')); renderTable(); }
 function toggleType(t) { if (selectedTypes.has(t)) selectedTypes.delete(t); else selectedTypes.add(t); document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', selectedTypes.has(b.dataset.type))); renderTable(); }
 function clearTypes() { selectedTypes.clear(); document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active')); renderTable(); }
-function toggleSection(s) { const w = selectedSections.has(s); if (w) selectedSections.delete(s); else selectedSections.add(s); document.querySelectorAll('.section-btn').forEach(b => b.classList.toggle('active', selectedSections.has(b.dataset.section))); renderTable(); if (s === 'distributed' && !w) markAllDistributedAsViewed(); }
+function toggleSection(s) {
+  if (selectedSections.has(s)) {
+    selectedSections.delete(s);
+  } else {
+    selectedSections.clear();
+    selectedSections.add(s);
+    if (s === 'distributed') markAllDistributedAsViewed();
+  }
+  document.querySelectorAll('.section-btn').forEach(b => b.classList.toggle('active', selectedSections.has(b.dataset.section)));
+  renderTable();
+}
 function clearSections() { selectedSections.clear(); document.querySelectorAll('.section-btn').forEach(b => b.classList.remove('active')); renderTable(); }
 
 function renderUserFilters() {
@@ -1474,7 +1490,6 @@ function calculateTerm(row) {
   const rk = rowKey(row);
   const label = getLabel(rk);
 
-  // Если метка "По факту N д." — считаем от ДАТЫ ВЫПИСКИ, календарные дни
   if (label === 'По факту 30 д.' || label === 'По факту 25 д.') {
     const issueDate = row['Дата выписки'];
     if (!issueDate) return { date: null, label: label };
@@ -1482,8 +1497,6 @@ function calculateTerm(row) {
     return { date: addCalendarDays(issueDate, n), label: `По факту: ${n} кал. дн. от выписки` };
   }
 
-  // "35%" — 5 рабочих дней от ДАТЫ ОПЛАТЫ
-  // "30%" — 10 рабочих дней от ДАТЫ ОПЛАТЫ
   if (label === '35%' || label === '30%') {
     const payDate = row['Дата оплаты'] || row.paymentDate;
     if (!payDate) return { date: null, label: label };
@@ -1491,7 +1504,6 @@ function calculateTerm(row) {
     return { date: addWorkingDays(payDate, n), label: `${label} → ${n} раб.` };
   }
 
-  // Обычная логика (без метки)
   const ds = row['Дата оплаты'] || row.paymentDate;
   if (!ds) return { date: null, label: '' };
   const fast = row.type === 'budget' || row.type === 'urgent';
@@ -1933,7 +1945,8 @@ function renderTable() {
   }
   if (selectedPlaces.size > 0) fd = fd.filter(row => selectedPlaces.has(row.place || 'csm'));
   if (selectedTypes.size > 0) fd = fd.filter(row => selectedTypes.has(row.type || 'common'));
-  if (selectedSections.size > 0) fd = fd.filter(row => selectedSections.has('distributed') && row.distributed);
+  if (selectedSections.has('distributed')) fd = fd.filter(row => row.distributed);
+  if (selectedSections.has('unassigned')) fd = fd.filter(row => !row.distributedTo);
   if (currentIsAdmin && viewingUid === currentUser.uid && selectedDistributedUsers.size > 0) fd = fd.filter(row => selectedDistributedUsers.has(row.distributedTo));
   if (selectedDevices.size > 0) fd = fd.filter(row => { const d = (row['Прибор'] || '').split(' ').slice(0, 3).join(' '); return selectedDevices.has(d); });
   if (sq) fd = fd.filter(row => {
@@ -1961,7 +1974,8 @@ function renderTable() {
   if (selectedStatuses.size > 0) title = Array.from(selectedStatuses).map(s => sl[s]).join(' + ');
   if (selectedPlaces.size > 0) title += ` / место: ${Array.from(selectedPlaces).map(placeLabel).join(' + ')}`;
   if (selectedTypes.size > 0) title += ` / тип: ${Array.from(selectedTypes).map(typeLabel).join(' + ')}`;
-  if (selectedSections.size > 0) title += ` / Распределённые`;
+  if (selectedSections.has('distributed')) title += ` / Распределённые`;
+  if (selectedSections.has('unassigned')) title += ` / Не распределённые`;
   if (selectedDistributedUsers.size > 0) {
     const names = Array.from(selectedDistributedUsers).map(uid => { const u = allUsersCache[uid]; return u ? (u.name || u.username) : uid; });
     title += ` / распределено: ${names.join(', ')}`;
@@ -2069,7 +2083,8 @@ function exportToExcel() {
   if (selectedStatuses.size > 0) dte = dte.filter(row => { for (const s of selectedStatuses) { if (s === 'new' && row.status === 'new') return true; if (s === 'inwork' && row.status === 'inwork') return true; if (s === 'completed' && row.status === 'completed') return true; if (s === 'highlighted' && (row.place === 'etalon' || row.place === 'onsite' || row.type === 'budget' || row.type === 'urgent')) return true; } return false; });
   if (selectedPlaces.size > 0) dte = dte.filter(r => selectedPlaces.has(r.place || 'csm'));
   if (selectedTypes.size > 0) dte = dte.filter(r => selectedTypes.has(r.type || 'common'));
-  if (selectedSections.size > 0) dte = dte.filter(r => selectedSections.has('distributed') && r.distributed);
+  if (selectedSections.has('distributed')) dte = dte.filter(r => r.distributed);
+  if (selectedSections.has('unassigned')) dte = dte.filter(r => !r.distributedTo);
   if (selectedDistributedUsers.size > 0) dte = dte.filter(r => selectedDistributedUsers.has(r.distributedTo));
   if (selectedDevices.size > 0) dte = dte.filter(r => { const d = (r['Прибор'] || '').split(' ').slice(0, 3).join(' '); return selectedDevices.has(d); });
   const ed = dte.map(row => { const term = calculateTerm(row); const c = getComment(rowKey(row)); const cd = getClosedDate(rowKey(row)); return { 'Квитанция/Счет': row['Номер счета'], 'Владелец': (currentIsAdmin && viewingUid !== currentUser.uid) ? viewingName : '', 'Место': placeLabel(row.place), 'Тип': typeLabel(row.type), 'Дата выписки': row['Дата выписки'], 'Контрагент': row['Контингент'] || '', 'Прибор': row['Прибор'], 'Кол-во': row['Кол-во'], 'Сумма': row['Всего по счету'], 'Дата оплаты': row['Дата оплаты'] || row.paymentDate, 'Срок': term.date ? formatDate(term.date) : '', 'Срочность': row.urgency, 'Статус': row.status, 'Изменил': row.statusChangedBy || '', 'Распределён': row.distributedToName || '', 'Комментарий': c, 'Закрыт': cd ? formatDateISOtoRU(cd) : '', 'Метка': getLabel(rowKey(row)) }; });
