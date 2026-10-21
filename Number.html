@@ -333,7 +333,7 @@
 <p>Админ кликает по счёту → выбирает пользователя. При переназначении у старого получателя счёт снимается автоматически. Массовое распределение — кнопка в шапке. Фильтры «Распределённые» и «Не распределённые» показывают только соответствующие счета.</p>
 <hr>
 <h5>🔄 Синхронизация</h5>
-<p>Кнопка «Обновить данные у всех» в админ-панели проталкивает свежие данные (даты, суммы) всем пользователям. Статусы и комментарии не сбрасываются.</p>
+<p>Кнопка «Обновить данные у всех» в админ-панели проталкивает свежие данные (даты, суммы) всем пользователям. Автосинхронизация: данные уходят автоматически при сохранении.</p>
 <hr>
 <h5>💬 Комментарии и метки</h5>
 <p>В колонке «Пометки» клик по <b>—</b> добавляет комментарий, по <b>⚠️</b> — открывает его. В «Дата оплаты» можно поставить метку 🏷 (По факту 30/25 д., 35%, 30%) и дату закрытия 🔐.</p>
@@ -472,6 +472,7 @@ let unsubLabels = null;
 let closedDateRowKey = null;
 let labelRowKey = null;
 let bulkSelectedDevices = new Set();
+let autoSyncInProgress = false;
 
 window.handleAuthSubmit = handleAuthSubmit; window.switchAuthMode = switchAuthMode; window.logout = logout;
 window.loadTable1 = loadTable1; window.clearAllData = clearAllData;
@@ -1399,10 +1400,93 @@ function saveToStorage() {
   if (!currentUser || !userInvoicesRef) return;
   const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
   setSyncStatus('syncing', 'Синхронизация...');
+  
   set(userInvoicesRef, { table1Data: c1, updatedAt: new Date().toISOString() })
-    .then(() => { setSyncStatus('online', 'ОК'); setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000); })
+    .then(async () => { 
+      setSyncStatus('online', 'ОК'); 
+      setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000); 
+      
+      // АВТОСИНХРОНИЗАЦИЯ ДЛЯ АДМИНА
+      if (currentIsAdmin && viewingUid === currentUser.uid && !autoSyncInProgress) {
+        autoSyncInProgress = true;
+        try {
+          await syncAllToUsersSilent();
+        } finally {
+          autoSyncInProgress = false;
+        }
+      }
+    })
     .catch(err => { console.error(err); setSyncStatus('offline', 'Ошибка'); });
   updateDeviceTypes();
+}
+
+async function syncAllToUsersSilent() {
+  if (!currentIsAdmin) return;
+  if (viewingUid !== currentUser.uid) return;
+
+  const adminUid = currentUser.uid;
+  let adminRows = [];
+  try { const s = await get(ref(database, 'invoices/' + adminUid + '/table1Data')); if (s.exists()) adminRows = s.val() || []; }
+  catch(e) { console.error(e); return; }
+  if (!adminRows.length) return;
+
+  const adminMap = new Map();
+  adminRows.forEach(r => {
+    const num = String(r['Номер счета'] || '').trim().replace(/\s+/g, ' ');
+    if (num) adminMap.set(num, r);
+  });
+
+  const uids = Object.keys(allUsersCache).filter(u => u !== adminUid);
+  let usersTouched = 0, rowsUpdated = 0;
+
+  for (const uid of uids) {
+    let ut = [];
+    try { const s = await get(ref(database, 'invoices/' + uid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) { continue; }
+    let changed = false;
+    
+    for (let i = 0; i < ut.length; i++) {
+      const uRow = ut[i];
+      const num = String(uRow['Номер счета'] || '').trim().replace(/\s+/g, ' ');
+      const fresh = adminMap.get(num);
+      
+      if (!fresh) continue;
+
+      let needUpdate = false;
+      const checkKeys = ['Дата выписки','Контрагент (Наименование)','Контингент','Прибор','Кол-во','Сумма','Всего по счету','Дата оплаты','urgency','paymentStatus'];
+      for (const fk of checkKeys) {
+        if (String(uRow[fk] || '') !== String(fresh[fk] || '')) { needUpdate = true; break; }
+      }
+      
+      if (needUpdate) {
+        ut[i] = {
+          ...uRow, 
+          'Дата выписки': fresh['Дата выписки'] || uRow['Дата выписки'],
+          'Контрагент (Наименование)': fresh['Контрагент (Наименование)'] || uRow['Контрагент (Наименование)'],
+          'Контингент': fresh['Контингент'] || uRow['Контингент'],
+          'Прибор': fresh['Прибор'] || uRow['Прибор'],
+          'Кол-во': fresh['Кол-во'] || uRow['Кол-во'],
+          'Сумма': fresh['Сумма'] || uRow['Сумма'],
+          'Всего по счету': fresh['Всего по счету'] || uRow['Всего по счету'],
+          'Дата оплаты': fresh['Дата оплаты'] || uRow['Дата оплаты'],
+          'place': fresh.place || uRow.place,
+          'type': fresh.type || uRow.type,
+          'urgency': fresh.urgency || uRow.urgency,
+          'paymentStatus': fresh.paymentStatus || uRow.paymentStatus
+        };
+        changed = true;
+        rowsUpdated++;
+      }
+    }
+    
+    if (changed) {
+      try { await set(ref(database, 'invoices/' + uid + '/table1Data'), ut); usersTouched++; }
+      catch(e) { console.error('Не записать', uid, e); }
+    }
+  }
+  
+  if (usersTouched > 0) {
+    console.log(`🔄 Автосинхронизация: обновлено ${rowsUpdated} записей у ${usersTouched} пользователей`);
+  }
 }
 
 function loadFromStorage() {
@@ -1729,7 +1813,6 @@ async function syncAllToUsers() {
   catch(e) { console.error(e); alert('Не удалось прочитать админскую таблицу: ' + e.message); return; }
   if (!adminRows.length) { alert('У вас нет счетов для синхронизации.'); return; }
 
-  // Карта: Номер счета (очищенный) -> Свежая строка админа
   const adminMap = new Map();
   adminRows.forEach(r => {
     const num = String(r['Номер счета'] || '').trim().replace(/\s+/g, ' ');
@@ -1751,10 +1834,8 @@ async function syncAllToUsers() {
       const num = String(uRow['Номер счета'] || '').trim().replace(/\s+/g, ' ');
       const fresh = adminMap.get(num);
       
-      // Если у админа нет такого номера — пропускаем
       if (!fresh) continue;
 
-      // Если данные уже полностью совпадают — пропускаем
       let needUpdate = false;
       const checkKeys = ['Дата выписки','Контрагент (Наименование)','Контингент','Прибор','Кол-во','Сумма','Всего по счету','Дата оплаты','urgency','paymentStatus'];
       for (const fk of checkKeys) {
@@ -1764,7 +1845,6 @@ async function syncAllToUsers() {
       }
       
       if (needUpdate) {
-        // Обновляем данные, СОХРАНЯЯ служебные поля пользователя (status, distributed)
         ut[i] = {
           ...uRow, 
           'Дата выписки': fresh['Дата выписки'] || uRow['Дата выписки'],
