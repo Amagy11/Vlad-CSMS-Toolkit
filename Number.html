@@ -1251,13 +1251,17 @@ function applySharedStatuses() {
   });
 }
 
+// 🔧 ФИКС: типы приборов — только из видимых строк (у не-админа — только его)
 function updateDeviceTypes() {
   deviceTypes.clear();
-  table1Data.forEach(row => { const d = row['Прибор'] || ''; if (d && d.trim()) deviceTypes.add(d.split(' ').slice(0, 3).join(' ')); });
+  const visible = table1Data.filter(row => isRowVisibleTo(row, currentUser ? currentUser.uid : '', currentIsAdmin));
+  visible.forEach(row => { const d = row['Прибор'] || ''; if (d && d.trim()) deviceTypes.add(d.split(' ').slice(0, 3).join(' ')); });
   renderDeviceTags();
 }
 function renderDeviceTags() {
   const c = document.getElementById('deviceTags'); c.innerHTML = '';
+  // 🔧 ФИКС: подчистить выбранные приборы, которых больше нет в списке
+  Array.from(selectedDevices).forEach(d => { if (!deviceTypes.has(d)) selectedDevices.delete(d); });
   Array.from(deviceTypes).sort().forEach(d => {
     const t = document.createElement('span'); t.className = 'device-tag badge bg-light text-dark border';
     if (selectedDevices.has(d)) t.classList.add('active');
@@ -1441,7 +1445,7 @@ async function assignToUser(userUid, userName) {
 async function cancelDistribution() {
   if (!currentIsAdmin || !distributingRowKey) return;
   const key = distributingRowKey;
-  const row = table1Data.find(r => rowKey(r) === key);
+  const row = table1Data.find(r => r.rowKey === key || rowKey(r) === key);
   if (!row || !row.distributedTo) { closeDistModal(); return; }
   const userName = row.distributedToName || row.distributedTo;
   if (!confirm(`Отменить распределение для «${userName}»?`)) return;
