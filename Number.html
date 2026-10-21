@@ -473,6 +473,32 @@ let closedDateRowKey = null;
 let labelRowKey = null;
 let bulkSelectedDevices = new Set();
 
+/* ============================================================
+   🔧 ЕДИНЫЙ ПРЕДИКАТ ВИДИМОСТИ
+   ============================================================
+   Правила:
+   - Админ видит ВСЁ (включая чужие копии в своей ветке).
+   - Не-админ видит:
+       • свои, ещё не отданные (distributed=false и distributedTo='');
+       • отданные именно ему (distributedTo === его uid);
+       • старые копии без метки (copied=true + distributedTo='') — ОПЦИОНАЛЬНО.
+   Если нужно ЖЁСТКО скрыть у не-админа копии с пустым distributedTo
+   (даже если они физически в его ветке) — HIDE_ORPHAN_COPIES = true.
+   ============================================================ */
+const HIDE_ORPHAN_COPIES = true; // true = скрывать старые копии с пустым distributedTo у не-админа
+
+function isRowVisibleTo(row, uid, isAdmin) {
+  if (isAdmin) return true;
+  if (!uid) return false;
+  // своя, ещё не отданная
+  if (!row.distributed && !row.distributedTo) return true;
+  // отдана именно мне
+  if (row.distributedTo === uid) return true;
+  // старая копия без метки — по умолчанию скрываем (см. HIDE_ORPHAN_COPIES)
+  if (!HIDE_ORPHAN_COPIES && row.copied && !row.distributedTo) return true;
+  return false;
+}
+
 window.handleAuthSubmit = handleAuthSubmit; window.switchAuthMode = switchAuthMode; window.logout = logout;
 window.loadTable1 = loadTable1; window.clearAllData = clearAllData;
 window.toggleStatus = toggleStatus; window.clearStatus = clearStatus;
@@ -827,9 +853,11 @@ async function bulkAssignExecute() {
       if (!fresh) continue;
       if (userMap.has(key)) {
         const existed = userMap.get(key);
-        userMap.set(key, { ...existed, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now });
+        // 🔧 ФИКС: дописываем distributedTo/originalOwner
+        userMap.set(key, { ...existed, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now, distributedTo: userUid, distributedToName: userName, originalOwner: currentUser.uid });
       } else {
-        userMap.set(key, stripUndefined({ ...fresh, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now, copied: true, distributedTo: '', distributedToName: '' }));
+        // 🔧 ФИКС: копия сразу с distributedTo и originalOwner
+        userMap.set(key, stripUndefined({ ...fresh, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now, copied: true, distributedTo: userUid, distributedToName: userName, originalOwner: currentUser.uid }));
       }
     }
     await set(ref(database, 'invoices/' + userUid + '/table1Data'), Array.from(userMap.values()));
@@ -1115,7 +1143,7 @@ onAuthStateChanged(auth, async (user) => {
 
 function subscribeToViewedDistributed(uid) { if (unsubViewed) unsubViewed(); viewedDistributedRef = ref(database, 'viewedDistributed/' + uid); unsubViewed = onValue(viewedDistributedRef, (snap) => { viewedDistributed = snap.val() || {}; updateDistributedBanner(); }, (err) => console.error(err)); }
 
-// 🔧 ФИКС: не считаем "чужие" копии в счётчике баннера
+// 🔧 ФИКС: единый предикат видимости для счётчика баннера
 function getUnviewedDistributedCount() {
   if (!viewingUid || !currentUser) return 0;
   if (viewingUid !== currentUser.uid) return 0;
@@ -1123,8 +1151,8 @@ function getUnviewedDistributedCount() {
   let c = 0;
   const myUid = currentUser.uid;
   table1Data.forEach(r => {
+    if (!isRowVisibleTo(r, myUid, false)) return; // 🔧 общий предикат
     if (!r.distributed) return;
-    if (r.distributedTo && r.distributedTo !== myUid) return; // 🔧 чужая копия — не считаем
     const k = fbKey(rowKey(r));
     if (!viewedDistributed[k]) c++;
   });
@@ -1133,7 +1161,7 @@ function getUnviewedDistributedCount() {
 
 function updateDistributedBanner() { const b = document.getElementById('distributedBanner'); if (!b) return; const c = getUnviewedDistributedCount(); if (c > 0) { document.getElementById('distributedCount').textContent = c; b.classList.add('open'); } else b.classList.remove('open'); }
 function hideDistributedBanner() { const b = document.getElementById('distributedBanner'); if (b) b.classList.remove('open'); }
-async function markAllDistributedAsViewed() { if (!currentUser || currentIsAdmin || viewingUid !== currentUser.uid) return; const u = {}; let has = false; const myUid = currentUser.uid; table1Data.forEach(r => { if (!r.distributed) return; if (r.distributedTo && r.distributedTo !== myUid) return; const k = fbKey(rowKey(r)); if (!viewedDistributed[k]) { u[k] = true; has = true; } }); if (!has) return; try { await update(ref(database, 'viewedDistributed/' + currentUser.uid), u); } catch(e) { console.error(e); } }
+async function markAllDistributedAsViewed() { if (!currentUser || currentIsAdmin || viewingUid !== currentUser.uid) return; const u = {}; let has = false; const myUid = currentUser.uid; table1Data.forEach(r => { if (!isRowVisibleTo(r, myUid, false)) return; if (!r.distributed) return; const k = fbKey(rowKey(r)); if (!viewedDistributed[k]) { u[k] = true; has = true; } }); if (!has) return; try { await update(ref(database, 'viewedDistributed/' + currentUser.uid), u); } catch(e) { console.error(e); } }
 
 function normalizeKey(v) { if (v === undefined || v === null) return ''; return String(v).trim().replace(/[.,;:!?()"'«»№]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase(); }
 function baseKey(r) { return `${normalizeKey(r['Номер счета'])}||${normalizeKey(r['Прибор'])}`; }
@@ -1429,6 +1457,7 @@ function loadFromStorage() {
   updateDeviceTypes(); renderTable(); updateDistributedBanner();
 }
 
+// 🔧 ФИКС: при загрузке отбрасываем копии, отданные другому пользователю
 function subscribeToUserData(uid) {
   if (unsubInvoices) unsubInvoices();
   userInvoicesRef = ref(database, 'invoices/' + uid);
@@ -1436,7 +1465,14 @@ function subscribeToUserData(uid) {
     const data = snap.val();
     if (data) {
       isRemoteUpdate = true;
-      table1Data = (data.table1Data || []).map(r => ({ ...r, place: r.place || 'csm', type: r.type || 'common' }));
+      table1Data = (data.table1Data || [])
+        .filter(r => {
+          // ретро-защита: не-админ не подписывается на копии, где distributedTo указывает на другого
+          if (currentIsAdmin) return true;
+          if (r.distributed && r.distributedTo && r.distributedTo !== uid) return false;
+          return true;
+        })
+        .map(r => ({ ...r, place: r.place || 'csm', type: r.type || 'common' }));
       applySharedStatuses(); updateDeviceTypes(); renderTable(); isRemoteUpdate = false;
     } else { table1Data = []; updateDeviceTypes(); renderTable(); }
     updateDistributedBanner();
@@ -1685,7 +1721,7 @@ async function removeFromUserInvoices(userUid, key) {
   if (ui === -1) return;
   const uRow = ut[ui];
   if (uRow.copied) { ut.splice(ui, 1); }
-  else { ut[ui] = { ...uRow, distributed: false, distributedBy: '', distributedByName: '', distributedAt: '' }; }
+  else { ut[ui] = { ...uRow, distributed: false, distributedBy: '', distributedByName: '', distributedAt: '', distributedTo: '', distributedToName: '' }; }
   try { await set(ref(database, 'invoices/' + userUid + '/table1Data'), ut); } catch(e) { console.error('Не удалось снять запись у пользователя', userUid, e); }
   try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key))); } catch(e) {}
 }
@@ -1827,8 +1863,13 @@ async function assignToUser(userUid, userName) {
   let ut = [];
   try { const s = await get(ref(database, 'invoices/' + userUid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) {}
   const ei = ut.findIndex(r => rowKey(r) === key);
-  if (ei >= 0) { ut[ei] = { ...ut[ei], distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now }; }
-  else { ut.push(stripUndefined({ ...adminRow, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now, copied: true, distributedTo: '', distributedToName: '' })); }
+  if (ei >= 0) {
+    // 🔧 ФИКС: дописываем distributedTo/originalOwner
+    ut[ei] = { ...ut[ei], distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now, distributedTo: userUid, distributedToName: userName, originalOwner: currentUser.uid };
+  } else {
+    // 🔧 ФИКС: копия сразу с distributedTo и originalOwner
+    ut.push(stripUndefined({ ...adminRow, distributed: true, distributedBy: currentUser.uid, distributedByName: currentUserName, distributedAt: now, copied: true, distributedTo: userUid, distributedToName: userName, originalOwner: currentUser.uid }));
+  }
   setSyncStatus('syncing', 'Распределение...');
   try {
     await set(ref(database, 'invoices/' + userUid + '/table1Data'), ut);
@@ -1862,9 +1903,10 @@ async function cancelDistribution() {
   alert(`📦 Отменено для «${userName}»`);
 }
 
+// 🔧 ФИКС: удаление осиротевших копий (copied=true + distributedTo='')
 async function repairDistribution() {
   if (!currentIsAdmin) { alert('Только админ'); return; }
-  if (!confirm('Пройти по всем пользователям и снять зависшие распределения?\n\n«Свои» записи пользователей не удаляются — только снимается флаг «распределён».')) return;
+  if (!confirm('Пройти по всем пользователям, удалить осиротевшие копии и снять зависшие распределения?\n\n«Свои» записи пользователей не удаляются — только снимается флаг «распределён».')) return;
   const adminUid = currentUser.uid;
   let adminRows = [];
   try { const s = await get(ref(database, 'invoices/' + adminUid + '/table1Data')); if (s.exists()) adminRows = s.val() || []; }
@@ -1880,10 +1922,17 @@ async function repairDistribution() {
     const newUt = [];
     for (const r of ut) {
       const k = rowKey(r); const assignedTo = assignedMap.get(k); const isMine = r.copied !== true;
+      // 🧹 Осиротевшая копия: copied=true и distributedTo пуст → удалить
+      if (r.copied && !r.distributedTo) {
+        changed = true;
+        totalRemoved++;
+        try { await remove(ref(database, 'viewedDistributed/' + uid + '/' + fbKey(k))); } catch(e) {}
+        continue;
+      }
       if (!r.distributed) { newUt.push(r); continue; }
       if (assignedTo === uid) { newUt.push(r); continue; }
       changed = true;
-      if (isMine) { newUt.push({ ...r, distributed: false, distributedBy: '', distributedByName: '', distributedAt: '' }); totalCleared++; }
+      if (isMine) { newUt.push({ ...r, distributed: false, distributedBy: '', distributedByName: '', distributedAt: '', distributedTo: '', distributedToName: '' }); totalCleared++; }
       else { totalRemoved++; try { await remove(ref(database, 'viewedDistributed/' + uid + '/' + fbKey(k))); } catch(e) {} }
     }
     if (changed) { usersTouched++; try { await set(ref(database, 'invoices/' + uid + '/table1Data'), newUt); } catch(e) { console.error('Не записать', uid, e); } }
@@ -1961,11 +2010,8 @@ function renderTable() {
 
   let fd = [...table1Data];
 
-  // 🔧 ФИКС: не-админ видит только "свои" строки (без чужих distributedTo)
-  if (!currentIsAdmin && currentUser) {
-    const myUid = currentUser.uid;
-    fd = fd.filter(row => !row.distributedTo || row.distributedTo === myUid);
-  }
+  // 🔧 ФИКС: единый предикат видимости (админ видит всё, не-админ — только своё)
+  fd = fd.filter(row => isRowVisibleTo(row, currentUser ? currentUser.uid : '', currentIsAdmin));
 
   if (selectedStatuses.size > 0) {
     fd = fd.filter(row => {
@@ -1996,7 +2042,6 @@ function renderTable() {
   else if (sortByDate === 'noDate') fd = fd.filter(row => !calculateTerm(row).date);
   document.getElementById('dateSortIndicator').textContent = sortByDate === 'earliest' ? '↑' : sortByDate === 'latest' ? '↓' : sortByDate === 'noDate' ? '∅' : '';
 
-  // 🔧 ФИКС: счётчики теперь по отфильтрованному fd, а не по table1Data
   document.getElementById('totalCount').textContent = fd.length;
   document.getElementById('newCount').textContent = fd.filter(r => r.status === 'new').length;
   document.getElementById('inworkCount').textContent = fd.filter(r => r.status === 'inwork').length;
@@ -2116,12 +2161,9 @@ function renderTable() {
 function exportToExcel() {
   if (!table1Data.length) { alert('Нет данных'); return; }
 
-  // 🔧 ФИКС: не выгружаем чужие копии
+  // 🔧 ФИКС: единый предикат видимости
   let dte = [...table1Data];
-  if (!currentIsAdmin && currentUser) {
-    const myUid = currentUser.uid;
-    dte = dte.filter(r => !r.distributedTo || r.distributedTo === myUid);
-  }
+  dte = dte.filter(r => isRowVisibleTo(r, currentUser ? currentUser.uid : '', currentIsAdmin));
 
   if (selectedStatuses.size > 0) dte = dte.filter(row => { for (const s of selectedStatuses) { if (s === 'new' && row.status === 'new') return true; if (s === 'inwork' && row.status === 'inwork') return true; if (s === 'completed' && row.status === 'completed') return true; if (s === 'highlighted' && (row.place === 'etalon' || row.place === 'onsite' || row.type === 'budget' || row.type === 'urgent')) return true; } return false; });
   if (selectedPlaces.size > 0) dte = dte.filter(r => selectedPlaces.has(r.place || 'csm'));
