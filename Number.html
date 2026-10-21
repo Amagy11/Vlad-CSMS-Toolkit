@@ -444,15 +444,23 @@ let bulkSelectedDevices = new Set();
 
 /* ============================================================
    🔧 ВИДИМОСТЬ (вариант A):
-   - Админ видит всё.
+   - Админ видит всё (кроме режима "Работать как").
    - Не-админ видит ТОЛЬКО строки, где distributedTo === его uid.
-   - Нераспределённые (distributedTo пуст) и чужие — НЕ видит.
+   - В режиме "Работать как X" админ видит ровно то, что видит X.
    ============================================================ */
 function isRowVisibleTo(row, uid, isAdmin) {
   if (isAdmin) return true;
   if (!uid) return false;
   if (row.distributedTo === uid) return true;
   return false;
+}
+function getEffectiveViewer() {
+  const isImpersonating = currentIsAdmin && currentUser && viewingUid !== currentUser.uid;
+  return {
+    isImpersonating,
+    uid: isImpersonating ? viewingUid : (currentUser ? currentUser.uid : ''),
+    isAdmin: currentIsAdmin && !isImpersonating
+  };
 }
 
 window.handleAuthSubmit = handleAuthSubmit; window.switchAuthMode = switchAuthMode; window.logout = logout;
@@ -925,12 +933,14 @@ function subscribeToViewedDistributed(uid) { if (unsubViewed) unsubViewed(); vie
 
 function getUnviewedDistributedCount() {
   if (!viewingUid || !currentUser) return 0;
-  if (viewingUid !== currentUser.uid) return 0;
-  if (currentIsAdmin) return 0;
+  const { uid, isAdmin } = getEffectiveViewer();
+  if (!uid) return 0;
+  // баннер считаем для не-админа или в режиме "Работать как"
+  const isImpersonating = currentIsAdmin && viewingUid !== currentUser.uid;
+  if (isAdmin) return 0; // админ на "своих" — не показываем
   let c = 0;
-  const myUid = currentUser.uid;
   table1Data.forEach(r => {
-    if (!isRowVisibleTo(r, myUid, false)) return;
+    if (!isRowVisibleTo(r, uid, false)) return;
     if (!r.distributedTo) return;
     const k = fbKey(rowKey(r));
     if (!viewedDistributed[k]) c++;
@@ -940,11 +950,14 @@ function getUnviewedDistributedCount() {
 function updateDistributedBanner() { const b = document.getElementById('distributedBanner'); if (!b) return; const c = getUnviewedDistributedCount(); if (c > 0) { document.getElementById('distributedCount').textContent = c; b.classList.add('open'); } else b.classList.remove('open'); }
 function hideDistributedBanner() { const b = document.getElementById('distributedBanner'); if (b) b.classList.remove('open'); }
 async function markAllDistributedAsViewed() {
-  if (!currentUser || currentIsAdmin || viewingUid !== currentUser.uid) return;
-  const u = {}; let has = false; const myUid = currentUser.uid;
-  table1Data.forEach(r => { if (!isRowVisibleTo(r, myUid, false)) return; if (!r.distributedTo) return; const k = fbKey(rowKey(r)); if (!viewedDistributed[k]) { u[k] = true; has = true; } });
+  if (!currentUser) return;
+  const { uid, isAdmin } = getEffectiveViewer();
+  if (isAdmin) return;
+  if (!uid) return;
+  const u = {}; let has = false;
+  table1Data.forEach(r => { if (!isRowVisibleTo(r, uid, false)) return; if (!r.distributedTo) return; const k = fbKey(rowKey(r)); if (!viewedDistributed[k]) { u[k] = true; has = true; } });
   if (!has) return;
-  try { await update(ref(database, 'viewedDistributed/' + currentUser.uid), u); } catch(e) { console.error(e); }
+  try { await update(ref(database, 'viewedDistributed/' + uid), u); } catch(e) { console.error(e); }
 }
 
 function normalizeKey(v) { if (v === undefined || v === null) return ''; return String(v).trim().replace(/[.,;:!?()"'«»№]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase(); }
@@ -1057,6 +1070,8 @@ function onAdminUserChange() {
   else { const u = allUsersCache[uid]; viewingUid = uid; viewingName = u ? (u.name || u.username || uid) : uid; }
   updateAdminModeInfo();
   cleanDismissedThisSession = false; autoCleanChecked = false; hideCleanBanner();
+  // переподписываемся на viewedDistributed выбранного пользователя (для баннера в режиме "как")
+  subscribeToViewedDistributed(viewingUid);
   loadFromStorage(); subscribeToUserData(viewingUid); renderTable(); updateDistributedBanner();
 }
 function renderAdminUserList() {
@@ -1251,16 +1266,16 @@ function applySharedStatuses() {
   });
 }
 
-// 🔧 ФИКС: типы приборов — только из видимых строк (у не-админа — только его)
+// 🔧 ФИКС: типы приборов — только из видимых строк (с учётом режима "Работать как")
 function updateDeviceTypes() {
   deviceTypes.clear();
-  const visible = table1Data.filter(row => isRowVisibleTo(row, currentUser ? currentUser.uid : '', currentIsAdmin));
+  const { uid, isAdmin } = getEffectiveViewer();
+  const visible = table1Data.filter(row => isRowVisibleTo(row, uid, isAdmin));
   visible.forEach(row => { const d = row['Прибор'] || ''; if (d && d.trim()) deviceTypes.add(d.split(' ').slice(0, 3).join(' ')); });
   renderDeviceTags();
 }
 function renderDeviceTags() {
   const c = document.getElementById('deviceTags'); c.innerHTML = '';
-  // 🔧 ФИКС: подчистить выбранные приборы, которых больше нет в списке
   Array.from(selectedDevices).forEach(d => { if (!deviceTypes.has(d)) selectedDevices.delete(d); });
   Array.from(deviceTypes).sort().forEach(d => {
     const t = document.createElement('span'); t.className = 'device-tag badge bg-light text-dark border';
@@ -1409,7 +1424,7 @@ async function manualCleanOld() {
 
 function openDistModal(key) {
   if (!currentIsAdmin) { alert('Только админ'); return; }
-  if (viewingUid !== currentUser.uid) { alert('Только со своих данных'); return; }
+  if (viewingUid !== currentUser.uid) { alert('Переключитесь на «— Свои данные —» для распределения'); return; }
   const row = table1Data.find(r => rowKey(r) === key);
   if (!row) return;
   distributingRowKey = key;
@@ -1445,7 +1460,7 @@ async function assignToUser(userUid, userName) {
 async function cancelDistribution() {
   if (!currentIsAdmin || !distributingRowKey) return;
   const key = distributingRowKey;
-  const row = table1Data.find(r => r.rowKey === key || rowKey(r) === key);
+  const row = table1Data.find(r => rowKey(r) === key);
   if (!row || !row.distributedTo) { closeDistModal(); return; }
   const userName = row.distributedToName || row.distributedTo;
   if (!confirm(`Отменить распределение для «${userName}»?`)) return;
@@ -1463,7 +1478,6 @@ async function cancelDistribution() {
 async function repairDistribution() {
   if (!currentIsAdmin) { alert('Только админ'); return; }
   if (!confirm('Снять все распределения, у которых получатель не существует? (Обычно не требуется.)')) return;
-  const adminRows = table1Data;
   const uidsSet = new Set(Object.keys(allUsersCache));
   let cleared = 0;
   table1Data = table1Data.map(r => {
@@ -1524,7 +1538,8 @@ function renderTable() {
   document.getElementById('distributedColHeader').style.display = showDistCol ? 'table-cell' : 'none';
 
   let fd = [...table1Data];
-  fd = fd.filter(row => isRowVisibleTo(row, currentUser ? currentUser.uid : '', currentIsAdmin));
+  const { uid: viewerUid, isAdmin: viewerIsAdmin } = getEffectiveViewer();
+  fd = fd.filter(row => isRowVisibleTo(row, viewerUid, viewerIsAdmin));
 
   if (selectedStatuses.size > 0) {
     fd = fd.filter(row => {
@@ -1674,7 +1689,8 @@ function renderTable() {
 function exportToExcel() {
   if (!table1Data.length) { alert('Нет данных'); return; }
   let dte = [...table1Data];
-  dte = dte.filter(r => isRowVisibleTo(r, currentUser ? currentUser.uid : '', currentIsAdmin));
+  const { uid: viewerUid, isAdmin: viewerIsAdmin } = getEffectiveViewer();
+  dte = dte.filter(r => isRowVisibleTo(r, viewerUid, viewerIsAdmin));
   if (selectedStatuses.size > 0) dte = dte.filter(row => { for (const s of selectedStatuses) { if (s === 'new' && row.status === 'new') return true; if (s === 'inwork' && row.status === 'inwork') return true; if (s === 'completed' && row.status === 'completed') return true; if (s === 'highlighted' && (row.place === 'etalon' || row.place === 'onsite' || row.type === 'budget' || row.type === 'urgent')) return true; } return false; });
   if (selectedPlaces.size > 0) dte = dte.filter(r => selectedPlaces.has(r.place || 'csm'));
   if (selectedTypes.size > 0) dte = dte.filter(r => selectedTypes.has(r.type || 'common'));
