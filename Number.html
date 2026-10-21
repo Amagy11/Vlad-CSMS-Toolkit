@@ -1099,6 +1099,7 @@ onAuthStateChanged(auth, async (user) => {
       document.getElementById('ownerColHeader').style.display = 'table-cell';
       subscribeToAllUsersForAdmin(); updateAdminUserSelect();
     }
+    // ЖЕСТКАЯ ПРИВЯЗКА viewingUid К ТЕКУЩЕМУ ПОЛЬЗОВАТЕЛЮ
     viewingUid = user.uid; viewingName = currentUserName; updateAdminModeInfo();
     cleanDismissedThisSession = false; autoCleanChecked = false; hideCleanBanner();
     await loadAutoCleanDays();
@@ -1406,7 +1407,7 @@ function saveToStorage() {
       setSyncStatus('online', 'ОК'); 
       setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000); 
       
-      // АВТОСИНХРОНИЗАЦИЯ ДЛЯ АДМИНА
+      // АВТОСИНХРОНИЗАЦИЯ ДЛЯ АДМИНА (только когда работает со своими данными)
       if (currentIsAdmin && viewingUid === currentUser.uid && !autoSyncInProgress) {
         autoSyncInProgress = true;
         try {
