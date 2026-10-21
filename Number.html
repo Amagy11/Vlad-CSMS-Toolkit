@@ -1721,7 +1721,7 @@ async function syncRowUpdatesToUsers(updatedKeys) {
 async function syncAllToUsers() {
   if (!currentIsAdmin) { alert('Только админ'); return; }
   if (viewingUid !== currentUser.uid) { alert('Переключитесь на «— Свои данные —»'); return; }
-  if (!confirm('Обновить данные (даты, суммы, прибор, место, тип) у ВСЕХ пользователей?\n\nСтатусы («В работе», «Выполнен») и комментарии НЕ будут затронуты.')) return;
+  if (!confirm('Принудительно обновить данные у ВСЕХ пользователей?\n\nПрограмма будет искать совпадения по НОМЕРУ СЧЁТА (без учета прибора/места) и обновлять данные у всех, у кого есть такой номер счёта. Это решит проблему с рассинхроном.')) return;
 
   const adminUid = currentUser.uid;
   let adminRows = [];
@@ -1729,8 +1729,12 @@ async function syncAllToUsers() {
   catch(e) { console.error(e); alert('Не удалось прочитать админскую таблицу: ' + e.message); return; }
   if (!adminRows.length) { alert('У вас нет счетов для синхронизации.'); return; }
 
+  // Карта: Номер счета (очищенный) -> Свежая строка админа
   const adminMap = new Map();
-  adminRows.forEach(r => adminMap.set(rowKey(r), r));
+  adminRows.forEach(r => {
+    const num = String(r['Номер счета'] || '').trim().replace(/\s+/g, ' ');
+    if (num) adminMap.set(num, r);
+  });
 
   const uids = Object.keys(allUsersCache).filter(u => u !== adminUid);
   let usersTouched = 0, rowsUpdated = 0;
@@ -1741,46 +1745,58 @@ async function syncAllToUsers() {
     let ut = [];
     try { const s = await get(ref(database, 'invoices/' + uid + '/table1Data')); if (s.exists()) ut = s.val() || []; } catch(e) { continue; }
     let changed = false;
+    
     for (let i = 0; i < ut.length; i++) {
-      const k = rowKey(ut[i]);
-      const fresh = adminMap.get(k);
+      const uRow = ut[i];
+      const num = String(uRow['Номер счета'] || '').trim().replace(/\s+/g, ' ');
+      const fresh = adminMap.get(num);
+      
+      // Если у админа нет такого номера — пропускаем
       if (!fresh) continue;
-      if (ut[i].copied !== true) continue;
 
-      const bodyKeys = ['Номер счета','Дата выписки','Контрагент (Наименование)','Контингент','Прибор','Кол-во','Сумма','Всего по счету','Дата оплаты','urgency','paymentStatus'];
+      // Если данные уже полностью совпадают — пропускаем
       let needUpdate = false;
-      for (const fk of bodyKeys) {
-        if ((ut[i][fk] || '') !== (fresh[fk] || '')) { needUpdate = true; break; }
+      const checkKeys = ['Дата выписки','Контрагент (Наименование)','Контингент','Прибор','Кол-во','Сумма','Всего по счету','Дата оплаты','urgency','paymentStatus'];
+      for (const fk of checkKeys) {
+        if (String(uRow[fk] || '') !== String(fresh[fk] || '')) { 
+            needUpdate = true; break; 
+        }
       }
-      if (!needUpdate && (ut[i].place || 'csm') === (fresh.place || 'csm') && (ut[i].type || 'common') === (fresh.type || 'common')) continue;
-
-      ut[i] = {
-        ...ut[i],
-        'Номер счета': fresh['Номер счета'] || ut[i]['Номер счета'],
-        'Дата выписки': fresh['Дата выписки'] || ut[i]['Дата выписки'],
-        'Контрагент (Наименование)': fresh['Контрагент (Наименование)'] || ut[i]['Контрагент (Наименование)'],
-        'Контингент': fresh['Контингент'] || ut[i]['Контингент'],
-        'Прибор': fresh['Прибор'] || ut[i]['Прибор'],
-        'Кол-во': fresh['Кол-во'] || ut[i]['Кол-во'],
-        'Сумма': fresh['Сумма'] || ut[i]['Сумма'],
-        'Всего по счету': fresh['Всего по счету'] || ut[i]['Всего по счету'],
-        'Дата оплаты': fresh['Дата оплаты'] || ut[i]['Дата оплаты'],
-        place: fresh.place || ut[i].place,
-        type: fresh.type || ut[i].type,
-        paymentStatus: fresh.paymentStatus || ut[i].paymentStatus,
-        urgency: fresh.urgency || ut[i].urgency
-      };
-      changed = true;
-      rowsUpdated++;
+      
+      if (needUpdate) {
+        // Обновляем данные, СОХРАНЯЯ служебные поля пользователя (status, distributed)
+        ut[i] = {
+          ...uRow, 
+          'Дата выписки': fresh['Дата выписки'] || uRow['Дата выписки'],
+          'Контрагент (Наименование)': fresh['Контрагент (Наименование)'] || uRow['Контрагент (Наименование)'],
+          'Контингент': fresh['Контингент'] || uRow['Контингент'],
+          'Прибор': fresh['Прибор'] || uRow['Прибор'],
+          'Кол-во': fresh['Кол-во'] || uRow['Кол-во'],
+          'Сумма': fresh['Сумма'] || uRow['Сумма'],
+          'Всего по счету': fresh['Всего по счету'] || uRow['Всего по счету'],
+          'Дата оплаты': fresh['Дата оплаты'] || uRow['Дата оплаты'],
+          'place': fresh.place || uRow.place,
+          'type': fresh.type || uRow.type,
+          'urgency': fresh.urgency || uRow.urgency,
+          'paymentStatus': fresh.paymentStatus || uRow.paymentStatus
+        };
+        changed = true;
+        rowsUpdated++;
+        console.log('✅ Обновлен счёт:', num, 'у пользователя', uid);
+      }
     }
+    
     if (changed) {
-      try { await set(ref(database, 'invoices/' + uid + '/table1Data'), ut); usersTouched++; }
+      try { 
+        await set(ref(database, 'invoices/' + uid + '/table1Data'), ut); 
+        usersTouched++; 
+      }
       catch(e) { console.error('Не записать', uid, e); }
     }
   }
 
   setSyncStatus('online', 'Онлайн');
-  alert(`🔄 Готово.\n\nПользователей обновлено: ${usersTouched}\nЗаписей обновлено: ${rowsUpdated}`);
+  alert(`🔄 Готово.\n\nПользователей затронуто: ${usersTouched}\nЗаписей обновлено: ${rowsUpdated}\n\nЕсли 0 — значит, данные уже совпадают.`);
   renderTable();
 }
 
