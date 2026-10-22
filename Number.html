@@ -76,6 +76,10 @@
 .modal-backdrop-custom.open{display:flex}
 .comment-icon-btn{background:none;border:none;padding:0 2px;font-size:1.15em;cursor:pointer;line-height:1}
 .comment-icon-btn:hover{opacity:.7}
+.invoice-with-related{border-bottom:1px dashed #6f42c1;cursor:help}
+.invoice-with-related:hover{background:#f3e8ff}
+.related-tooltip{position:fixed;z-index:3000;background:#212529;color:#fff;border-radius:6px;padding:6px 10px;font-size:.85em;max-width:360px;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none;opacity:0;transition:opacity .12s}
+.related-tooltip.open{opacity:1}
 </style>
 </head>
 <body>
@@ -345,7 +349,10 @@
 <p>Метки <code>По факту 30 д.</code>, <code>По факту 25 д.</code>, <code>По факту 20 д.</code>, <code>По факту 15 д.</code> переопределяют расчёт: N календарных дней от <b>даты выписки</b>. Метки <code>35%</code> / <code>30%</code> — 5 / 10 рабочих дней от даты оплаты.</p>
 <hr>
 <h5>🔄 Смена типа/места</h5>
-<p>Если счёт с тем же номером и прибором загрузить повторно с другим типом (Общие → Бюджет и т.п.) или другим местом — строка <b>обновится</b>, а не создастся заново. Распределение (кому назначен), комментарии, метки и статус сохраняются.</p>
+<p>Если счёт с тем же номером и прибором загрузить повторно с другим типом или местом — строка <b>обновится</b>, а не создастся заново. Распределение, комментарии, метки и статус сохраняются.</p>
+<hr>
+<h5>🔗 Смежные счета</h5>
+<p>Если у счёта есть «близнецы» с тем же номером квитанции (даже с другими приборами), номер будет <b>подчёркнут пунктиром</b>. Наведи — увидишь, с кем ещё есть этот счёт.</p>
 </div>
 <div class="help-modal-footer"><button class="btn btn-secondary" onclick="closeHelp()">Закрыть</button></div>
 </div></div>
@@ -815,17 +822,11 @@ function renderPasteTable() {
   updatePasteFooter();
 }
 
-/* ============================================================
-   🔧 ГЛАВНЫЙ ФИКС: слияние по baseKey (номер+прибор).
-   Если строка уже существует и распределена — назначение,
-   статус, комменты, метки НЕ теряются.
-   ============================================================ */
 function mergeNewRowsIntoTable(newData) {
   const existingByBase = new Map();
   table1Data.forEach((r, i) => {
     const bk = baseKey(r);
     const cur = existingByBase.get(bk);
-    // приоритет распределённой строке
     if (cur === undefined) existingByBase.set(bk, i);
     else if (!table1Data[cur].distributedTo && r.distributedTo) existingByBase.set(bk, i);
   });
@@ -840,7 +841,6 @@ function mergeNewRowsIntoTable(newData) {
       const old = table1Data[idx];
       const oldKey = rowKey(old);
       const merged = mergeRow(old, nr);
-      // сохраняем назначение (на случай если mergeRow не сохранил из-за пустого n)
       if (old.distributedTo) {
         merged.distributedTo = old.distributedTo;
         merged.distributedToName = old.distributedToName || '';
@@ -848,7 +848,6 @@ function mergeNewRowsIntoTable(newData) {
         merged.distributedBy = old.distributedBy || '';
         merged.distributedByName = old.distributedByName || '';
       }
-      // новое место/тип приоритетнее, если оно есть
       if (nr.place) merged.place = nr.place;
       if (nr.type) merged.type = nr.type;
       table1Data[idx] = merged;
@@ -888,7 +887,7 @@ async function savePasteTable() {
 }
 document.addEventListener('DOMContentLoaded', () => { const w = document.getElementById('pasteTableWrapper'); if (w && !w.dataset.listener) { w.addEventListener('paste', handlePaste); w.dataset.listener = '1'; } });
 setTimeout(() => { const w = document.getElementById('pasteTableWrapper'); if (w && !w.dataset.listener) { w.addEventListener('paste', handlePaste); w.dataset.listener = '1'; } }, 500);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); closeChangePassword(); closePasteModal(); closeCommentModal(); closeClosedDateModal(); closeLabelModal(); closeBulkAssignModal(); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); closeChangePassword(); closePasteModal(); closeCommentModal(); closeClosedDateModal(); closeLabelModal(); closeBulkAssignModal(); hideRelatedTooltip(); } });
 
 const TRANSLIT_MAP = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
 function transliterate(s) { let r = ''; for (const c of s) { const l = c.toLowerCase(); r += (TRANSLIT_MAP[l] !== undefined) ? TRANSLIT_MAP[l] : c; } return r; }
@@ -1569,6 +1568,54 @@ function setupScrollSync() {
 }
 window.addEventListener('load', setupScrollSync);
 
+function buildRelatedMap(rows) {
+  const byNumber = new Map();
+  rows.forEach(r => {
+    const num = normalizeKey(r['Номер счета']);
+    if (!num) return;
+    if (!byNumber.has(num)) byNumber.set(num, []);
+    byNumber.get(num).push(r);
+  });
+  const map = new Map();
+  byNumber.forEach(group => {
+    if (group.length < 2) return;
+    group.forEach(row => {
+      const rk = rowKey(row);
+      const names = group
+        .filter(o => rowKey(o) !== rk && o.distributedToName)
+        .map(o => o.distributedToName);
+      const uniq = [...new Set(names)];
+      if (uniq.length) map.set(rk, uniq);
+    });
+  });
+  return map;
+}
+function showRelatedTooltip(e, names) {
+  let tip = document.getElementById('relatedTooltip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'relatedTooltip';
+    tip.className = 'related-tooltip';
+    document.body.appendChild(tip);
+  }
+  tip.textContent = 'Смежный счёт с: ' + names.join(', ');
+  tip.classList.add('open');
+  positionTooltip(e, tip);
+}
+function positionTooltip(e, tip) {
+  const pad = 12;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  const rect = tip.getBoundingClientRect();
+  if (x + rect.width > window.innerWidth - pad) x = e.clientX - rect.width - pad;
+  if (y + rect.height > window.innerHeight - pad) y = e.clientY - rect.height - pad;
+  tip.style.left = x + 'px';
+  tip.style.top = y + 'px';
+}
+function hideRelatedTooltip() {
+  const tip = document.getElementById('relatedTooltip');
+  if (tip) tip.classList.remove('open');
+}
+
 function renderTable() {
   const tbody = document.getElementById('tableBody');
   const sq = document.getElementById('search').value.trim().toLowerCase();
@@ -1635,6 +1682,8 @@ function renderTable() {
   if (sq) title += ` (поиск: "${sq}")`;
   document.getElementById('tableTitle').textContent = `📋 ${title} (${fd.length})`;
 
+  const relatedMap = buildRelatedMap(fd);
+
   tbody.innerHTML = '';
   const colsCount = 14 + (showOwner ? 1 : 0) + (showDistCol ? 1 : 0);
 
@@ -1695,7 +1744,7 @@ function renderTable() {
         : `<div class="mt-1"><button type="button" class="btn btn-sm p-0 border-0 text-muted" title="Добавить метку" onclick="event.stopPropagation();openLabelModal('${key}')" style="font-size:.7em">🏷</button></div>`;
 
       tr.innerHTML = `
-        <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong>${distributedBadge}</td>
+        <td class="col-invoice"><strong class="${relatedMap.has(rk) ? 'invoice-with-related' : ''}" data-rk="${escapeHtml(rk)}">${row['Номер счета'] || ''}</strong>${distributedBadge}</td>
         ${showOwner ? `<td><small>${escapeHtml(ownerLabel)}</small></td>` : ''}
         <td><span class="badge ${placeBadgeClass(place)} me-1">${placeLabel(place)}</span><span class="badge ${typeBadgeClass(type)}">${typeLabel(type)}</span></td>
         <td class="col-date">${row['Дата выписки'] || ''}</td>
@@ -1719,6 +1768,14 @@ function renderTable() {
           ${(isAdminSelf) ? `<button class="btn btn-sm btn-outline-danger ms-1" title="Удалить счёт" onclick="event.stopPropagation();deleteInvoice('${key}')">🗑</button>` : ''}
         </td>`;
       tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('.invoice-with-related').forEach(el => {
+      const names = relatedMap.get(el.dataset.rk);
+      if (!names) return;
+      el.addEventListener('mouseenter', (e) => showRelatedTooltip(e, names));
+      el.addEventListener('mousemove', (e) => positionTooltip(e, document.getElementById('relatedTooltip')));
+      el.addEventListener('mouseleave', hideRelatedTooltip);
     });
   }
   renderUserFilters();
