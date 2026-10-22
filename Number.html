@@ -267,6 +267,8 @@
       <div class="d-flex flex-wrap gap-1 mt-2">
         <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="setLabelPreset('По факту 30 д.')">По факту 30 д.</button>
         <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="setLabelPreset('По факту 25 д.')">По факту 25 д.</button>
+        <button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick="setLabelPreset('По факту 20 д.')">По факту 20 д.</button>
+        <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="setLabelPreset('По факту 15 д.')">По факту 15 д.</button>
         <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="setLabelPreset('35%')">35%</button>
         <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="setLabelPreset('30%')">30%</button>
       </div>
@@ -339,7 +341,11 @@
 <p>Выполненные счета удаляются по баннеру. Минимальный срок — <b>30 дней</b>. В админ-панели можно отключить автоочистку (0) или почистить вручную.</p>
 <hr>
 <h5>📅 Расчёт срока</h5>
-<p>День оплаты = <b>день 1</b>. Срочные/бюджет — 5 рабочих дней, остальные — 30 календарных (с откатом назад на рабочий день). Метки меняют расчёт.</p>
+<p>День оплаты = <b>день 1</b>. Срочные/бюджет — 5 рабочих дней, остальные — 30 календарных (с откатом назад на рабочий день).</p>
+<p>Метки <code>По факту 30 д.</code>, <code>По факту 25 д.</code>, <code>По факту 20 д.</code>, <code>По факту 15 д.</code> переопределяют расчёт: N календарных дней от <b>даты выписки</b>. Метки <code>35%</code> / <code>30%</code> — 5 / 10 рабочих дней от даты оплаты.</p>
+<hr>
+<h5>🔄 Смена типа/места</h5>
+<p>Если счёт с тем же номером и прибором загрузить повторно с другим типом (Общие → Бюджет и т.п.) — строка <b>обновится</b>, а не создастся заново. Распределение, комментарии, метки и статус сохраняются. Если меняется <b>место</b> (ЦСМС → Эталон) — строка переезжает, общие данные мигрируют на новый ключ.</p>
 </div>
 <div class="help-modal-footer"><button class="btn btn-secondary" onclick="closeHelp()">Закрыть</button></div>
 </div></div>
@@ -646,6 +652,23 @@ function subscribeToSharedClosedDates() { if (unsubClosedDates) unsubClosedDates
 function subscribeToSharedLabels() { if (unsubLabels) unsubLabels(); unsubLabels = onValue(ref(database, 'sharedLabels'), (snap) => { sharedLabels = snap.val() || {}; renderTable(); }, (err) => console.error(err)); }
 /* ========= КОНЕЦ ДАТА ЗАКРЫТИЯ И МЕТКИ ========= */
 
+/* ========= МИГРАЦИЯ SHARED-ДАННЫХ ПРИ СМЕНЕ КЛЮЧА ========= */
+async function migrateSharedData(oldKey, newKey) {
+  const ok = fbKey(oldKey), nk = fbKey(newKey);
+  if (ok === nk) return;
+  const nodes = ['sharedStatuses', 'sharedComments', 'sharedClosedDates', 'sharedLabels'];
+  for (const node of nodes) {
+    try {
+      const snap = await get(ref(database, node + '/' + ok));
+      if (snap.exists()) {
+        await set(ref(database, node + '/' + nk), snap.val());
+        await remove(ref(database, node + '/' + ok));
+      }
+    } catch(e) { console.error('migrate ' + node, e); }
+  }
+}
+/* ========= КОНЕЦ МИГРАЦИИ ========= */
+
 /* ========= МАССОВОЕ РАСПРЕДЕЛЕНИЕ ========= */
 function openBulkAssignModal() {
   if (!currentIsAdmin) { alert('Только админ'); return; }
@@ -816,7 +839,6 @@ async function savePasteTable() {
   if (!pasteRows.length) { alert('Таблица пуста'); return; }
   if (!currentUser) { alert('Не залогинены'); return; }
   if (!confirm(`Сохранить ${pasteRows.length} строк?`)) return;
-  const now = new Date().toISOString();
   const newData = pasteRows.map(r => ({
     'Номер счета': r['Номер счета'] || '', 'Дата выписки': r['Дата выписки'] || '',
     'Контрагент (Наименование)': r['Наименование'] || '', 'Контингент': r['Контингент'] || '',
@@ -829,18 +851,27 @@ async function savePasteTable() {
   const existing = new Map();
   table1Data.forEach((r, i) => existing.set(rowKey(r), i));
   let added = 0, updated = 0;
+  const migrations = [];
   newData.forEach(nr => {
     const k = rowKey(nr);
-    if (existing.has(k)) { table1Data[existing.get(k)] = mergeRow(table1Data[existing.get(k)], nr); updated++; }
+    if (existing.has(k)) {
+      const idx = existing.get(k);
+      const oldKey = rowKey(table1Data[idx]);
+      table1Data[idx] = mergeRow(table1Data[idx], nr);
+      const newKey = rowKey(table1Data[idx]);
+      if (oldKey !== newKey) migrations.push({ oldKey, newKey });
+      updated++;
+    }
     else { table1Data.push(nr); existing.set(k, table1Data.length - 1); added++; }
   });
   table1Data = resolvePriorities(table1Data);
   applySharedStatuses(); saveToStorage(); renderTable(); updateDistributedBanner();
   if (!autoCleanChecked) { autoCleanChecked = true; checkAutoClean(); }
+  for (const m of migrations) { try { await migrateSharedData(m.oldKey, m.newKey); } catch(e) { console.error(e); } }
   pasteRows = []; renderPasteTable(); closePasteModal();
   alert(`✅ Добавлено ${added}, обновлено ${updated}`);
 }
-document.addEventListener('DOMContentLoaded', () => { const w = document.getElementById('pasteTableWrapper'); if (w) w.addEventListener('paste', handlePaste); });
+document.addEventListener('DOMContentLoaded', () => { const w = document.getElementById('pasteTableWrapper'); if (w && !w.dataset.listener) { w.addEventListener('paste', handlePaste); w.dataset.listener = '1'; } });
 setTimeout(() => { const w = document.getElementById('pasteTableWrapper'); if (w && !w.dataset.listener) { w.addEventListener('paste', handlePaste); w.dataset.listener = '1'; } }, 500);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); closeChangePassword(); closePasteModal(); closeCommentModal(); closeClosedDateModal(); closeLabelModal(); closeBulkAssignModal(); } });
 
@@ -935,9 +966,8 @@ function getUnviewedDistributedCount() {
   if (!viewingUid || !currentUser) return 0;
   const { uid, isAdmin } = getEffectiveViewer();
   if (!uid) return 0;
-  // баннер считаем для не-админа или в режиме "Работать как"
   const isImpersonating = currentIsAdmin && viewingUid !== currentUser.uid;
-  if (isAdmin) return 0; // админ на "своих" — не показываем
+  if (isAdmin) return 0;
   let c = 0;
   table1Data.forEach(r => {
     if (!isRowVisibleTo(r, uid, false)) return;
@@ -962,7 +992,8 @@ async function markAllDistributedAsViewed() {
 
 function normalizeKey(v) { if (v === undefined || v === null) return ''; return String(v).trim().replace(/[.,;:!?()"'«»№]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase(); }
 function baseKey(r) { return `${normalizeKey(r['Номер счета'])}||${normalizeKey(r['Прибор'])}`; }
-function rowKey(r) { return `${baseKey(r)}||${r.place || 'csm'}||${r.type || 'common'}`; }
+/* 🔧 ФИКС: rowKey больше НЕ включает тип — иначе при смене типа (Общие→Бюджет) создаётся новая строка */
+function rowKey(r) { return `${baseKey(r)}||${r.place || 'csm'}`; }
 function fbKey(k) { return k.replace(/[.#$/\[\]]/g, '_'); }
 function safeString(v) { return (v == null ? '' : String(v)).toLowerCase(); }
 function parseDate(s) { if (!s && s !== 0) return null; if (s === '' || s === '-') return null; if (typeof s === 'number') { try { const d = XLSX.SSF.parse_date_code(s); return new Date(d.y, d.m - 1, d.d); } catch(e) { return null; } } const str = s.toString().trim(); const p = str.split('.'); if (p.length === 3) return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0])); const d = new Date(str); return isNaN(d.getTime()) ? null : d; }
@@ -1007,6 +1038,7 @@ function typeLabel(t) { return t === 'urgent' ? 'Срочные' : t === 'budget
 function placeBadgeClass(p) { return p === 'etalon' ? 'badge-etalon' : p === 'onsite' ? 'badge-onsite' : 'badge-common'; }
 function typeBadgeClass(t) { return t === 'urgent' ? 'badge-urgent' : t === 'budget' ? 'badge-budget' : 'badge-common'; }
 function placePriority(p) { return (p === 'etalon' || p === 'onsite') ? 3 : 1; }
+/* 🔧 ФИКС: при равном приоритете места — оставляем распределённую/более свежую строку */
 function resolvePriorities(rows) {
   const g = new Map();
   rows.forEach(r => { const k = baseKey(r); if (!g.has(k)) g.set(k, []); g.get(k).push(r); });
@@ -1015,8 +1047,11 @@ function resolvePriorities(rows) {
     if (group.length === 1) { res.push(group[0]); return; }
     let max = 0;
     group.forEach(r => { const p = placePriority(r.place || 'csm'); if (p > max) max = p; });
-    if (max <= 1) { res.push(group[group.length - 1]); return; }
-    group.filter(r => placePriority(r.place || 'csm') >= max).forEach(r => res.push(r));
+    const candidates = group.filter(r => placePriority(r.place || 'csm') >= max);
+    // предпочитаем распределённую строку, иначе — последнюю
+    const distributed = candidates.find(r => r.distributedTo);
+    if (distributed) { res.push(distributed); }
+    else { res.push(candidates[candidates.length - 1]); }
   });
   return res;
 }
@@ -1070,7 +1105,6 @@ function onAdminUserChange() {
   else { const u = allUsersCache[uid]; viewingUid = uid; viewingName = u ? (u.name || u.username || uid) : uid; }
   updateAdminModeInfo();
   cleanDismissedThisSession = false; autoCleanChecked = false; hideCleanBanner();
-  // переподписываемся на viewedDistributed выбранного пользователя (для баннера в режиме "как")
   subscribeToViewedDistributed(viewingUid);
   loadFromStorage(); subscribeToUserData(viewingUid); renderTable(); updateDistributedBanner();
 }
@@ -1187,24 +1221,33 @@ function readTable1(file, callback) {
   reader.readAsArrayBuffer(file);
 }
 
-function loadTable1() {
+async function loadTable1() {
   const fi = document.getElementById('table1File');
   if (!fi.files[0]) { alert('Выберите файл'); return; }
   const tUid = viewingUid;
-  readTable1(fi.files[0], function(newData) {
+  readTable1(fi.files[0], async function(newData) {
     if (tUid !== viewingUid) { alert('Переключён — отмена'); return; }
     if (!newData.length) { alert('Не найдено'); return; }
     const ex = new Map();
     table1Data.forEach((r, i) => ex.set(rowKey(r), i));
     let a = 0, u = 0;
+    const migrations = [];
     newData.forEach(nr => {
       const k = rowKey(nr);
-      if (ex.has(k)) { table1Data[ex.get(k)] = mergeRow(table1Data[ex.get(k)], nr); u++; }
+      if (ex.has(k)) {
+        const idx = ex.get(k);
+        const oldKey = rowKey(table1Data[idx]);
+        table1Data[idx] = mergeRow(table1Data[idx], nr);
+        const newKey = rowKey(table1Data[idx]);
+        if (oldKey !== newKey) migrations.push({ oldKey, newKey });
+        u++;
+      }
       else { table1Data.push(nr); ex.set(k, table1Data.length - 1); a++; }
     });
     table1Data = resolvePriorities(table1Data);
     applySharedStatuses(); saveToStorage(); renderTable(); updateDistributedBanner();
     if (!autoCleanChecked) { autoCleanChecked = true; checkAutoClean(); }
+    for (const m of migrations) { try { await migrateSharedData(m.oldKey, m.newKey); } catch(e) { console.error(e); } }
     const d = document.getElementById('table1Info'); d.style.display = 'block';
     d.innerHTML = `✅ +${a}, ~${u}, всего ${table1Data.length}`;
     setTimeout(() => d.style.display = 'none', 7000);
@@ -1232,7 +1275,6 @@ function loadFromStorage() {
   updateDeviceTypes(); renderTable(); updateDistributedBanner();
 }
 
-// 🔧 ВАРИАНТ A: читаем ВСЕГДА ветку админа (общая база), фильтруем в UI
 function subscribeToUserData(uid) {
   if (unsubInvoices) unsubInvoices();
   userInvoicesRef = ref(database, 'invoices/' + ADMIN_UID);
@@ -1266,7 +1308,6 @@ function applySharedStatuses() {
   });
 }
 
-// 🔧 ФИКС: типы приборов — только из видимых строк (с учётом режима "Работать как")
 function updateDeviceTypes() {
   deviceTypes.clear();
   const { uid, isAdmin } = getEffectiveViewer();
@@ -1315,10 +1356,13 @@ function clearAllData() {
 function calculateTerm(row) {
   const rk = rowKey(row);
   const label = getLabel(rk);
-  if (label === 'По факту 30 д.' || label === 'По факту 25 д.') {
+  if (label === 'По факту 30 д.' || label === 'По факту 25 д.' || label === 'По факту 20 д.' || label === 'По факту 15 д.') {
     const issueDate = row['Дата выписки'];
     if (!issueDate) return { date: null, label: label };
-    const n = label === 'По факту 25 д.' ? 25 : 30;
+    let n = 30;
+    if (label === 'По факту 25 д.') n = 25;
+    else if (label === 'По факту 20 д.') n = 20;
+    else if (label === 'По факту 15 д.') n = 15;
     return { date: addCalendarDays(issueDate, n), label: `По факту: ${n} кал. дн. от выписки` };
   }
   if (label === '35%' || label === '30%') {
@@ -1648,7 +1692,7 @@ function renderTable() {
         : `<button type="button" class="btn btn-sm btn-link p-0 ms-1 text-decoration-none text-muted" title="Указать дату закрытия" onclick="event.stopPropagation();openClosedDateModal('${key}')" style="font-size:1em">—</button>`;
 
       let labelBg = '#fd7e14';
-      if (labelVal === 'По факту 30 д.' || labelVal === 'По факту 25 д.') labelBg = '#198754';
+      if (labelVal === 'По факту 30 д.' || labelVal === 'По факту 25 д.' || labelVal === 'По факту 20 д.' || labelVal === 'По факту 15 д.') labelBg = '#198754';
       else if (labelVal === '35%' || labelVal === '30%') labelBg = '#0d6efd';
 
       const labelBtnHtml = labelVal
