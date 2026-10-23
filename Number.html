@@ -76,10 +76,6 @@
 .modal-backdrop-custom.open{display:flex}
 .comment-icon-btn{background:none;border:none;padding:0 2px;font-size:1.15em;cursor:pointer;line-height:1}
 .comment-icon-btn:hover{opacity:.7}
-.invoice-with-related{border-bottom:1px dashed #6f42c1;cursor:help}
-.invoice-with-related:hover{background:#f3e8ff}
-.related-tooltip{position:fixed;z-index:3000;background:#212529;color:#fff;border-radius:6px;padding:6px 10px;font-size:.85em;max-width:360px;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none;opacity:0;transition:opacity .12s}
-.related-tooltip.open{opacity:1}
 </style>
 </head>
 <body>
@@ -347,12 +343,6 @@
 <h5>📅 Расчёт срока</h5>
 <p>День оплаты = <b>день 1</b>. Срочные/бюджет — 5 рабочих дней, остальные — 30 календарных (с откатом назад на рабочий день).</p>
 <p>Метки <code>По факту 30 д.</code>, <code>По факту 25 д.</code>, <code>По факту 20 д.</code>, <code>По факту 15 д.</code> переопределяют расчёт: N календарных дней от <b>даты выписки</b>. Метки <code>35%</code> / <code>30%</code> — 5 / 10 рабочих дней от даты оплаты.</p>
-<hr>
-<h5>🔄 Смена типа/места</h5>
-<p>Если счёт с тем же номером и прибором загрузить повторно с другим типом или местом — строка <b>обновится</b>, а не создастся заново. Распределение, комментарии, метки и статус сохраняются.</p>
-<hr>
-<h5>🔗 Смежные счета</h5>
-<p>Если у счёта есть «близнецы» с тем же номером квитанции (даже с другими приборами), номер будет <b>подчёркнут пунктиром</b>. Наведи — увидишь, с кем ещё есть этот счёт.</p>
 </div>
 <div class="help-modal-footer"><button class="btn btn-secondary" onclick="closeHelp()">Закрыть</button></div>
 </div></div>
@@ -376,11 +366,6 @@
       <button class="btn btn-sm btn-danger" onclick="manualCleanCompleted()">Очистить все выполненные</button>
       <button class="btn btn-sm btn-warning" onclick="manualCleanOld()">Очистить по сроку (<span id="manualCleanDaysLabel">60</span> дн.)</button>
     </div>
-  </div>
-  <div class="alert alert-success py-2 mb-3">
-    <label class="form-label fw-bold mb-1">🛠 Восстановление статусов</label>
-    <button class="btn btn-sm btn-success" onclick="rebuildStatusKeys()">🛠 Пересобрать ключи статусов</button>
-    <small class="text-muted d-block mt-1">Если отметки «Выполнено» слетели после смены места/типа — эта кнопка попробует их вернуть, сверив старые ключи с текущими строками по номеру + прибор.</small>
   </div>
   <div id="adminUserList" style="border:1px solid #dee2e6;border-radius:6px"><div class="text-muted text-center py-3">Загрузка...</div></div>
 </div>
@@ -407,6 +392,9 @@ const ADMIN_UID = "GyRhKTads7acfylEigM2YEUwnyk1";
 
 function stripUndefined(obj) { const c = {}; Object.keys(obj).forEach(k => { const v = obj[k]; if (v === undefined) c[k] = ''; else if (v === null) c[k] = null; else c[k] = v; }); return c; }
 
+/* ============================================================
+   РАСЧЁТ СРОКА
+   ============================================================ */
 const HOLIDAYS_RB = ['01-01','01-02','01-07','03-08','04-21','05-01','05-09','07-03','11-07','12-25'];
 const WORKING_SATURDAYS_RB = ['2026-04-25'];
 function toISO(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
@@ -457,6 +445,12 @@ let closedDateRowKey = null;
 let labelRowKey = null;
 let bulkSelectedDevices = new Set();
 
+/* ============================================================
+   🔧 ВИДИМОСТЬ (вариант A):
+   - Админ видит всё (кроме режима "Работать как").
+   - Не-админ видит ТОЛЬКО строки, где distributedTo === его uid.
+   - В режиме "Работать как X" админ видит ровно то, что видит X.
+   ============================================================ */
 function isRowVisibleTo(row, uid, isAdmin) {
   if (isAdmin) return true;
   if (!uid) return false;
@@ -484,7 +478,6 @@ window.renderTable = renderTable; window.changeStatus = changeStatus; window.exp
 window.openHelp = openHelp; window.closeHelp = closeHelp;
 window.openAdminPanel = openAdminPanel; window.closeAdminPanel = closeAdminPanel; window.deleteUserAdmin = deleteUserAdmin;
 window.repairDistribution = repairDistribution;
-window.rebuildStatusKeys = rebuildStatusKeys;
 window.saveAutoCleanDays = saveAutoCleanDays; window.loadAutoCleanDays = loadAutoCleanDays;
 window.manualCleanCompleted = manualCleanCompleted; window.manualCleanOld = manualCleanOld;
 window.onAdminUserChange = onAdminUserChange; window.performAutoClean = performAutoClean; window.dismissAutoClean = dismissAutoClean;
@@ -522,6 +515,7 @@ async function submitChangePassword() {
   finally { btn.disabled = false; btn.textContent = 'Сменить'; }
 }
 
+/* ========= НАСТРОЙКИ ОЧИСТКИ ========= */
 async function loadAutoCleanDays() {
   try {
     const s = await get(ref(database, 'settings/autoCleanDays'));
@@ -542,7 +536,9 @@ async function saveAutoCleanDays() {
   const lbl = document.getElementById('manualCleanDaysLabel'); if (lbl) lbl.textContent = v;
   checkAutoClean();
 }
+/* ========= КОНЕЦ НАСТРОЕК ОЧИСТКИ ========= */
 
+/* ========= КОММЕНТАРИИ ========= */
 function getComment(key) { return sharedComments[fbKey(key)] || ''; }
 function openCommentModal(key) {
   if (!currentUser) { alert('Не залогинены'); return; }
@@ -586,7 +582,9 @@ function subscribeToSharedComments() {
   sharedCommentsRef = ref(database, 'sharedComments');
   unsubComments = onValue(sharedCommentsRef, (snap) => { sharedComments = snap.val() || {}; renderTable(); }, (err) => console.error(err));
 }
+/* ========= КОНЕЦ КОММЕНТАРИЕВ ========= */
 
+/* ========= ДАТА ЗАКРЫТИЯ И МЕТКИ ========= */
 function getClosedDate(key) { const v = sharedClosedDates[fbKey(key)]; return v && v.date ? v.date : ''; }
 function getLabel(key) { const v = sharedLabels[fbKey(key)]; return v && v.text ? v.text : ''; }
 function formatDateISOtoRU(iso) { if (!iso) return ''; const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return iso; return `${m[3]}.${m[2]}.${m[1]}`; }
@@ -649,85 +647,9 @@ async function deleteLabel() {
 }
 function subscribeToSharedClosedDates() { if (unsubClosedDates) unsubClosedDates(); unsubClosedDates = onValue(ref(database, 'sharedClosedDates'), (snap) => { sharedClosedDates = snap.val() || {}; renderTable(); }, (err) => console.error(err)); }
 function subscribeToSharedLabels() { if (unsubLabels) unsubLabels(); unsubLabels = onValue(ref(database, 'sharedLabels'), (snap) => { sharedLabels = snap.val() || {}; renderTable(); }, (err) => console.error(err)); }
+/* ========= КОНЕЦ ДАТА ЗАКРЫТИЯ И МЕТКИ ========= */
 
-async function migrateSharedData(oldKey, newKey) {
-  const ok = fbKey(oldKey), nk = fbKey(newKey);
-  if (ok === nk) return;
-  const nodes = ['sharedStatuses', 'sharedComments', 'sharedClosedDates', 'sharedLabels'];
-  for (const node of nodes) {
-    try {
-      const snap = await get(ref(database, node + '/' + ok));
-      if (snap.exists()) {
-        await set(ref(database, node + '/' + nk), snap.val());
-        await remove(ref(database, node + '/' + ok));
-      }
-    } catch(e) { console.error('migrate ' + node, e); }
-  }
-}
-
-async function rebuildStatusKeys() {
-  if (!currentIsAdmin) { alert('Только админ'); return; }
-  if (!confirm('Пересобрать ключи статусов? Пройдёмся по sharedStatuses и, если ключ не совпадает ни с одной текущей строкой, попробуем перенести статус на актуальный ключ по номеру+прибор.')) return;
-  try {
-    // подгружаем актуальный список статусов из базы
-    const snap = await get(ref(database, 'sharedStatuses'));
-    const stored = snap.val() || {};
-    // множество актуальных ключей из table1Data
-    const actualByBase = new Map(); // baseKey -> [rowKey,...]
-    table1Data.forEach(r => {
-      const bk = baseKey(r);
-      if (!actualByBase.has(bk)) actualByBase.set(bk, []);
-      actualByBase.get(bk).push(rowKey(r));
-    });
-    let migrated = 0, removed = 0, kept = 0;
-    for (const [oldFbKey, val] of Object.entries(stored)) {
-      // если ключ уже существует среди актуальных — оставляем как есть
-      const matchDirect = table1Data.find(r => fbKey(rowKey(r)) === oldFbKey);
-      if (matchDirect) { kept++; continue; }
-      // пробуем восстановить baseKey из старого ключа
-      // старый ключ имеет формат: fbKey(`${baseKey}||${place}`)
-      // baseKey содержит '||' между номером и прибором, поэтому разрезаем по последнему '||'
-      const rawKey = oldFbKey; // уже с подменой спецсимволов, но для поиска достаточно строки
-      // пробуем найти в table1Data строку, у которой fbKey(baseKey + '||' + place) совпадает с префиксом
-      let bestMatch = null;
-      for (const r of table1Data) {
-        const curFb = fbKey(rowKey(r));
-        if (curFb === oldFbKey) { bestMatch = r; break; }
-        // частичное совпадение по baseKey (номер+прибор)
-        const baseFb = fbKey(baseKey(r));
-        if (oldFbKey.startsWith(baseFb + '_')) { // '_' потому что '||' → '__' заменено, но fbKey('|') оставляет '|'... см. ниже
-          bestMatch = r; break;
-        }
-      }
-      // если через startsWith не нашли — пробуем по совпадению baseKey без учёта разделителя
-      if (!bestMatch) {
-        const baseFbPrefix = oldFbKey.split('__').slice(0, -1).join('__');
-        for (const r of table1Data) {
-          const baseFb = fbKey(baseKey(r)).replace(/\|/g, '_');
-          if (baseFbPrefix.startsWith(baseFb) || baseFb.startsWith(baseFbPrefix)) { bestMatch = r; break; }
-        }
-      }
-      if (!bestMatch) {
-        // не нашли — удаляем «висячий» статус
-        await remove(ref(database, 'sharedStatuses/' + oldFbKey));
-        removed++;
-        continue;
-      }
-      const newKey = fbKey(rowKey(bestMatch));
-      if (newKey === oldFbKey) { kept++; continue; }
-      // переносим
-      await set(ref(database, 'sharedStatuses/' + newKey), val);
-      await remove(ref(database, 'sharedStatuses/' + oldFbKey));
-      migrated++;
-    }
-    alert(`🛠 Готово.\nПеренесено: ${migrated}\nУдалено «висячих»: ${removed}\nОставлено как есть: ${kept}`);
-    renderTable();
-  } catch(e) {
-    console.error(e);
-    alert('Ошибка: ' + e.message);
-  }
-}
-
+/* ========= МАССОВОЕ РАСПРЕДЕЛЕНИЕ ========= */
 function openBulkAssignModal() {
   if (!currentIsAdmin) { alert('Только админ'); return; }
   if (viewingUid !== currentUser.uid) { alert('Переключитесь на «— Свои данные —»'); return; }
@@ -795,7 +717,9 @@ async function bulkAssignExecute() {
   closeBulkAssignModal(); renderUserFilters(); renderTable();
   alert(`✅ Распределено ${candidates.length} счёт(ов) пользователю «${userName}»`);
 }
+/* ========= КОНЕЦ МАССОВОЕ РАСПРЕДЕЛЕНИЕ ========= */
 
+/* ========= ОКНО ВСТАВКИ ========= */
 function openPasteModal() { document.getElementById('pasteModal').classList.add('open'); document.body.style.overflow = 'hidden'; setTimeout(() => { document.getElementById('pasteTableWrapper').focus(); }, 100); }
 function closePasteModal() { document.getElementById('pasteModal').classList.remove('open'); document.body.style.overflow = ''; }
 function setPastePlace(p) { pastePlace = p; document.querySelectorAll('.place-paste-btn').forEach(b => b.classList.toggle('active', b.dataset.place === p)); updatePasteFooter(); }
@@ -873,7 +797,8 @@ function handlePaste(e) {
   if (!text) return;
   const rows = parsePasteText(text);
   if (!rows.length) { alert('Не удалось распознать данные'); return; }
-  rows.forEach(cells => { const row = buildPasteRow(cells); if (row['Номер счета'] || row['Прибор'] || row['Сумма']) { pasteRows.push(row); } });
+  let added = 0;
+  rows.forEach(cells => { const row = buildPasteRow(cells); if (row['Номер счета'] || row['Прибор'] || row['Сумма']) { pasteRows.push(row); added++; } });
   renderPasteTable();
 }
 function renderPasteTable() {
@@ -890,54 +815,11 @@ function renderPasteTable() {
   }
   updatePasteFooter();
 }
-
-function mergeNewRowsIntoTable(newData) {
-  const existingByBase = new Map();
-  table1Data.forEach((r, i) => {
-    const bk = baseKey(r);
-    const cur = existingByBase.get(bk);
-    if (cur === undefined) existingByBase.set(bk, i);
-    else if (!table1Data[cur].distributedTo && r.distributedTo) existingByBase.set(bk, i);
-  });
-
-  let added = 0, updated = 0;
-  const migrations = [];
-
-  newData.forEach(nr => {
-    const bk = baseKey(nr);
-    if (existingByBase.has(bk)) {
-      const idx = existingByBase.get(bk);
-      const old = table1Data[idx];
-      const oldKey = rowKey(old);
-      const merged = mergeRow(old, nr);
-      if (old.distributedTo) {
-        merged.distributedTo = old.distributedTo;
-        merged.distributedToName = old.distributedToName || '';
-        merged.distributedAt = old.distributedAt || '';
-        merged.distributedBy = old.distributedBy || '';
-        merged.distributedByName = old.distributedByName || '';
-      }
-      if (nr.place) merged.place = nr.place;
-      if (nr.type) merged.type = nr.type;
-      table1Data[idx] = merged;
-      const newKey = rowKey(merged);
-      if (oldKey !== newKey) migrations.push({ oldKey, newKey });
-      updated++;
-    } else {
-      table1Data.push(nr);
-      existingByBase.set(bk, table1Data.length - 1);
-      added++;
-    }
-  });
-
-  table1Data = resolvePriorities(table1Data);
-  return { added, updated, migrations };
-}
-
 async function savePasteTable() {
   if (!pasteRows.length) { alert('Таблица пуста'); return; }
   if (!currentUser) { alert('Не залогинены'); return; }
   if (!confirm(`Сохранить ${pasteRows.length} строк?`)) return;
+  const now = new Date().toISOString();
   const newData = pasteRows.map(r => ({
     'Номер счета': r['Номер счета'] || '', 'Дата выписки': r['Дата выписки'] || '',
     'Контрагент (Наименование)': r['Наименование'] || '', 'Контингент': r['Контингент'] || '',
@@ -947,17 +829,23 @@ async function savePasteTable() {
     distributed: false, distributedTo: '', distributedToName: '', distributedAt: '', distributedBy: '', distributedByName: '', copied: false,
     status: 'new', statusDate: null, paymentStatus: '', urgency: ''
   }));
-  const res = mergeNewRowsIntoTable(newData);
-  // ВАЖНО: сначала миграция ключей, потом сохранение таблицы — иначе гонка
-  for (const m of res.migrations) { try { await migrateSharedData(m.oldKey, m.newKey); } catch(e) { console.error(e); } }
+  const existing = new Map();
+  table1Data.forEach((r, i) => existing.set(rowKey(r), i));
+  let added = 0, updated = 0;
+  newData.forEach(nr => {
+    const k = rowKey(nr);
+    if (existing.has(k)) { table1Data[existing.get(k)] = mergeRow(table1Data[existing.get(k)], nr); updated++; }
+    else { table1Data.push(nr); existing.set(k, table1Data.length - 1); added++; }
+  });
+  table1Data = resolvePriorities(table1Data);
   applySharedStatuses(); saveToStorage(); renderTable(); updateDistributedBanner();
   if (!autoCleanChecked) { autoCleanChecked = true; checkAutoClean(); }
   pasteRows = []; renderPasteTable(); closePasteModal();
-  alert(`✅ Добавлено ${res.added}, обновлено ${res.updated}`);
+  alert(`✅ Добавлено ${added}, обновлено ${updated}`);
 }
 document.addEventListener('DOMContentLoaded', () => { const w = document.getElementById('pasteTableWrapper'); if (w && !w.dataset.listener) { w.addEventListener('paste', handlePaste); w.dataset.listener = '1'; } });
 setTimeout(() => { const w = document.getElementById('pasteTableWrapper'); if (w && !w.dataset.listener) { w.addEventListener('paste', handlePaste); w.dataset.listener = '1'; } }, 500);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); closeChangePassword(); closePasteModal(); closeCommentModal(); closeClosedDateModal(); closeLabelModal(); closeBulkAssignModal(); hideRelatedTooltip(); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeHelp(); closeAdminPanel(); closeDistModal(); closeChangePassword(); closePasteModal(); closeCommentModal(); closeClosedDateModal(); closeLabelModal(); closeBulkAssignModal(); } });
 
 const TRANSLIT_MAP = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
 function transliterate(s) { let r = ''; for (const c of s) { const l = c.toLowerCase(); r += (TRANSLIT_MAP[l] !== undefined) ? TRANSLIT_MAP[l] : c; } return r; }
@@ -1050,6 +938,7 @@ function getUnviewedDistributedCount() {
   if (!viewingUid || !currentUser) return 0;
   const { uid, isAdmin } = getEffectiveViewer();
   if (!uid) return 0;
+  const isImpersonating = currentIsAdmin && viewingUid !== currentUser.uid;
   if (isAdmin) return 0;
   let c = 0;
   table1Data.forEach(r => {
@@ -1075,7 +964,7 @@ async function markAllDistributedAsViewed() {
 
 function normalizeKey(v) { if (v === undefined || v === null) return ''; return String(v).trim().replace(/[.,;:!?()"'«»№]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase(); }
 function baseKey(r) { return `${normalizeKey(r['Номер счета'])}||${normalizeKey(r['Прибор'])}`; }
-function rowKey(r) { return `${baseKey(r)}||${r.place || 'csm'}`; }
+function rowKey(r) { return `${baseKey(r)}||${r.place || 'csm'}||${r.type || 'common'}`; }
 function fbKey(k) { return k.replace(/[.#$/\[\]]/g, '_'); }
 function safeString(v) { return (v == null ? '' : String(v)).toLowerCase(); }
 function parseDate(s) { if (!s && s !== 0) return null; if (s === '' || s === '-') return null; if (typeof s === 'number') { try { const d = XLSX.SSF.parse_date_code(s); return new Date(d.y, d.m - 1, d.d); } catch(e) { return null; } } const str = s.toString().trim(); const p = str.split('.'); if (p.length === 3) return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0])); const d = new Date(str); return isNaN(d.getTime()) ? null : d; }
@@ -1128,10 +1017,8 @@ function resolvePriorities(rows) {
     if (group.length === 1) { res.push(group[0]); return; }
     let max = 0;
     group.forEach(r => { const p = placePriority(r.place || 'csm'); if (p > max) max = p; });
-    const candidates = group.filter(r => placePriority(r.place || 'csm') >= max);
-    const distributed = candidates.find(r => r.distributedTo);
-    if (distributed) { res.push(distributed); }
-    else { res.push(candidates[candidates.length - 1]); }
+    if (max <= 1) { res.push(group[group.length - 1]); return; }
+    group.filter(r => placePriority(r.place || 'csm') >= max).forEach(r => res.push(r));
   });
   return res;
 }
@@ -1301,20 +1188,26 @@ function readTable1(file, callback) {
   reader.readAsArrayBuffer(file);
 }
 
-async function loadTable1() {
+function loadTable1() {
   const fi = document.getElementById('table1File');
   if (!fi.files[0]) { alert('Выберите файл'); return; }
   const tUid = viewingUid;
-  readTable1(fi.files[0], async function(newData) {
+  readTable1(fi.files[0], function(newData) {
     if (tUid !== viewingUid) { alert('Переключён — отмена'); return; }
     if (!newData.length) { alert('Не найдено'); return; }
-    const res = mergeNewRowsIntoTable(newData);
-    // Сначала миграция ключей shared-данных, потом сохранение
-    for (const m of res.migrations) { try { await migrateSharedData(m.oldKey, m.newKey); } catch(e) { console.error(e); } }
+    const ex = new Map();
+    table1Data.forEach((r, i) => ex.set(rowKey(r), i));
+    let a = 0, u = 0;
+    newData.forEach(nr => {
+      const k = rowKey(nr);
+      if (ex.has(k)) { table1Data[ex.get(k)] = mergeRow(table1Data[ex.get(k)], nr); u++; }
+      else { table1Data.push(nr); ex.set(k, table1Data.length - 1); a++; }
+    });
+    table1Data = resolvePriorities(table1Data);
     applySharedStatuses(); saveToStorage(); renderTable(); updateDistributedBanner();
     if (!autoCleanChecked) { autoCleanChecked = true; checkAutoClean(); }
     const d = document.getElementById('table1Info'); d.style.display = 'block';
-    d.innerHTML = `✅ +${res.added}, ~${res.updated}, всего ${table1Data.length}`;
+    d.innerHTML = `✅ +${a}, ~${u}, всего ${table1Data.length}`;
     setTimeout(() => d.style.display = 'none', 7000);
   });
 }
@@ -1324,13 +1217,6 @@ function saveToStorage() {
   localStorage.setItem('cache_' + viewingUid + '_table1', JSON.stringify(table1Data));
   if (isRemoteUpdate) return;
   if (!currentUser || !userInvoicesRef) return;
-
-  // 🔒 ЗАЩИТА: не перезаписываем общую базу в режиме «Работать как»
-  if (currentIsAdmin && viewingUid !== currentUser.uid) {
-    setSyncStatus('online', 'Просмотр');
-    return;
-  }
-
   const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
   setSyncStatus('syncing', 'Синхронизация...');
   set(userInvoicesRef, { table1Data: c1, updatedAt: new Date().toISOString() })
@@ -1347,6 +1233,7 @@ function loadFromStorage() {
   updateDeviceTypes(); renderTable(); updateDistributedBanner();
 }
 
+// 🔧 ВАРИАНТ A: читаем ВСЕГДА ветку админа (общая база), фильтруем в UI
 function subscribeToUserData(uid) {
   if (unsubInvoices) unsubInvoices();
   userInvoicesRef = ref(database, 'invoices/' + ADMIN_UID);
@@ -1375,9 +1262,7 @@ function applySharedStatuses() {
     const s = sharedStatuses[k];
     let r = { ...row };
     if (s && s.status) { r.status = s.status; r.statusDate = s.statusDate; r.statusChangedBy = s.changedByName || s.changedByEmail || ''; }
-    // 🛠 МЯГКИЙ РЕЖИМ: если записи нет — НЕ сбрасываем статус, оставляем как есть.
-    // Раньше здесь стоял сброс в 'new', из-за чего при гонке/ошибке чтения
-    // все отметки «Выполнено» слетали.
+    else if (row.status !== 'new') { r.status = 'new'; r.statusDate = null; r.statusChangedBy = ''; }
     return r;
   });
 }
@@ -1648,54 +1533,6 @@ function setupScrollSync() {
 }
 window.addEventListener('load', setupScrollSync);
 
-function buildRelatedMap(rows) {
-  const byNumber = new Map();
-  rows.forEach(r => {
-    const num = normalizeKey(r['Номер счета']);
-    if (!num) return;
-    if (!byNumber.has(num)) byNumber.set(num, []);
-    byNumber.get(num).push(r);
-  });
-  const map = new Map();
-  byNumber.forEach(group => {
-    if (group.length < 2) return;
-    group.forEach(row => {
-      const rk = rowKey(row);
-      const names = group
-        .filter(o => rowKey(o) !== rk && o.distributedToName)
-        .map(o => o.distributedToName);
-      const uniq = [...new Set(names)];
-      if (uniq.length) map.set(rk, uniq);
-    });
-  });
-  return map;
-}
-function showRelatedTooltip(e, names) {
-  let tip = document.getElementById('relatedTooltip');
-  if (!tip) {
-    tip = document.createElement('div');
-    tip.id = 'relatedTooltip';
-    tip.className = 'related-tooltip';
-    document.body.appendChild(tip);
-  }
-  tip.textContent = 'Смежный счёт с: ' + names.join(', ');
-  tip.classList.add('open');
-  positionTooltip(e, tip);
-}
-function positionTooltip(e, tip) {
-  const pad = 12;
-  let x = e.clientX + pad, y = e.clientY + pad;
-  const rect = tip.getBoundingClientRect();
-  if (x + rect.width > window.innerWidth - pad) x = e.clientX - rect.width - pad;
-  if (y + rect.height > window.innerHeight - pad) y = e.clientY - rect.height - pad;
-  tip.style.left = x + 'px';
-  tip.style.top = y + 'px';
-}
-function hideRelatedTooltip() {
-  const tip = document.getElementById('relatedTooltip');
-  if (tip) tip.classList.remove('open');
-}
-
 function renderTable() {
   const tbody = document.getElementById('tableBody');
   const sq = document.getElementById('search').value.trim().toLowerCase();
@@ -1762,8 +1599,6 @@ function renderTable() {
   if (sq) title += ` (поиск: "${sq}")`;
   document.getElementById('tableTitle').textContent = `📋 ${title} (${fd.length})`;
 
-  const relatedMap = buildRelatedMap(fd);
-
   tbody.innerHTML = '';
   const colsCount = 14 + (showOwner ? 1 : 0) + (showDistCol ? 1 : 0);
 
@@ -1824,7 +1659,7 @@ function renderTable() {
         : `<div class="mt-1"><button type="button" class="btn btn-sm p-0 border-0 text-muted" title="Добавить метку" onclick="event.stopPropagation();openLabelModal('${key}')" style="font-size:.7em">🏷</button></div>`;
 
       tr.innerHTML = `
-        <td class="col-invoice"><strong class="${relatedMap.has(rk) ? 'invoice-with-related' : ''}" data-rk="${escapeHtml(rk)}">${row['Номер счета'] || ''}</strong>${distributedBadge}</td>
+        <td class="col-invoice"><strong>${row['Номер счета'] || ''}</strong>${distributedBadge}</td>
         ${showOwner ? `<td><small>${escapeHtml(ownerLabel)}</small></td>` : ''}
         <td><span class="badge ${placeBadgeClass(place)} me-1">${placeLabel(place)}</span><span class="badge ${typeBadgeClass(type)}">${typeLabel(type)}</span></td>
         <td class="col-date">${row['Дата выписки'] || ''}</td>
@@ -1848,14 +1683,6 @@ function renderTable() {
           ${(isAdminSelf) ? `<button class="btn btn-sm btn-outline-danger ms-1" title="Удалить счёт" onclick="event.stopPropagation();deleteInvoice('${key}')">🗑</button>` : ''}
         </td>`;
       tbody.appendChild(tr);
-    });
-
-    tbody.querySelectorAll('.invoice-with-related').forEach(el => {
-      const names = relatedMap.get(el.dataset.rk);
-      if (!names) return;
-      el.addEventListener('mouseenter', (e) => showRelatedTooltip(e, names));
-      el.addEventListener('mousemove', (e) => positionTooltip(e, document.getElementById('relatedTooltip')));
-      el.addEventListener('mouseleave', hideRelatedTooltip);
     });
   }
   renderUserFilters();
