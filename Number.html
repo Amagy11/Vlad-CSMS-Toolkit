@@ -269,7 +269,6 @@
       <div class="d-flex flex-wrap gap-1 mt-2">
         <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="setLabelPreset('Оплачено ' + formatDate(new Date()))">Оплачено сегодня</button>
         <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="setLabelPreset('По факту 30 д.')">По факту 30 д.</button>
-        <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="setLabelPreset('По факту 25 д.')">По факту 25 д.</button>
         <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="setLabelPreset('По факту 25 кал. д.')">По факту 25 кал. д.</button>
         <button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick="setLabelPreset('По факту 20 д.')">По факту 20 д.</button>
         <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="setLabelPreset('По факту 15 д.')">По факту 15 д.</button>
@@ -349,7 +348,7 @@
 <hr>
 <h5>📅 Расчёт срока</h5>
 <p>День оплаты = <b>день 1</b>. Срочные/бюджет — 5 рабочих дней, остальные — 30 календарных (с откатом назад на рабочий день).</p>
-<p>Метки <code>По факту 30 д.</code>, <code>По факту 25 д.</code>, <code>По факту 20 д.</code>, <code>По факту 15 д.</code> переопределяют расчёт: N календарных дней от <b>даты выписки</b>. Метки <code>35%</code> / <code>30%</code> — 5 / 10 рабочих дней от даты оплаты.</p>
+<p>Метки <code>По факту 30 д.</code>, <code>По факту 25 кал. д.</code>, <code>По факту 20 д.</code>, <code>По факту 15 д.</code> переопределяют расчёт: N календарных дней от <b>даты выписки</b>. Метки <code>35%</code> / <code>30%</code> — 5 / 10 рабочих дней от даты оплаты.</p>
 </div>
 <div class="help-modal-footer"><button class="btn btn-secondary" onclick="closeHelp()">Закрыть</button></div>
 </div></div>
@@ -1714,7 +1713,7 @@ function renderTable() {
         : `<button type="button" class="btn btn-sm btn-link p-0 ms-1 text-decoration-none text-muted" title="Указать дату закрытия" onclick="event.stopPropagation();openClosedDateModal('${key}')" style="font-size:1em">—</button>`;
 
       let labelBg = '#fd7e14';
-      if (labelVal === 'По факту 30 д.' || labelVal === 'По факту 25 д.' || labelVal === 'По факту 20 д.' || labelVal === 'По факту 15 д.') labelBg = '#198754';
+      if (labelVal === 'По факту 30 д.' || labelVal === 'По факту 25 д.' || labelVal === 'По факту 25 кал. д.' || labelVal === 'По факту 20 д.' || labelVal === 'По факту 15 д.') labelBg = '#198754';
       else if (labelVal === '35%' || labelVal === '30%') labelBg = '#0d6efd';
 
       const labelBtnHtml = labelVal
