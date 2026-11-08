@@ -263,8 +263,9 @@
     <div class="help-modal-body">
       <p class="text-muted small mb-2">Счёт: <b id="labelInvoiceInfo">—</b></p>
       <label class="form-label fw-bold">Метка</label>
-      <input type="text" id="labelInput" class="form-control" maxlength="100" placeholder="Введите метку вручную или выберите ниже">
+      <input type="text" id="labelInput" class="form-control" maxlength="100" placeholder="Например: Оплачено 15.10.2026">
       <div class="d-flex flex-wrap gap-1 mt-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="setLabelPreset('Оплачено ' + formatDate(new Date()))">Оплачено сегодня</button>
         <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="setLabelPreset('По факту 30 д.')">По факту 30 д.</button>
         <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="setLabelPreset('По факту 25 д.')">По факту 25 д.</button>
         <button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick="setLabelPreset('По факту 20 д.')">По факту 20 д.</button>
@@ -272,6 +273,7 @@
         <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="setLabelPreset('35%')">35%</button>
         <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="setLabelPreset('30%')">30%</button>
       </div>
+      <div class="form-text mt-2 text-muted"><small>💡 Если вписать дату (например <b>15.10.2026</b>), она будет считаться датой оплаты, если колонка «Дата оплаты» пуста.</small></div>
       <div class="form-text mt-1"><span id="labelCounter">0</span>/100</div>
       <div id="labelError" class="alert alert-danger mt-2" style="display:none"></div>
     </div>
@@ -337,6 +339,7 @@
 <h5>💬 Комментарии и метки</h5>
 <p>В колонке «Пометки» клик по <b>—</b> добавляет комментарий, по <b>⚠️</b> — открывает его. В «Дата оплаты» можно поставить метку 🏷 и дату закрытия 🔐.</p>
 <p><b>Важно:</b> метка 🏷 и дата закрытия 🔐 распространяются на <b>все позиции с одинаковым номером счёта</b>. Комментарий — только на конкретную позицию (прибор).</p>
+<p>💡 Если ввести в метку <b>дату</b> (например <code>Оплачено 15.10.2026</code>), она будет использоваться как <b>дата оплаты</b> для расчёта срока, если колонка «Дата оплаты» пуста.</p>
 <hr>
 <h5>🧹 Автоочистка</h5>
 <p>Выполненные счета удаляются по баннеру. Минимальный срок — <b>30 дней</b>. В админ-панели можно отключить автоочистку (0) или почистить вручную.</p>
@@ -585,13 +588,12 @@ function subscribeToSharedComments() {
 }
 /* ========= КОНЕЦ КОММЕНТАРИЕВ ========= */
 
-/* ========= ДАТА ЗАКРЫТИЯ И МЕТКИ (с распространением на все позиции счёта) ========= */
+/* ========= ДАТА ЗАКРЫТИЯ И МЕТКИ ========= */
 function getClosedDate(key) { const v = sharedClosedDates[fbKey(key)]; return v && v.date ? v.date : ''; }
 function getLabel(key) { const v = sharedLabels[fbKey(key)]; return v && v.text ? v.text : ''; }
 function formatDateISOtoRU(iso) { if (!iso) return ''; const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return iso; return `${m[3]}.${m[2]}.${m[1]}`; }
 function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
-/* Возвращает все уникальные fbKey всех строк с тем же номером счёта, что и key */
 function getInvoiceGroupFbKeys(key) {
   const targetRow = table1Data.find(r => rowKey(r) === key);
   if (!targetRow) return [fbKey(key)];
@@ -679,6 +681,18 @@ async function deleteLabel() {
 }
 function subscribeToSharedClosedDates() { if (unsubClosedDates) unsubClosedDates(); unsubClosedDates = onValue(ref(database, 'sharedClosedDates'), (snap) => { sharedClosedDates = snap.val() || {}; renderTable(); }, (err) => console.error(err)); }
 function subscribeToSharedLabels() { if (unsubLabels) unsubLabels(); unsubLabels = onValue(ref(database, 'sharedLabels'), (snap) => { sharedLabels = snap.val() || {}; renderTable(); }, (err) => console.error(err)); }
+
+// Извлечение даты из текста метки (ДД.ММ.ГГГГ или ДД/ММ/ГГГГ)
+function extractDateFromLabel(labelText) {
+  if (!labelText) return null;
+  const m = labelText.match(/(\d{2})[.\/](\d{2})[.\/](\d{4})/);
+  if (m) {
+    const d = parseInt(m[1], 10), mo = parseInt(m[2], 10) - 1, y = parseInt(m[3], 10);
+    const date = new Date(y, mo, d);
+    if (!isNaN(date.getTime())) return date;
+  }
+  return null;
+}
 /* ========= КОНЕЦ ДАТА ЗАКРЫТИЯ И МЕТКИ ========= */
 
 /* ========= МАССОВОЕ РАСПРЕДЕЛЕНИЕ ========= */
@@ -1347,6 +1361,7 @@ function clearAllData() {
 function calculateTerm(row) {
   const rk = rowKey(row);
   const label = getLabel(rk);
+  
   if (label === 'По факту 30 д.' || label === 'По факту 25 д.' || label === 'По факту 20 д.' || label === 'По факту 15 д.') {
     const issueDate = row['Дата выписки'];
     if (!issueDate) return { date: null, label: label };
@@ -1362,7 +1377,17 @@ function calculateTerm(row) {
     const n = label === '35%' ? 5 : 10;
     return { date: addWorkingDays(payDate, n), label: `${label} → ${n} раб.` };
   }
-  const ds = row['Дата оплаты'] || row.paymentDate;
+  
+  let ds = row['Дата оплаты'] || row.paymentDate;
+  
+  // Если основной даты нет, пробуем вытащить из метки
+  if (!ds) {
+    const labelDate = extractDateFromLabel(label);
+    if (labelDate) {
+      ds = formatDate(labelDate); // формат ДД.ММ.ГГГГ
+    }
+  }
+  
   if (!ds) return { date: null, label: '' };
   const fast = row.type === 'budget' || row.type === 'urgent';
   if (fast) return { date: addWorkingDays(ds, 5), label: '5 раб.' };
