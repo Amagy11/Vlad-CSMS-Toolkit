@@ -76,6 +76,7 @@
 .modal-backdrop-custom.open{display:flex}
 .comment-icon-btn{background:none;border:none;padding:0 2px;font-size:1.15em;cursor:pointer;line-height:1}
 .comment-icon-btn:hover{opacity:.7}
+.closed-badge{background:#d4edda;color:#155724;border:1px solid #c3e6cb;padding:2px 6px;border-radius:4px;font-size:.85em;font-weight:bold}
 </style>
 </head>
 <body>
@@ -239,8 +240,9 @@
     </div>
     <div class="help-modal-body">
       <p class="text-muted small mb-2">Счёт: <b id="closedInvoiceInfo">—</b></p>
+      <div class="alert alert-info py-2 small mb-3">📌 Дата закрытия распространится на <b>все позиции</b> с этим номером счёта.</div>
       <label class="form-label fw-bold">Дата закрытия</label>
-      <input type="date" id="closedDateInput" class="form-control">
+      <input type="date" id="closedDateInput" class="form-control form-control-lg border-success">
       <div class="form-text mt-1">Оставьте пустым, чтобы снять дату.</div>
       <div id="closedDateError" class="alert alert-danger mt-2" style="display:none"></div>
     </div>
@@ -268,6 +270,7 @@
         <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="setLabelPreset('Оплачено ' + formatDate(new Date()))">Оплачено сегодня</button>
         <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="setLabelPreset('По факту 30 д.')">По факту 30 д.</button>
         <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="setLabelPreset('По факту 25 д.')">По факту 25 д.</button>
+        <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="setLabelPreset('По факту 25 кал. д.')">По факту 25 кал. д.</button>
         <button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick="setLabelPreset('По факту 20 д.')">По факту 20 д.</button>
         <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="setLabelPreset('По факту 15 д.')">По факту 15 д.</button>
         <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="setLabelPreset('35%')">35%</button>
@@ -1362,11 +1365,11 @@ function calculateTerm(row) {
   const rk = rowKey(row);
   const label = getLabel(rk);
   
-  if (label === 'По факту 30 д.' || label === 'По факту 25 д.' || label === 'По факту 20 д.' || label === 'По факту 15 д.') {
+  if (label === 'По факту 30 д.' || label === 'По факту 25 д.' || label === 'По факту 25 кал. д.' || label === 'По факту 20 д.' || label === 'По факту 15 д.') {
     const issueDate = row['Дата выписки'];
     if (!issueDate) return { date: null, label: label };
     let n = 30;
-    if (label === 'По факту 25 д.') n = 25;
+    if (label === 'По факту 25 д.' || label === 'По факту 25 кал. д.') n = 25;
     else if (label === 'По факту 20 д.') n = 20;
     else if (label === 'По факту 15 д.') n = 15;
     return { date: addCalendarDays(issueDate, n), label: `По факту: ${n} кал. дн. от выписки` };
@@ -1707,7 +1710,7 @@ function renderTable() {
       const labelVal = getLabel(rk);
 
       const closedBtnHtml = closedVal
-        ? `<button type="button" class="btn btn-sm btn-link p-0 ms-1 text-decoration-none" title="Закрыт ${formatDateISOtoRU(closedVal)}" onclick="event.stopPropagation();openClosedDateModal('${key}')" style="font-size:1em;color:#198754">🔐</button>`
+        ? `<span class="closed-badge ms-1" title="Счёт закрыт ${formatDateISOtoRU(closedVal)}" onclick="event.stopPropagation();openClosedDateModal('${key}')" style="cursor:pointer">🔐 ${formatDateISOtoRU(closedVal)}</span>`
         : `<button type="button" class="btn btn-sm btn-link p-0 ms-1 text-decoration-none text-muted" title="Указать дату закрытия" onclick="event.stopPropagation();openClosedDateModal('${key}')" style="font-size:1em">—</button>`;
 
       let labelBg = '#fd7e14';
@@ -1727,7 +1730,8 @@ function renderTable() {
         <td>${row['Прибор'] || ''}</td>
         <td class="col-qty">${formatQty(row['Кол-во'])}</td>
         <td class="col-date">
-          <div>${pd ? `<strong>${pd}</strong>` : '—'}${closedBtnHtml}</div>
+          <div>${pd ? `<strong>${pd}</strong>` : '—'}</div>
+          <div>${closedBtnHtml}</div>
           ${labelBtnHtml}
         </td>
         <td class="col-date">${termHtml}</td>
