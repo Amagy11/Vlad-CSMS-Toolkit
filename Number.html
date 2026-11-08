@@ -26,7 +26,7 @@
 #invoicesTable{width:100%;font-size:.85em;margin-bottom:0}
 #invoicesTable th,#invoicesTable td{padding:4px 6px;vertical-align:middle;word-break:break-word}
 #invoicesTable th{font-size:.9em;padding:5px 6px;white-space:nowrap}
-#invoicesTable td.col-invoice,#invoicesTable td.col-qty,#invoicesTable td.col-sum,#invoicesTable td.col-date{white-space:nowrap}
+#invoicesTable td.col-invoice,#invoicesTable td.col-qty,#invoicesTable td.col-date{white-space:nowrap}
 .col-contractor{max-width:240px}.col-invoice{max-width:130px}.col-distributed{min-width:120px;white-space:nowrap}
 .sort-btn{cursor:pointer}.sort-indicator{font-size:.8em}
 .section-btn.active,.place-btn.active,.type-btn.active{font-weight:bold;box-shadow:0 0 0 2px #007bff inset;background:#007bff;color:#fff}
@@ -161,7 +161,7 @@
 <th class="col-invoice">Квитанция/Счет</th>
 <th id="ownerColHeader" style="display:none">Владелец</th>
 <th>Раздел</th><th>Дата выписки</th><th class="col-contractor">Контрагент</th>
-<th>Прибор</th><th>Кол-во</th><th>Сумма</th>
+<th>Прибор</th><th>Кол-во</th>
 <th>Дата оплаты</th>
 <th class="sort-btn" onclick="sortByPaymentDate()">Срок <span id="dateSortIndicator" class="sort-indicator"></span></th>
 <th>Срочность</th><th>Статус</th><th>Пометки</th>
@@ -336,6 +336,7 @@
 <hr>
 <h5>💬 Комментарии и метки</h5>
 <p>В колонке «Пометки» клик по <b>—</b> добавляет комментарий, по <b>⚠️</b> — открывает его. В «Дата оплаты» можно поставить метку 🏷 и дату закрытия 🔐.</p>
+<p><b>Важно:</b> метка 🏷 и дата закрытия 🔐 распространяются на <b>все позиции с одинаковым номером счёта</b>. Комментарий — только на конкретную позицию (прибор).</p>
 <hr>
 <h5>🧹 Автоочистка</h5>
 <p>Выполненные счета удаляются по баннеру. Минимальный срок — <b>30 дней</b>. В админ-панели можно отключить автоочистку (0) или почистить вручную.</p>
@@ -584,11 +585,25 @@ function subscribeToSharedComments() {
 }
 /* ========= КОНЕЦ КОММЕНТАРИЕВ ========= */
 
-/* ========= ДАТА ЗАКРЫТИЯ И МЕТКИ ========= */
+/* ========= ДАТА ЗАКРЫТИЯ И МЕТКИ (с распространением на все позиции счёта) ========= */
 function getClosedDate(key) { const v = sharedClosedDates[fbKey(key)]; return v && v.date ? v.date : ''; }
 function getLabel(key) { const v = sharedLabels[fbKey(key)]; return v && v.text ? v.text : ''; }
 function formatDateISOtoRU(iso) { if (!iso) return ''; const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return iso; return `${m[3]}.${m[2]}.${m[1]}`; }
 function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+/* Возвращает все уникальные fbKey всех строк с тем же номером счёта, что и key */
+function getInvoiceGroupFbKeys(key) {
+  const targetRow = table1Data.find(r => rowKey(r) === key);
+  if (!targetRow) return [fbKey(key)];
+  const inv = normalizeKey(targetRow['Номер счета']);
+  if (!inv) return [fbKey(key)];
+  const keys = new Set();
+  table1Data.forEach(r => {
+    if (normalizeKey(r['Номер счета']) === inv) keys.add(fbKey(rowKey(r)));
+  });
+  keys.add(fbKey(key));
+  return Array.from(keys);
+}
 
 function openClosedDateModal(key) {
   if (!currentUser) { alert('Не залогинены'); return; }
@@ -606,14 +621,23 @@ async function saveClosedDate() {
   const v = document.getElementById('closedDateInput').value;
   const errEl = document.getElementById('closedDateError'); errEl.style.display = 'none';
   if (!v) { errEl.textContent = 'Укажите дату'; errEl.style.display = 'block'; return; }
-  try { await set(ref(database, 'sharedClosedDates/' + fbKey(closedDateRowKey)), { date: v, updatedAt: new Date().toISOString(), updatedBy: currentUser.uid, updatedByName: currentUserName }); closeClosedDateModal(); }
-  catch(e) { errEl.textContent = 'Ошибка: ' + e.message; errEl.style.display = 'block'; }
+  const fbKeys = getInvoiceGroupFbKeys(closedDateRowKey);
+  const payload = { date: v, updatedAt: new Date().toISOString(), updatedBy: currentUser.uid, updatedByName: currentUserName };
+  try {
+    for (const fk of fbKeys) { await set(ref(database, 'sharedClosedDates/' + fk), payload); }
+    closeClosedDateModal();
+  } catch(e) { errEl.textContent = 'Ошибка: ' + e.message; errEl.style.display = 'block'; }
 }
 async function deleteClosedDate() {
   if (!closedDateRowKey || !currentUser) return;
-  if (!confirm('Снять дату закрытия?')) return;
-  try { await remove(ref(database, 'sharedClosedDates/' + fbKey(closedDateRowKey))); closeClosedDateModal(); } catch(e) { alert('Ошибка: ' + e.message); }
+  if (!confirm('Снять дату закрытия со всех позиций этого счёта?')) return;
+  const fbKeys = getInvoiceGroupFbKeys(closedDateRowKey);
+  try {
+    for (const fk of fbKeys) { await remove(ref(database, 'sharedClosedDates/' + fk)); }
+    closeClosedDateModal();
+  } catch(e) { alert('Ошибка: ' + e.message); }
 }
+
 function openLabelModal(key) {
   if (!currentUser) { alert('Не залогинены'); return; }
   const row = table1Data.find(r => rowKey(r) === key); if (!row) return;
@@ -634,16 +658,24 @@ async function saveLabel() {
   const v = document.getElementById('labelInput').value.trim();
   const errEl = document.getElementById('labelError'); errEl.style.display = 'none';
   if (v.length > 100) { errEl.textContent = 'Максимум 100 символов'; errEl.style.display = 'block'; return; }
+  const fbKeys = getInvoiceGroupFbKeys(labelRowKey);
   try {
-    if (!v) { await remove(ref(database, 'sharedLabels/' + fbKey(labelRowKey))); }
-    else { await set(ref(database, 'sharedLabels/' + fbKey(labelRowKey)), { text: v, updatedAt: new Date().toISOString(), updatedBy: currentUser.uid, updatedByName: currentUserName }); }
+    if (!v) { for (const fk of fbKeys) { await remove(ref(database, 'sharedLabels/' + fk)); } }
+    else {
+      const payload = { text: v, updatedAt: new Date().toISOString(), updatedBy: currentUser.uid, updatedByName: currentUserName };
+      for (const fk of fbKeys) { await set(ref(database, 'sharedLabels/' + fk), payload); }
+    }
     closeLabelModal();
   } catch(e) { errEl.textContent = 'Ошибка: ' + e.message; errEl.style.display = 'block'; }
 }
 async function deleteLabel() {
   if (!labelRowKey || !currentUser) return;
-  if (!confirm('Снять метку?')) return;
-  try { await remove(ref(database, 'sharedLabels/' + fbKey(labelRowKey))); closeLabelModal(); } catch(e) { alert('Ошибка: ' + e.message); }
+  if (!confirm('Снять метку со всех позиций этого счёта?')) return;
+  const fbKeys = getInvoiceGroupFbKeys(labelRowKey);
+  try {
+    for (const fk of fbKeys) { await remove(ref(database, 'sharedLabels/' + fk)); }
+    closeLabelModal();
+  } catch(e) { alert('Ошибка: ' + e.message); }
 }
 function subscribeToSharedClosedDates() { if (unsubClosedDates) unsubClosedDates(); unsubClosedDates = onValue(ref(database, 'sharedClosedDates'), (snap) => { sharedClosedDates = snap.val() || {}; renderTable(); }, (err) => console.error(err)); }
 function subscribeToSharedLabels() { if (unsubLabels) unsubLabels(); unsubLabels = onValue(ref(database, 'sharedLabels'), (snap) => { sharedLabels = snap.val() || {}; renderTable(); }, (err) => console.error(err)); }
@@ -1600,7 +1632,7 @@ function renderTable() {
   document.getElementById('tableTitle').textContent = `📋 ${title} (${fd.length})`;
 
   tbody.innerHTML = '';
-  const colsCount = 14 + (showOwner ? 1 : 0) + (showDistCol ? 1 : 0);
+  const colsCount = 13 + (showOwner ? 1 : 0) + (showDistCol ? 1 : 0);
 
   if (!fd.length) { tbody.innerHTML = `<tr><td colspan="${colsCount}" class="text-center text-muted">Нет данных.</td></tr>`; }
   else {
@@ -1621,6 +1653,9 @@ function renderTable() {
       const rk = rowKey(row);
       const key = rk.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
       const changedBy = row.statusChangedBy ? `<br><small class="text-muted">${row.statusChangedBy}</small>` : '';
+      const completedDateHtml = (row.status === 'completed' && row.statusDate)
+        ? `<br><small class="text-success" title="Дата выполнения">✅ ${formatDate(new Date(row.statusDate))}</small>`
+        : '';
       const term = calculateTerm(row);
       let termHtml = '—';
       if (term.date) {
@@ -1666,14 +1701,13 @@ function renderTable() {
         <td class="col-contractor">${row['Контингент'] || ''}</td>
         <td>${row['Прибор'] || ''}</td>
         <td class="col-qty">${formatQty(row['Кол-во'])}</td>
-        <td class="col-sum">${row['Всего по счету'] || row['Сумма'] || ''}</td>
         <td class="col-date">
           <div>${pd ? `<strong>${pd}</strong>` : '—'}${closedBtnHtml}</div>
           ${labelBtnHtml}
         </td>
         <td class="col-date">${termHtml}</td>
         <td>${row.urgency ? `<span class="badge badge-urgent">${row.urgency} дн.</span>` : '—'}</td>
-        <td>${row.status === 'new' ? '<span class="badge badge-new">Новый</span>' : ''}${row.status === 'inwork' ? `<span class="badge badge-inwork">В работе</span>${changedBy}` : ''}${row.status === 'completed' ? `<span class="badge badge-completed">✓ Выполнен</span>${changedBy}` : ''}</td>
+        <td>${row.status === 'new' ? '<span class="badge badge-new">Новый</span>' : ''}${row.status === 'inwork' ? `<span class="badge badge-inwork">В работе</span>${changedBy}` : ''}${row.status === 'completed' ? `<span class="badge badge-completed">✓ Выполнен</span>${changedBy}${completedDateHtml}` : ''}</td>
         <td>${type === 'budget' ? '<span class="badge badge-budget me-1">Бюджет</span>' : ''}${type === 'urgent' ? '<span class="badge badge-urgent me-1">Срочно</span>' : ''}${place === 'etalon' ? '<span class="badge badge-etalon me-1">Эталон</span>' : ''}${place === 'onsite' ? '<span class="badge badge-onsite me-1">Выездной</span>' : ''} ${commentBtn}</td>
         ${distCell}
         <td>
@@ -1701,7 +1735,7 @@ function exportToExcel() {
   if (selectedSections.has('unassigned')) dte = dte.filter(r => !r.distributedTo);
   if (selectedDistributedUsers.size > 0) dte = dte.filter(r => selectedDistributedUsers.has(r.distributedTo));
   if (selectedDevices.size > 0) dte = dte.filter(r => { const d = (r['Прибор'] || '').split(' ').slice(0, 3).join(' '); return selectedDevices.has(d); });
-  const ed = dte.map(row => { const term = calculateTerm(row); const c = getComment(rowKey(row)); const cd = getClosedDate(rowKey(row)); return { 'Квитанция/Счет': row['Номер счета'], 'Владелец': (currentIsAdmin && viewingUid !== currentUser.uid) ? viewingName : '', 'Место': placeLabel(row.place), 'Тип': typeLabel(row.type), 'Дата выписки': row['Дата выписки'], 'Контрагент': row['Контингент'] || '', 'Прибор': row['Прибор'], 'Кол-во': row['Кол-во'], 'Сумма': row['Всего по счету'], 'Дата оплаты': row['Дата оплаты'] || row.paymentDate, 'Срок': term.date ? formatDate(term.date) : '', 'Срочность': row.urgency, 'Статус': row.status, 'Изменил': row.statusChangedBy || '', 'Распределён': row.distributedToName || '', 'Комментарий': c, 'Закрыт': cd ? formatDateISOtoRU(cd) : '', 'Метка': getLabel(rowKey(row)) }; });
+  const ed = dte.map(row => { const term = calculateTerm(row); const c = getComment(rowKey(row)); const cd = getClosedDate(rowKey(row)); return { 'Квитанция/Счет': row['Номер счета'], 'Владелец': (currentIsAdmin && viewingUid !== currentUser.uid) ? viewingName : '', 'Место': placeLabel(row.place), 'Тип': typeLabel(row.type), 'Дата выписки': row['Дата выписки'], 'Контрагент': row['Контингент'] || '', 'Прибор': row['Прибор'], 'Кол-во': row['Кол-во'], 'Дата оплаты': row['Дата оплаты'] || row.paymentDate, 'Срок': term.date ? formatDate(term.date) : '', 'Срочность': row.urgency, 'Статус': row.status, 'Изменил': row.statusChangedBy || '', 'Дата выполнения': (row.status === 'completed' && row.statusDate) ? formatDate(new Date(row.statusDate)) : '', 'Распределён': row.distributedToName || '', 'Комментарий': c, 'Закрыт': cd ? formatDateISOtoRU(cd) : '', 'Метка': getLabel(rowKey(row)) }; });
   const ws = XLSX.utils.json_to_sheet(ed); const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Счета');
   const parts = ['счета'];
