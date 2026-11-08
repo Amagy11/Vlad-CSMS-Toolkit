@@ -713,7 +713,7 @@ function getBulkCandidates() {
   if (!bulkSelectedDevices.size) return [];
   return table1Data.filter(r => {
     if (r.distributedTo) return false;
-    const d = (r['Прибор'] || '').split(' ').slice(0, 3).join(' ');
+    const d = normalizeSpaces(r['Прибор'] || '');
     return bulkSelectedDevices.has(d);
   });
 }
@@ -1303,7 +1303,7 @@ function updateDeviceTypes() {
   deviceTypes.clear();
   const { uid, isAdmin } = getEffectiveViewer();
   const visible = table1Data.filter(row => isRowVisibleTo(row, uid, isAdmin));
-  visible.forEach(row => { const d = row['Прибор'] || ''; if (d && d.trim()) deviceTypes.add(d.split(' ').slice(0, 3).join(' ')); });
+  visible.forEach(row => { const d = row['Прибор'] || ''; if (d && d.trim()) deviceTypes.add(normalizeSpaces(d)); });
   renderDeviceTags();
 }
 function renderDeviceTags() {
@@ -1592,7 +1592,7 @@ function renderTable() {
   if (selectedSections.has('distributed')) fd = fd.filter(row => row.distributedTo);
   if (selectedSections.has('unassigned')) fd = fd.filter(row => !row.distributedTo);
   if (currentIsAdmin && viewingUid === currentUser.uid && selectedDistributedUsers.size > 0) fd = fd.filter(row => selectedDistributedUsers.has(row.distributedTo));
-  if (selectedDevices.size > 0) fd = fd.filter(row => { const d = (row['Прибор'] || '').split(' ').slice(0, 3).join(' '); return selectedDevices.has(d); });
+  if (selectedDevices.size > 0) fd = fd.filter(row => { const d = normalizeSpaces(row['Прибор'] || ''); return selectedDevices.has(d); });
   if (sq) fd = fd.filter(row => {
     const inv = safeString(row['Номер счета']), cont = safeString(row['Контингент']), dev = safeString(row['Прибор']);
     const pd = safeString(row['Дата оплаты'] || row.paymentDate), ur = safeString(row.urgency);
@@ -1734,7 +1734,7 @@ function exportToExcel() {
   if (selectedSections.has('distributed')) dte = dte.filter(r => r.distributedTo);
   if (selectedSections.has('unassigned')) dte = dte.filter(r => !r.distributedTo);
   if (selectedDistributedUsers.size > 0) dte = dte.filter(r => selectedDistributedUsers.has(r.distributedTo));
-  if (selectedDevices.size > 0) dte = dte.filter(r => { const d = (r['Прибор'] || '').split(' ').slice(0, 3).join(' '); return selectedDevices.has(d); });
+  if (selectedDevices.size > 0) dte = dte.filter(r => { const d = normalizeSpaces(r['Прибор'] || ''); return selectedDevices.has(d); });
   const ed = dte.map(row => { const term = calculateTerm(row); const c = getComment(rowKey(row)); const cd = getClosedDate(rowKey(row)); return { 'Квитанция/Счет': row['Номер счета'], 'Владелец': (currentIsAdmin && viewingUid !== currentUser.uid) ? viewingName : '', 'Место': placeLabel(row.place), 'Тип': typeLabel(row.type), 'Дата выписки': row['Дата выписки'], 'Контрагент': row['Контингент'] || '', 'Прибор': row['Прибор'], 'Кол-во': row['Кол-во'], 'Дата оплаты': row['Дата оплаты'] || row.paymentDate, 'Срок': term.date ? formatDate(term.date) : '', 'Срочность': row.urgency, 'Статус': row.status, 'Изменил': row.statusChangedBy || '', 'Дата выполнения': (row.status === 'completed' && row.statusDate) ? formatDate(new Date(row.statusDate)) : '', 'Распределён': row.distributedToName || '', 'Комментарий': c, 'Закрыт': cd ? formatDateISOtoRU(cd) : '', 'Метка': getLabel(rowKey(row)) }; });
   const ws = XLSX.utils.json_to_sheet(ed); const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Счета');
