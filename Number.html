@@ -270,6 +270,7 @@
         <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="setLabelPreset('Оплачено ' + formatDate(new Date()))">Оплачено сегодня</button>
         <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="setLabelPreset('По факту 30 д.')">По факту 30 д.</button>
         <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="setLabelPreset('По факту 25 кал. д.')">По факту 25 кал. д.</button>
+        <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="setLabelPreset('25 кал. д. после оплаты')">25 кал. д. после оплаты</button>
         <button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick="setLabelPreset('По факту 20 д.')">По факту 20 д.</button>
         <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="setLabelPreset('По факту 15 д.')">По факту 15 д.</button>
         <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="setLabelPreset('35%')">35%</button>
@@ -348,7 +349,8 @@
 <hr>
 <h5>📅 Расчёт срока</h5>
 <p>День оплаты = <b>день 1</b>. Срочные/бюджет — 5 рабочих дней, остальные — 30 календарных (с откатом назад на рабочий день).</p>
-<p>Метки <code>По факту 30 д.</code>, <code>По факту 25 кал. д.</code>, <code>По факту 20 д.</code>, <code>По факту 15 д.</code> переопределяют расчёт: N календарных дней от <b>даты выписки</b>. Метки <code>35%</code> / <code>30%</code> — 5 / 10 рабочих дней от даты оплаты.</p>
+<p>Метки <code>По факту 30 д.</code>, <code>По факту 25 кал. д.</code>, <code>По факту 20 д.</code>, <code>По факту 15 д.</code> переопределяют расчёт: N календарных дней от <b>даты выписки</b>.</p>
+<p>Метка <code>25 кал. д. после оплаты</code> — 25 календарных дней от <b>даты оплаты</b>. Метки <code>35%</code> / <code>30%</code> — 5 / 10 рабочих дней от даты оплаты.</p>
 </div>
 <div class="help-modal-footer"><button class="btn btn-secondary" onclick="closeHelp()">Закрыть</button></div>
 </div></div>
@@ -1373,6 +1375,15 @@ function calculateTerm(row) {
     else if (label === 'По факту 15 д.') n = 15;
     return { date: addCalendarDays(issueDate, n), label: `По факту: ${n} кал. дн. от выписки` };
   }
+  if (label === '25 кал. д. после оплаты') {
+    let payDate = row['Дата оплаты'] || row.paymentDate;
+    if (!payDate) {
+       const labelDate = extractDateFromLabel(label);
+       if (labelDate) payDate = formatDate(labelDate);
+    }
+    if (!payDate) return { date: null, label: label };
+    return { date: addCalendarDays(payDate, 25), label: '25 кал. от оплаты' };
+  }
   if (label === '35%' || label === '30%') {
     const payDate = row['Дата оплаты'] || row.paymentDate;
     if (!payDate) return { date: null, label: label };
@@ -1714,7 +1725,7 @@ function renderTable() {
 
       let labelBg = '#fd7e14';
       if (labelVal === 'По факту 30 д.' || labelVal === 'По факту 25 д.' || labelVal === 'По факту 25 кал. д.' || labelVal === 'По факту 20 д.' || labelVal === 'По факту 15 д.') labelBg = '#198754';
-      else if (labelVal === '35%' || labelVal === '30%') labelBg = '#0d6efd';
+      else if (labelVal === '25 кал. д. после оплаты' || labelVal === '35%' || labelVal === '30%') labelBg = '#0d6efd';
 
       const labelBtnHtml = labelVal
         ? `<div class="mt-1"><button type="button" class="btn btn-sm p-0 border-0" title="Метка: ${escapeHtml(labelVal)}" onclick="event.stopPropagation();openLabelModal('${key}')"><span class="badge" style="background:${labelBg};color:#fff;font-size:.7em">🏷 ${escapeHtml(labelVal)}</span></button></div>`
