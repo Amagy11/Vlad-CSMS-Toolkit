@@ -345,7 +345,8 @@
 <p>💡 Если ввести в метку <b>дату</b> (например <code>Оплачено 15.10.2026</code>), она будет использоваться как <b>дата оплаты</b> для расчёта срока, если колонка «Дата оплаты» пуста.</p>
 <hr>
 <h5>🧹 Автоочистка</h5>
-<p>Выполненные счета удаляются по баннеру. Минимальный срок — <b>30 дней</b>. В админ-панели можно отключить автоочистку (0) или почистить вручную.</p>
+<p>Удаляются счета за <b>прошлый месяц и старше</b>. Автоочистка запускается автоматически <b>с 5-го числа</b> месяца. Счета текущего месяца удалить нельзя — ограничение сверху.</p>
+<p>В админ-панели можно отключить автоочистку (0) или почистить вручную (с теми же ограничениями).</p>
 <hr>
 <h5>📅 Расчёт срока</h5>
 <p>День оплаты = <b>день 1</b>. Срочные/бюджет — 5 рабочих дней, остальные — 30 календарных (с откатом назад на рабочий день).</p>
@@ -363,10 +364,10 @@
     <label class="form-label fw-bold mb-1">🧹 Автоочистка выполненных счетов</label>
     <div class="d-flex align-items-center gap-2 flex-wrap">
       <span>Удалять через</span>
-      <input type="number" id="autoCleanDays" class="form-control form-control-sm" style="width:90px" min="30" max="365" value="60" onchange="saveAutoCleanDays()">
+      <input type="number" id="autoCleanDays" class="form-control form-control-sm" style="width:90px" min="0" max="365" value="60" onchange="saveAutoCleanDays()">
       <span>дней после «Выполнен» (мин. 30)</span>
     </div>
-    <small class="text-muted d-block mt-1">Поставьте 0, чтобы отключить автоочистку.</small>
+    <small class="text-muted d-block mt-1">Поставьте 0, чтобы отключить автоочистку. Автоочистка удаляет счета только за прошлый месяц и старше, запуск с 5-го числа.</small>
   </div>
   <div class="alert alert-warning py-2 mb-3">
     <label class="form-label fw-bold mb-1">🧹 Ручная очистка</label>
@@ -455,9 +456,6 @@ let bulkSelectedDevices = new Set();
 
 /* ============================================================
    🔧 ВИДИМОСТЬ (вариант A):
-   - Админ видит всё (кроме режима "Работать как").
-   - Не-админ видит ТОЛЬКО строки, где distributedTo === его uid.
-   - В режиме "Работать как X" админ видит ровно то, что видит X.
    ============================================================ */
 function isRowVisibleTo(row, uid, isAdmin) {
   if (isAdmin) return true;
@@ -1362,6 +1360,26 @@ function clearAllData() {
   updateDeviceTypes(); renderTable(); updateDistributedBanner();
 }
 
+// 🔒 ОГРАНИЧЕНИЕ: счета текущего месяца нельзя удалять.
+// Месяц и год берём из "Дата выписки".
+function isCurrentMonthInvoice(row) {
+  const d = parseDate(row['Дата выписки']);
+  if (!d) return false;
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+}
+function canDeleteRow(row) {
+  if (!currentIsAdmin) return false;
+  if (isCurrentMonthInvoice(row)) return false;
+  return true;
+}
+// 🔒 ОГРАНИЧЕНИЕ: с какого числа месяца можно запускать автоочистку
+const AUTO_CLEAN_START_DAY = 5;
+function isAutoCleanDay() {
+  const now = new Date();
+  return now.getDate() >= AUTO_CLEAN_START_DAY;
+}
+
 function calculateTerm(row) {
   const rk = rowKey(row);
   const label = getLabel(rk);
@@ -1407,12 +1425,15 @@ function calculateTerm(row) {
   return { date: addCalendarDays(ds, 30), label: '30 кал.' };
 }
 
+// 🔒 ОГРАНИЧЕНИЕ: кандидаты на автоочистку — только счета за прошлый месяц и старше.
 function getCleanCandidates() {
   if (autoCleanDays <= 0) return [];
   const th = new Date(); th.setDate(th.getDate() - autoCleanDays); th.setHours(0,0,0,0);
   const c = [];
   table1Data.forEach(row => {
     if (row.status !== 'completed') return;
+    // 🔒 не текущий месяц
+    if (isCurrentMonthInvoice(row)) return;
     let rd = row.statusDate ? new Date(row.statusDate) : (row['Дата выписки'] ? parseDate(row['Дата выписки']) : null);
     if (!rd || isNaN(rd.getTime())) return;
     if (rd < th) c.push(row);
@@ -1422,6 +1443,7 @@ function getCleanCandidates() {
 function checkAutoClean() {
   if (cleanDismissedThisSession) return;
   if (autoCleanDays <= 0) { hideCleanBanner(); return; }
+  if (!isAutoCleanDay()) { hideCleanBanner(); return; } // 🔒 до 5-го числа не предлагаем
   if (!table1Data.length) { hideCleanBanner(); return; }
   pendingCleanRows = getCleanCandidates();
   if (!pendingCleanRows.length) { hideCleanBanner(); return; }
@@ -1459,9 +1481,11 @@ async function performAutoClean() {
 }
 async function manualCleanCompleted() {
   if (!currentIsAdmin) { alert('Только админ'); return; }
-  const targets = table1Data.filter(r => r.status === 'completed');
-  if (!targets.length) { alert('Нет выполненных счетов.'); return; }
-  if (!confirm(`Удалить ВСЕ выполненные счета (${targets.length} шт.)?\n\nДействие необратимо.`)) return;
+  // 🔒 Текущий месяц не удаляем
+  const targets = table1Data.filter(r => r.status === 'completed' && !isCurrentMonthInvoice(r));
+  const blocked = table1Data.filter(r => r.status === 'completed' && isCurrentMonthInvoice(r));
+  if (!targets.length) { alert('Нет выполненных счетов для удаления (текущий месяц заблокирован).'); return; }
+  if (!confirm(`Удалить ВСЕ выполненные счета (${targets.length} шт.)?\n\nДействие необратимо.\n\nСчета текущего месяца (${blocked.length} шт.) НЕ будут удалены.`)) return;
   const fkr = []; const keysSet = new Set();
   targets.forEach(r => { const k = rowKey(r); if (!keysSet.has(k)) { keysSet.add(k); fkr.push(fbKey(k)); } });
   const targetKeys = new Set(targets.map(t => rowKey(t)));
@@ -1473,13 +1497,13 @@ async function manualCleanCompleted() {
   }
   table1Data = table1Data.filter(r => !targetKeys.has(rowKey(r)));
   saveToStorage(); hideCleanBanner(); renderTable();
-  alert(`🧹 Удалено выполненных: ${targets.length}`);
+  alert(`🧹 Удалено выполненных: ${targets.length}` + (blocked.length ? `\n(Заблокировано за текущий месяц: ${blocked.length})` : ''));
 }
 async function manualCleanOld() {
   if (!currentIsAdmin) { alert('Только админ'); return; }
   if (autoCleanDays <= 0) { alert('Укажите срок > 0'); return; }
   const targets = getCleanCandidates();
-  if (!targets.length) { alert(`Нет выполненных старше ${autoCleanDays} дн.`); return; }
+  if (!targets.length) { alert(`Нет выполненных старше ${autoCleanDays} дн. (или текущий месяц)`); return; }
   if (!confirm(`Удалить ${targets.length} счёт(ов) старше ${autoCleanDays} дн.?`)) return;
   const fkr = []; const keysSet = new Set();
   targets.forEach(r => { const k = rowKey(r); if (!keysSet.has(k)) { keysSet.add(k); fkr.push(fbKey(k)); } });
@@ -1570,6 +1594,10 @@ function deleteInvoice(key) {
   if (!currentIsAdmin) { alert('Удалять счета может только администратор.'); return; }
   const row = table1Data.find(r => rowKey(r) === key);
   if (!row) return;
+  if (isCurrentMonthInvoice(row)) {
+    alert('🚫 Нельзя удалять счета текущего месяца!\n\nАвтоочистка срабатывает с 5-го числа следующего месяца, удаляются счета прошлого месяца и старше.');
+    return;
+  }
   const info = `${row['Номер счета'] || '—'} | ${row['Прибор'] || '—'} | ${row['Контингент'] || ''}`;
   const who = row.distributedToName ? `\n\nРаспределён: ${row.distributedToName}` : '';
   if (!confirm(`🗑 Точно удалить счёт?\n\n${info}${who}\n\nДействие необратимо.`)) return;
@@ -1579,6 +1607,11 @@ function deleteInvoice(key) {
 async function deleteInvoiceConfirm(key) {
   if (!currentUser) return;
   if (!currentIsAdmin) { alert('Удалять счета может только администратор.'); return; }
+  const row = table1Data.find(r => rowKey(r) === key);
+  if (row && isCurrentMonthInvoice(row)) {
+    alert('🚫 Нельзя удалять счета текущего месяца!');
+    return;
+  }
   const fk = fbKey(key);
   table1Data = table1Data.filter(r => rowKey(r) !== key);
   renderTable();
