@@ -497,6 +497,7 @@ window.bulkToggleDevice = bulkToggleDevice; window.bulkClearSelection = bulkClea
 window.openChangePassword = openChangePassword; window.closeChangePassword = closeChangePassword; window.submitChangePassword = submitChangePassword;
 window.openPasteModal = openPasteModal; window.closePasteModal = closePasteModal;
 window.setPastePlace = setPastePlace; window.setPasteType = setPasteType; window.clearPasteTable = clearPasteTable; window.savePasteTable = savePasteTable;
+window.deleteUserAdminConfirm = deleteUserAdminConfirm;
 
 function setSyncStatus(s, t) { const i = document.getElementById('syncIndicator'); const x = document.getElementById('syncText'); if (!i || !x) return; i.className = 'sync-indicator ' + (s === 'online' ? 'sync-online' : s === 'syncing' ? 'sync-syncing' : 'sync-offline'); x.textContent = t; }
 
@@ -757,7 +758,8 @@ async function bulkAssignExecute() {
       if (idx < 0) continue;
       table1Data[idx] = { ...table1Data[idx], distributedTo: userUid, distributedToName: userName, distributedAt: now, distributedBy: currentUser.uid, distributedByName: currentUserName };
     }
-    const adminC1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
+    // 🛡 Статусы НЕ обнуляем — сохраняем как есть
+    const adminC1 = table1Data.map(r => stripUndefined({...r}));
     await set(userInvoicesRef, { table1Data: adminC1, updatedAt: now });
     for (const row of candidates) { try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(rowKey(row)))); } catch(e) {} }
   } catch(e) { console.error(e); errEl.textContent = 'Ошибка: ' + e.message; errEl.style.display = 'block'; if (btn) { btn.disabled = false; btn.textContent = '📦 Распределить'; } return; }
@@ -986,7 +988,6 @@ function getUnviewedDistributedCount() {
   if (!viewingUid || !currentUser) return 0;
   const { uid, isAdmin } = getEffectiveViewer();
   if (!uid) return 0;
-  const isImpersonating = currentIsAdmin && viewingUid !== currentUser.uid;
   if (isAdmin) return 0;
   let c = 0;
   table1Data.forEach(r => {
@@ -1131,15 +1132,19 @@ function renderAdminUserList() {
   c.innerHTML = '';
   arr.forEach(u => {
     const isSelf = u.uid === currentUser.uid;
-    const nameSafe = escapeHtml(u.name || u.username || '').replace(/'/g, '');
     const item = document.createElement('div');
     item.className = 'admin-user-item';
-    item.innerHTML = `<div><b>${escapeHtml(u.name || u.username || u.uid)}</b>${u.username ? `<span class="text-muted small ms-2">@${escapeHtml(u.username)}</span>` : ''}${u.isAdmin ? '<span class="badge badge-admin ms-2">АДМИН</span>' : ''}${isSelf ? '<span class="badge bg-secondary ms-2">это вы</span>' : ''}</div><div>${isSelf ? '' : `<button class="btn btn-sm btn-outline-danger" onclick="deleteUserAdmin('${u.uid}', '${nameSafe}')">🗑 Удалить</button>`}</div>`;
+    const nameHtml = `<b>${escapeHtml(u.name || u.username || u.uid)}</b>${u.username ? `<span class="text-muted small ms-2">@${escapeHtml(u.username)}</span>` : ''}${u.isAdmin ? '<span class="badge badge-admin ms-2">АДМИН</span>' : ''}${isSelf ? '<span class="badge bg-secondary ms-2">это вы</span>' : ''}`;
+    item.innerHTML = `<div>${nameHtml}</div><div>${isSelf ? '' : `<button class="btn btn-sm btn-outline-danger" data-uid="${escapeHtml(u.uid)}" data-name="${escapeHtml(u.name || u.username || '')}">🗑 Удалить</button>`}</div>`;
+    if (!isSelf) {
+      const btn = item.querySelector('button[data-uid]');
+      if (btn) btn.onclick = () => deleteUserAdminConfirm(btn.dataset.uid, btn.dataset.name);
+    }
     c.appendChild(item);
   });
 }
 function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
-async function deleteUserAdmin(uid, name) {
+async function deleteUserAdminConfirm(uid, name) {
   if (!currentIsAdmin) { alert('Только админ'); return; }
   if (uid === currentUser.uid) { alert('Нельзя себя'); return; }
   if (!confirm(`Удалить "${name}"?`)) return;
@@ -1154,6 +1159,8 @@ async function deleteUserAdmin(uid, name) {
     alert('Удалено');
   } catch (e) { console.error(e); alert('Ошибка: ' + e.message); }
 }
+// Обратная совместимость (если где-то остался вызов)
+function deleteUserAdmin(uid, name) { return deleteUserAdminConfirm(uid, name); }
 
 function mergeRow(o, n) {
   return {
@@ -1168,7 +1175,10 @@ function mergeRow(o, n) {
     'Дата оплаты': n['Дата оплаты'] || o['Дата оплаты'],
     place: n.place || o.place || 'csm',
     type: n.type || o.type || 'common',
-    status: o.status || 'new', statusDate: o.statusDate || null, statusChangedBy: o.statusChangedBy || '',
+    // 🛡 статус — из существующей строки, затем из новой, затем new
+    status: o.status || n.status || 'new',
+    statusDate: o.statusDate || n.statusDate || null,
+    statusChangedBy: o.statusChangedBy || n.statusChangedBy || '',
     distributed: o.distributed || false, distributedTo: o.distributedTo || '', distributedToName: o.distributedToName || '',
     distributedAt: o.distributedAt || '', distributedBy: o.distributedBy || '', distributedByName: o.distributedByName || '',
     copied: o.copied || false,
@@ -1260,12 +1270,13 @@ function loadTable1() {
   });
 }
 
+// 🛡 Сохранение в БД: статусы больше НЕ обнуляем
 function saveToStorage() {
   if (!viewingUid) return;
   localStorage.setItem('cache_' + viewingUid + '_table1', JSON.stringify(table1Data));
   if (isRemoteUpdate) return;
   if (!currentUser || !userInvoicesRef) return;
-  const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
+  const c1 = table1Data.map(r => stripUndefined({...r}));
   setSyncStatus('syncing', 'Синхронизация...');
   set(userInvoicesRef, { table1Data: c1, updatedAt: new Date().toISOString() })
     .then(() => { setSyncStatus('online', 'ОК'); setTimeout(() => setSyncStatus('online', 'Онлайн'), 2000); })
@@ -1277,7 +1288,12 @@ function loadFromStorage() {
   if (!viewingUid) return;
   const c = localStorage.getItem('cache_' + viewingUid + '_table1');
   if (c) { try { table1Data = JSON.parse(c); } catch(e) { table1Data = []; } } else table1Data = [];
-  table1Data = table1Data.map(r => ({ ...r, place: r.place || 'csm', type: r.type || 'common' }));
+  table1Data = table1Data.map(r => ({
+    ...r,
+    place: r.place || 'csm',
+    type: r.type || 'common',
+    status: r.status || 'new'  // 🛡 гарантия, но не затираем существующий
+  }));
   updateDeviceTypes(); renderTable(); updateDistributedBanner();
 }
 
@@ -1289,7 +1305,12 @@ function subscribeToUserData(uid) {
     const data = snap.val();
     if (data) {
       isRemoteUpdate = true;
-      table1Data = (data.table1Data || []).map(r => ({ ...r, place: r.place || 'csm', type: r.type || 'common' }));
+      table1Data = (data.table1Data || []).map(r => ({
+        ...r,
+        place: r.place || 'csm',
+        type: r.type || 'common',
+        status: r.status || 'new'  // 🛡 гарантия
+      }));
       applySharedStatuses(); updateDeviceTypes(); renderTable(); isRemoteUpdate = false;
     } else { table1Data = []; updateDeviceTypes(); renderTable(); }
     updateDistributedBanner();
@@ -1304,13 +1325,20 @@ function subscribeToSharedStatuses() {
   unsubShared = onValue(sharedStatusesRef, (snap) => { sharedStatuses = snap.val() || {}; applySharedStatuses(); renderTable(); updateDistributedBanner(); }, (err) => console.error(err));
 }
 
+// 🛡 ГЛАВНОЕ ИСПРАВЛЕНИЕ: если в sharedStatuses нет записи — НЕ сбрасываем статус в 'new'
+// Статус из invoices остаётся как есть (fallback).
 function applySharedStatuses() {
   table1Data = table1Data.map(row => {
     const k = fbKey(rowKey(row));
     const s = sharedStatuses[k];
     let r = { ...row };
-    if (s && s.status) { r.status = s.status; r.statusDate = s.statusDate; r.statusChangedBy = s.changedByName || s.changedByEmail || ''; }
-    else if (row.status !== 'new') { r.status = 'new'; r.statusDate = null; r.statusChangedBy = ''; }
+    if (s && s.status) {
+      // sharedStatuses — главный источник (синхронизация между пользователями)
+      r.status = s.status;
+      r.statusDate = s.statusDate;
+      r.statusChangedBy = s.changedByName || s.changedByEmail || '';
+    }
+    // ❗ иначе НЕ трогаем r.status — оставляем то, что пришло из invoices
     return r;
   });
 }
@@ -1335,16 +1363,23 @@ function renderDeviceTags() {
   if (selectedDevices.size > 0) { const r = document.createElement('button'); r.className = 'btn btn-sm btn-outline-secondary ms-2'; r.textContent = 'Сбросить'; r.onclick = () => { selectedDevices.clear(); renderDeviceTags(); renderTable(); }; c.appendChild(r); }
 }
 
+// 🛡 changeStatus: пишем и в sharedStatuses (синхронизация), и в invoices (защита от гонок)
 async function changeStatus(key, ns) {
   if (!currentUser) return;
   const now = new Date().toISOString();
-  table1Data = table1Data.map(r => rowKey(r) === key ? { ...r, status: ns, statusDate: now } : r);
+  table1Data = table1Data.map(r => rowKey(r) === key ? { ...r, status: ns, statusDate: now, statusChangedBy: currentUserName } : r);
   renderTable();
   const sk = fbKey(key);
   try {
     if (ns === 'new') await remove(ref(database, 'sharedStatuses/' + sk));
     else await set(ref(database, 'sharedStatuses/' + sk), { status: ns, statusDate: now, changedBy: currentUser.uid, changedByEmail: currentUser.email, changedByName: currentUserName });
   } catch(e) { console.error(e); }
+  // 🛡 Дублируем в invoices — чтобы даже при потере sharedStatuses статус не слетел
+  try {
+    if (userInvoicesRef) {
+      await set(userInvoicesRef, { table1Data: table1Data.map(r => stripUndefined({...r})), updatedAt: now });
+    }
+  } catch(e) { console.error('invoices sync error:', e); }
 }
 
 function clearAllData() {
@@ -1367,11 +1402,6 @@ function isCurrentMonthInvoice(row) {
   if (!d) return false;
   const now = new Date();
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-}
-function canDeleteRow(row) {
-  if (!currentIsAdmin) return false;
-  if (isCurrentMonthInvoice(row)) return false;
-  return true;
 }
 // 🔒 ОГРАНИЧЕНИЕ: с какого числа месяца можно запускать автоочистку
 const AUTO_CLEAN_START_DAY = 5;
@@ -1415,7 +1445,7 @@ function calculateTerm(row) {
   if (!ds) {
     const labelDate = extractDateFromLabel(label);
     if (labelDate) {
-      ds = formatDate(labelDate); // формат ДД.ММ.ГГГГ
+      ds = formatDate(labelDate);
     }
   }
   
@@ -1425,16 +1455,16 @@ function calculateTerm(row) {
   return { date: addCalendarDays(ds, 30), label: '30 кал.' };
 }
 
-// 🔒 ОГРАНИЧЕНИЕ: кандидаты на автоочистку — только счета за прошлый месяц и старше.
+// 🔒 Кандидаты на автоочистку — счета за прошлый месяц и старше.
+// 🛡 Fallback: statusDate может быть в формате ДД.ММ.ГГГГ — используем parseDate.
 function getCleanCandidates() {
   if (autoCleanDays <= 0) return [];
   const th = new Date(); th.setDate(th.getDate() - autoCleanDays); th.setHours(0,0,0,0);
   const c = [];
   table1Data.forEach(row => {
     if (row.status !== 'completed') return;
-    // 🔒 не текущий месяц
     if (isCurrentMonthInvoice(row)) return;
-    let rd = row.statusDate ? new Date(row.statusDate) : (row['Дата выписки'] ? parseDate(row['Дата выписки']) : null);
+    let rd = row.statusDate ? (parseDate(row.statusDate) || new Date(row.statusDate)) : (row['Дата выписки'] ? parseDate(row['Дата выписки']) : null);
     if (!rd || isNaN(rd.getTime())) return;
     if (rd < th) c.push(row);
   });
@@ -1443,7 +1473,7 @@ function getCleanCandidates() {
 function checkAutoClean() {
   if (cleanDismissedThisSession) return;
   if (autoCleanDays <= 0) { hideCleanBanner(); return; }
-  if (!isAutoCleanDay()) { hideCleanBanner(); return; } // 🔒 до 5-го числа не предлагаем
+  if (!isAutoCleanDay()) { hideCleanBanner(); return; }
   if (!table1Data.length) { hideCleanBanner(); return; }
   pendingCleanRows = getCleanCandidates();
   if (!pendingCleanRows.length) { hideCleanBanner(); return; }
@@ -1453,7 +1483,12 @@ function checkAutoClean() {
   if (m10 === 1 && m100 !== 11) w = 'счет'; else if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) w = 'счета';
   document.getElementById('cleanWord').textContent = w;
   let e = null, l = null;
-  pendingCleanRows.forEach(r => { const d = r.statusDate ? new Date(r.statusDate) : parseDate(r['Дата выписки']); if (!d || isNaN(d.getTime())) return; if (!e || d < e) e = d; if (!l || d > l) l = d; });
+  pendingCleanRows.forEach(r => {
+    const d = r.statusDate ? (parseDate(r.statusDate) || new Date(r.statusDate)) : parseDate(r['Дата выписки']);
+    if (!d || isNaN(d.getTime())) return;
+    if (!e || d < e) e = d;
+    if (!l || d > l) l = d;
+  });
   document.getElementById('cleanPeriod').textContent = `${autoCleanDays} дн.`;
   if (e && l) { const mm = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']; const f = (d) => `${mm[d.getMonth()]} ${d.getFullYear()}`; document.getElementById('cleanDates').textContent = (f(e) === f(l)) ? f(e) : `${f(e)} — ${f(l)}`; }
   else document.getElementById('cleanDates').textContent = '';
@@ -1466,9 +1501,9 @@ async function performAutoClean() {
   if (!currentIsAdmin) { alert('Только админ.'); return; }
   const c = pendingCleanRows.length;
   if (!confirm(`Удалить ${c}?`)) return;
-  const ktr = new Set(); pendingCleanRows.forEach(r => ktr.add(rowKey(r)));
-  table1Data = table1Data.filter(r => !pendingCleanRows.some(p => rowKey(p) === rowKey(r)));
-  const fkr = Array.from(ktr).map(fbKey);
+  const targetKeys = new Set(pendingCleanRows.map(r => rowKey(r)));
+  table1Data = table1Data.filter(r => !targetKeys.has(rowKey(r)));
+  const fkr = Array.from(targetKeys).map(fbKey);
   saveToStorage();
   for (const fk of fkr) {
     try { await remove(ref(database, 'sharedStatuses/' + fk)); } catch(e) {}
@@ -1481,21 +1516,19 @@ async function performAutoClean() {
 }
 async function manualCleanCompleted() {
   if (!currentIsAdmin) { alert('Только админ'); return; }
-  // 🔒 Текущий месяц не удаляем
   const targets = table1Data.filter(r => r.status === 'completed' && !isCurrentMonthInvoice(r));
   const blocked = table1Data.filter(r => r.status === 'completed' && isCurrentMonthInvoice(r));
   if (!targets.length) { alert('Нет выполненных счетов для удаления (текущий месяц заблокирован).'); return; }
   if (!confirm(`Удалить ВСЕ выполненные счета (${targets.length} шт.)?\n\nДействие необратимо.\n\nСчета текущего месяца (${blocked.length} шт.) НЕ будут удалены.`)) return;
-  const fkr = []; const keysSet = new Set();
-  targets.forEach(r => { const k = rowKey(r); if (!keysSet.has(k)) { keysSet.add(k); fkr.push(fbKey(k)); } });
-  const targetKeys = new Set(targets.map(t => rowKey(t)));
+  const keysSet = new Set(targets.map(t => rowKey(t)));
+  const fkr = Array.from(keysSet).map(fbKey);
+  table1Data = table1Data.filter(r => !keysSet.has(rowKey(r)));
   for (const fk of fkr) {
     try { await remove(ref(database, 'sharedStatuses/' + fk)); } catch(e) {}
     try { await remove(ref(database, 'sharedComments/' + fk)); } catch(e) {}
     try { await remove(ref(database, 'sharedClosedDates/' + fk)); } catch(e) {}
     try { await remove(ref(database, 'sharedLabels/' + fk)); } catch(e) {}
   }
-  table1Data = table1Data.filter(r => !targetKeys.has(rowKey(r)));
   saveToStorage(); hideCleanBanner(); renderTable();
   alert(`🧹 Удалено выполненных: ${targets.length}` + (blocked.length ? `\n(Заблокировано за текущий месяц: ${blocked.length})` : ''));
 }
@@ -1505,16 +1538,15 @@ async function manualCleanOld() {
   const targets = getCleanCandidates();
   if (!targets.length) { alert(`Нет выполненных старше ${autoCleanDays} дн. (или текущий месяц)`); return; }
   if (!confirm(`Удалить ${targets.length} счёт(ов) старше ${autoCleanDays} дн.?`)) return;
-  const fkr = []; const keysSet = new Set();
-  targets.forEach(r => { const k = rowKey(r); if (!keysSet.has(k)) { keysSet.add(k); fkr.push(fbKey(k)); } });
-  const targetKeys = new Set(targets.map(t => rowKey(t)));
+  const keysSet = new Set(targets.map(t => rowKey(t)));
+  const fkr = Array.from(keysSet).map(fbKey);
+  table1Data = table1Data.filter(r => !keysSet.has(rowKey(r)));
   for (const fk of fkr) {
     try { await remove(ref(database, 'sharedStatuses/' + fk)); } catch(e) {}
     try { await remove(ref(database, 'sharedComments/' + fk)); } catch(e) {}
     try { await remove(ref(database, 'sharedClosedDates/' + fk)); } catch(e) {}
     try { await remove(ref(database, 'sharedLabels/' + fk)); } catch(e) {}
   }
-  table1Data = table1Data.filter(r => !targetKeys.has(rowKey(r)));
   saveToStorage(); hideCleanBanner(); renderTable();
   alert(`🧹 Удалено: ${targets.length}`);
 }
@@ -1545,7 +1577,8 @@ async function assignToUser(userUid, userName) {
   table1Data[idx] = { ...table1Data[idx], distributedTo: userUid, distributedToName: userName, distributedAt: now, distributedBy: currentUser.uid, distributedByName: currentUserName };
   setSyncStatus('syncing', 'Распределение...');
   try {
-    const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
+    // 🛡 статусы не обнуляем
+    const c1 = table1Data.map(r => stripUndefined({...r}));
     await set(userInvoicesRef, { table1Data: c1, updatedAt: now });
     try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key))); } catch(e) {}
     setSyncStatus('online', 'ОК');
@@ -1565,7 +1598,7 @@ async function cancelDistribution() {
   const idx = table1Data.findIndex(r => rowKey(r) === key);
   if (idx >= 0) table1Data[idx] = { ...table1Data[idx], distributedTo: '', distributedToName: '', distributedAt: '', distributedBy: '', distributedByName: '' };
   try {
-    const c1 = table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''}));
+    const c1 = table1Data.map(r => stripUndefined({...r}));
     await set(userInvoicesRef, { table1Data: c1, updatedAt: now });
   } catch(e) { console.error(e); alert('Ошибка: ' + e.message); return; }
   closeDistModal(); renderUserFilters(); renderTable();
@@ -1604,6 +1637,7 @@ function deleteInvoice(key) {
   deleteInvoiceConfirm(key);
 }
 
+// 🛡 Сначала пишем в БД, потом удаляем из памяти (согласованность UI/БД)
 async function deleteInvoiceConfirm(key) {
   if (!currentUser) return;
   if (!currentIsAdmin) { alert('Удалять счета может только администратор.'); return; }
@@ -1613,9 +1647,18 @@ async function deleteInvoiceConfirm(key) {
     return;
   }
   const fk = fbKey(key);
-  table1Data = table1Data.filter(r => rowKey(r) !== key);
-  renderTable();
-  try { await set(userInvoicesRef, { table1Data: table1Data.map(r => stripUndefined({...r, status:'new', statusDate:null, statusChangedBy:''})), updatedAt: new Date().toISOString() }); } catch(e) { console.error(e); alert('Ошибка записи: ' + e.message); return; }
+  const newData = table1Data.filter(r => rowKey(r) !== key);
+  try {
+    if (userInvoicesRef) {
+      await set(userInvoicesRef, { table1Data: newData.map(r => stripUndefined({...r})), updatedAt: new Date().toISOString() });
+    }
+    table1Data = newData;
+    renderTable();
+  } catch(e) {
+    console.error(e);
+    alert('Ошибка записи: ' + e.message);
+    return;
+  }
   try { await remove(ref(database, 'sharedStatuses/' + fk)); } catch(e) {}
   try { await remove(ref(database, 'sharedComments/' + fk)); } catch(e) {}
   try { await remove(ref(database, 'sharedClosedDates/' + fk)); } catch(e) {}
