@@ -1371,8 +1371,8 @@ async function changeStatus(key, ns) {
   renderTable();
   const sk = fbKey(key);
   try {
-    if (ns === 'new') await remove(ref(database, 'sharedStatuses/' + sk));
-    else await set(ref(database, 'sharedStatuses/' + sk), { status: ns, statusDate: now, changedBy: currentUser.uid, changedByEmail: currentUser.email, changedByName: currentUserName });
+    // 🛡 ВСЕГДА set, включая 'new' — иначе remove + прилетевший старый снапшот откатывают статус
+    await set(ref(database, 'sharedStatuses/' + sk), { status: ns, statusDate: now, changedBy: currentUser.uid, changedByEmail: currentUser.email, changedByName: currentUserName });
   } catch(e) { console.error(e); }
   // 🛡 Дублируем в invoices — чтобы даже при потере sharedStatuses статус не слетел
   try {
@@ -1381,7 +1381,6 @@ async function changeStatus(key, ns) {
     }
   } catch(e) { console.error('invoices sync error:', e); }
 }
-
 function clearAllData() {
   if (!currentUser || !viewingUid) return;
   if (!currentIsAdmin) { alert('Только админ может очистить базу.'); return; }
