@@ -590,7 +590,6 @@ function subscribeToSharedComments() {
   unsubComments = onValue(sharedCommentsRef, (snap) => { sharedComments = snap.val() || {}; renderTable(); }, (err) => console.error(err));
 }
 /* ========= КОНЕЦ КОММЕНТАРИЕВ ========= */
-
 /* ========= ДАТА ЗАКРЫТИЯ И МЕТКИ ========= */
 function getClosedDate(key) { const v = sharedClosedDates[fbKey(key)]; return v && v.date ? v.date : ''; }
 function getLabel(key) { const v = sharedLabels[fbKey(key)]; return v && v.text ? v.text : ''; }
@@ -758,7 +757,6 @@ async function bulkAssignExecute() {
       if (idx < 0) continue;
       table1Data[idx] = { ...table1Data[idx], distributedTo: userUid, distributedToName: userName, distributedAt: now, distributedBy: currentUser.uid, distributedByName: currentUserName };
     }
-    // 🛡 Статусы НЕ обнуляем — сохраняем как есть
     const adminC1 = table1Data.map(r => stripUndefined({...r}));
     await set(userInvoicesRef, { table1Data: adminC1, updatedAt: now });
     for (const row of candidates) { try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(rowKey(row)))); } catch(e) {} }
@@ -1159,7 +1157,6 @@ async function deleteUserAdminConfirm(uid, name) {
     alert('Удалено');
   } catch (e) { console.error(e); alert('Ошибка: ' + e.message); }
 }
-// Обратная совместимость (если где-то остался вызов)
 function deleteUserAdmin(uid, name) { return deleteUserAdminConfirm(uid, name); }
 
 function mergeRow(o, n) {
@@ -1175,7 +1172,6 @@ function mergeRow(o, n) {
     'Дата оплаты': n['Дата оплаты'] || o['Дата оплаты'],
     place: n.place || o.place || 'csm',
     type: n.type || o.type || 'common',
-    // 🛡 статус — из существующей строки, затем из новой, затем new
     status: o.status || n.status || 'new',
     statusDate: o.statusDate || n.statusDate || null,
     statusChangedBy: o.statusChangedBy || n.statusChangedBy || '',
@@ -1270,7 +1266,6 @@ function loadTable1() {
   });
 }
 
-// 🛡 Сохранение в БД: статусы больше НЕ обнуляем
 function saveToStorage() {
   if (!viewingUid) return;
   localStorage.setItem('cache_' + viewingUid + '_table1', JSON.stringify(table1Data));
@@ -1292,12 +1287,11 @@ function loadFromStorage() {
     ...r,
     place: r.place || 'csm',
     type: r.type || 'common',
-    status: r.status || 'new'  // 🛡 гарантия, но не затираем существующий
+    status: r.status || 'new'
   }));
   updateDeviceTypes(); renderTable(); updateDistributedBanner();
 }
 
-// 🔧 ВАРИАНТ A: читаем ВСЕГДА ветку админа (общая база), фильтруем в UI
 function subscribeToUserData(uid) {
   if (unsubInvoices) unsubInvoices();
   userInvoicesRef = ref(database, 'invoices/' + ADMIN_UID);
@@ -1309,7 +1303,7 @@ function subscribeToUserData(uid) {
         ...r,
         place: r.place || 'csm',
         type: r.type || 'common',
-        status: r.status || 'new'  // 🛡 гарантия
+        status: r.status || 'new'
       }));
       applySharedStatuses(); updateDeviceTypes(); renderTable(); isRemoteUpdate = false;
     } else { table1Data = []; updateDeviceTypes(); renderTable(); }
@@ -1325,20 +1319,16 @@ function subscribeToSharedStatuses() {
   unsubShared = onValue(sharedStatusesRef, (snap) => { sharedStatuses = snap.val() || {}; applySharedStatuses(); renderTable(); updateDistributedBanner(); }, (err) => console.error(err));
 }
 
-// 🛡 ГЛАВНОЕ ИСПРАВЛЕНИЕ: если в sharedStatuses нет записи — НЕ сбрасываем статус в 'new'
-// Статус из invoices остаётся как есть (fallback).
 function applySharedStatuses() {
   table1Data = table1Data.map(row => {
     const k = fbKey(rowKey(row));
     const s = sharedStatuses[k];
     let r = { ...row };
     if (s && s.status) {
-      // sharedStatuses — главный источник (синхронизация между пользователями)
       r.status = s.status;
       r.statusDate = s.statusDate;
       r.statusChangedBy = s.changedByName || s.changedByEmail || '';
     }
-    // ❗ иначе НЕ трогаем r.status — оставляем то, что пришло из invoices
     return r;
   });
 }
@@ -1363,23 +1353,51 @@ function renderDeviceTags() {
   if (selectedDevices.size > 0) { const r = document.createElement('button'); r.className = 'btn btn-sm btn-outline-secondary ms-2'; r.textContent = 'Сбросить'; r.onclick = () => { selectedDevices.clear(); renderDeviceTags(); renderTable(); }; c.appendChild(r); }
 }
 
-// 🛡 changeStatus: пишем и в sharedStatuses (синхронизация), и в invoices (защита от гонок)
+/* ============================================================
+   ✅ ИСПРАВЛЕННАЯ changeStatus — фикс возврата статуса
+   ============================================================ */
 async function changeStatus(key, ns) {
   if (!currentUser) return;
   const now = new Date().toISOString();
-  table1Data = table1Data.map(r => rowKey(r) === key ? { ...r, status: ns, statusDate: now, statusChangedBy: currentUserName } : r);
-  renderTable();
   const sk = fbKey(key);
+
+  // 1. Оптимистично обновляем локальную таблицу
+  table1Data = table1Data.map(r => rowKey(r) === key
+    ? { ...r, status: ns, statusDate: now, statusChangedBy: currentUserName }
+    : r);
+
+  // 2. 🔑 СИНХРОННО правим локальный кэш sharedStatuses,
+  //    чтобы applySharedStatuses() не «воскресил» старый статус,
+  //    когда колбэк onValue(invoices) сработает раньше onValue(sharedStatuses).
+  if (ns === 'new') {
+    delete sharedStatuses[sk];
+  } else {
+    sharedStatuses[sk] = {
+      status: ns,
+      statusDate: now,
+      changedBy: currentUser.uid,
+      changedByEmail: currentUser.email,
+      changedByName: currentUserName
+    };
+  }
+
+  renderTable();
+
+  // 3. Пишем в sharedStatuses (главный источник статуса)
   try {
     if (ns === 'new') await remove(ref(database, 'sharedStatuses/' + sk));
-    else await set(ref(database, 'sharedStatuses/' + sk), { status: ns, statusDate: now, changedBy: currentUser.uid, changedByEmail: currentUser.email, changedByName: currentUserName });
-  } catch(e) { console.error(e); }
-  // 🛡 Дублируем в invoices — чтобы даже при потере sharedStatuses статус не слетел
+    else await set(ref(database, 'sharedStatuses/' + sk), sharedStatuses[sk]);
+  } catch (e) { console.error(e); }
+
+  // 4. Дублируем в invoices (защита от гонок)
   try {
     if (userInvoicesRef) {
-      await set(userInvoicesRef, { table1Data: table1Data.map(r => stripUndefined({...r})), updatedAt: now });
+      await set(userInvoicesRef, {
+        table1Data: table1Data.map(r => stripUndefined({ ...r })),
+        updatedAt: now
+      });
     }
-  } catch(e) { console.error('invoices sync error:', e); }
+  } catch (e) { console.error('invoices sync error:', e); }
 }
 
 function clearAllData() {
@@ -1395,15 +1413,12 @@ function clearAllData() {
   updateDeviceTypes(); renderTable(); updateDistributedBanner();
 }
 
-// 🔒 ОГРАНИЧЕНИЕ: счета текущего месяца нельзя удалять.
-// Месяц и год берём из "Дата выписки".
 function isCurrentMonthInvoice(row) {
   const d = parseDate(row['Дата выписки']);
   if (!d) return false;
   const now = new Date();
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
 }
-// 🔒 ОГРАНИЧЕНИЕ: с какого числа месяца можно запускать автоочистку
 const AUTO_CLEAN_START_DAY = 5;
 function isAutoCleanDay() {
   const now = new Date();
@@ -1441,7 +1456,6 @@ function calculateTerm(row) {
   
   let ds = row['Дата оплаты'] || row.paymentDate;
   
-  // Если основной даты нет, пробуем вытащить из метки
   if (!ds) {
     const labelDate = extractDateFromLabel(label);
     if (labelDate) {
@@ -1455,8 +1469,6 @@ function calculateTerm(row) {
   return { date: addCalendarDays(ds, 30), label: '30 кал.' };
 }
 
-// 🔒 Кандидаты на автоочистку — счета за прошлый месяц и старше.
-// 🛡 Fallback: statusDate может быть в формате ДД.ММ.ГГГГ — используем parseDate.
 function getCleanCandidates() {
   if (autoCleanDays <= 0) return [];
   const th = new Date(); th.setDate(th.getDate() - autoCleanDays); th.setHours(0,0,0,0);
@@ -1577,7 +1589,6 @@ async function assignToUser(userUid, userName) {
   table1Data[idx] = { ...table1Data[idx], distributedTo: userUid, distributedToName: userName, distributedAt: now, distributedBy: currentUser.uid, distributedByName: currentUserName };
   setSyncStatus('syncing', 'Распределение...');
   try {
-    // 🛡 статусы не обнуляем
     const c1 = table1Data.map(r => stripUndefined({...r}));
     await set(userInvoicesRef, { table1Data: c1, updatedAt: now });
     try { await remove(ref(database, 'viewedDistributed/' + userUid + '/' + fbKey(key))); } catch(e) {}
@@ -1637,7 +1648,6 @@ function deleteInvoice(key) {
   deleteInvoiceConfirm(key);
 }
 
-// 🛡 Сначала пишем в БД, потом удаляем из памяти (согласованность UI/БД)
 async function deleteInvoiceConfirm(key) {
   if (!currentUser) return;
   if (!currentIsAdmin) { alert('Удалять счета может только администратор.'); return; }
